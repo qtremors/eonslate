@@ -1,40 +1,69 @@
-# IDE
-.idea/
-.vscode/
-*.iml
-*.swp
-*.swo
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
 
-# OS
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local properties and signing credentials
+local.properties
+signing.properties
+keystore.properties
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE
+.vscode/
+
+# Captures (Android Studio memory snapshots)
+captures/
+*.perfetto
+*.hprof
+
+# Android signing material
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+
+# External native build
+.externalNativeBuild/
+.cxx/
+
+# OS-specific
 .DS_Store
 Thumbs.db
 Desktop.ini
 
+# Kotlin daemon state and compiler crash logs
+.kotlin/
+
 # Environment
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
 !.env.example
-!.env.*.example
 
-# Debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# Logs and temp files
 *.log
-
-# Local artifacts and secrets
 *.tmp
-*.hprof
-*.apk
-*.aab
-*.jks
-*.keystore
-signing.properties
-keystore.properties
-
-# Misc
 temp/

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title">Eonslate</string>
+    <string name="home_empty_title">Nothing tracked yet</string>
+    <string name="home_empty_message">Trackers you create will show up here. Everything stays on this device.</string>
+</resources>
