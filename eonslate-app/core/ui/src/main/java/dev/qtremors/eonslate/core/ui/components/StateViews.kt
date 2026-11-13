@@ -31,7 +31,7 @@ fun LoadingState(modifier: Modifier = Modifier) {
 }
 
 /**
- * A soft shape with an icon, a title, a sentence, and an optional action. Used for empty lists,
+ * A slanted slate with an icon, a title, a sentence, and an optional action. Used for empty lists,
  * missing permissions, and pages that are not built yet.
  */
 @Composable
@@ -52,10 +52,10 @@ fun EmptyState(
         Box(
             modifier = Modifier
                 .size(96.dp)
-                .background(colors.secondaryContainer, MaterialShapes.Cookie9Sided.toShape()),
+                .background(colors.tertiaryContainer, MaterialShapes.Slanted.toShape()),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = colors.onSecondaryContainer, modifier = Modifier.size(40.dp))
+            Icon(icon, contentDescription = null, tint = colors.onTertiaryContainer, modifier = Modifier.size(40.dp))
         }
         Text(title, style = MaterialTheme.typography.titleLarge, color = colors.onSurface, textAlign = TextAlign.Center)
         Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)

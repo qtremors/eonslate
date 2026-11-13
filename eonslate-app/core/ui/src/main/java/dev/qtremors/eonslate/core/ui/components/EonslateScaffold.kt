@@ -60,6 +60,8 @@ data class FilterTop(
  *
  * [filter] adds a search button that turns the top bar into a search field for this page.
  * [content] receives padding that already includes the side gutter and toolbar clearance.
+ * [onBack] adds a back arrow for pages below the top level. [floatingActionButton] floats over
+ * the bottom of the page, inside the toolbar clearance, so it never covers the last row.
  */
 @Composable
 fun EonslateScaffold(
@@ -69,6 +71,8 @@ fun EonslateScaffold(
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
     snackbarHost: @Composable () -> Unit = {},
     filter: FilterTop? = null,
+    onBack: (() -> Unit)? = null,
+    floatingActionButton: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
@@ -89,11 +93,12 @@ fun EonslateScaffold(
         modifier = if (filtering) modifier else modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = colors.surfaceContainer,
         snackbarHost = snackbarHost,
+        floatingActionButton = floatingActionButton,
         topBar = {
             when {
                 filter != null -> AnimatedContent(targetState = filtering, label = "topBarFilter") { open ->
                     if (open) FilterTopBar(filter, onClose = closeFilter, requestFocus = focusPending, onFocused = { focusPending = false })
-                    else TitleTopBar(title, scrollBehavior) {
+                    else TitleTopBar(title, scrollBehavior, onBack) {
                         IconButton(shapes = IconButtonDefaults.shapes(), onClick = {
                             filtering = true
                             focusPending = true
@@ -104,7 +109,7 @@ fun EonslateScaffold(
                         actions()
                     }
                 }
-                else -> TitleTopBar(title, scrollBehavior, actions)
+                else -> TitleTopBar(title, scrollBehavior, onBack, actions)
             }
         }
     ) { inner ->
@@ -120,11 +125,23 @@ fun EonslateScaffold(
 }
 
 @Composable
-private fun TitleTopBar(title: String, scrollBehavior: TopAppBarScrollBehavior, actions: @Composable RowScope.() -> Unit) {
+private fun TitleTopBar(
+    title: String,
+    scrollBehavior: TopAppBarScrollBehavior,
+    onBack: (() -> Unit)?,
+    actions: @Composable RowScope.() -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     // The Expressive large bar: a bigger title that settles into the small bar as the page scrolls.
     LargeFlexibleTopAppBar(
         title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = {
+            if (onBack != null) {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                }
+            }
+        },
         actions = actions,
         scrollBehavior = scrollBehavior,
         colors = TopAppBarDefaults.topAppBarColors(

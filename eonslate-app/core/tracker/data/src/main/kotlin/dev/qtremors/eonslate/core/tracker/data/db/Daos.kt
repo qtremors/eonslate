@@ -35,6 +35,9 @@ interface TrackerDao {
     @Query("SELECT * FROM trackers WHERE id = :id")
     suspend fun getTracker(id: String): TrackerWithFields?
 
+    @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM trackers")
+    suspend fun nextPosition(): Int
+
     @Query("SELECT * FROM tracker_fields WHERE tracker_id = :trackerId ORDER BY position")
     suspend fun getFields(trackerId: String): List<TrackerFieldEntity>
 

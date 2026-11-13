@@ -9,25 +9,60 @@ import com.materialkolor.hct.Hct
 import com.materialkolor.scheme.DynamicScheme
 import com.materialkolor.scheme.SchemeTonalSpot
 
-/** The brand seed color, used when wallpaper colors are off or unavailable (Android 8 to 11). */
-val BrandSeed = Color(0xFF00E6FF)
+/**
+ * Eonslate's own colors, "Slate and Ember": a deep slate blue carries the app, and a warm ember
+ * amber marks what is alive (today's progress, a streak, the main action's accent). These are the
+ * default; wallpaper colors are a choice in Settings, never the out-of-the-box look.
+ */
+val BrandSeed = Color(0xFF34557A)
+
+/** The warm accent every Eonslate scheme uses for its tertiary roles. */
+val EmberSeed = Color(0xFFE8873A)
 
 /**
- * Named seed colors. Each produces a full tonal scheme in light, dark, and OLED, so every preset
- * keeps proper contrast instead of shipping hand-picked colors.
+ * Named seed colors, each a mineral or natural material, so every preset stays in the same family
+ * as the brand. Each produces a full tonal scheme in light, dark and OLED.
  */
 enum class ThemePreset(val seed: Color) {
-    CYAN(BrandSeed),
-    AMBER(Color(0xFFFFB300)),
-    CORAL(Color(0xFFFF5252)),
-    VIOLET(Color(0xFF7C4DFF)),
-    MINT(Color(0xFF26C6A0)),
-    SLATE(Color(0xFF607D8B))
+    SLATE(BrandSeed),
+    TIDE(Color(0xFF1F7A8C)),
+    MOSS(Color(0xFF5B7F3A)),
+    CLAY(Color(0xFFA0583A)),
+    DUSK(Color(0xFF5E4B8B)),
+    GRAPHITE(Color(0xFF4A4F55))
 }
 
 /** Builds a Material 3 scheme from one seed with Material Color Utilities' tonal spot style. */
 fun seedColorScheme(seed: Color, isDark: Boolean): ColorScheme =
     SchemeTonalSpot(Hct.fromInt(seed.toArgb()), isDark, 0.0).toColorScheme(isDark)
+
+/**
+ * An Eonslate scheme: [seed] for primary, secondary and the tinted neutrals, and always ember for
+ * tertiary. Ember's roles are the primary roles of its own tonal scheme, so they keep Material's
+ * contrast pairs in light and dark instead of being hand-picked.
+ */
+fun eonslateColorScheme(seed: Color, isDark: Boolean): ColorScheme {
+    val ember = seedColorScheme(EmberSeed, isDark)
+    return seedColorScheme(seed, isDark).copy(
+        tertiary = ember.primary,
+        onTertiary = ember.onPrimary,
+        tertiaryContainer = ember.primaryContainer,
+        onTertiaryContainer = ember.onPrimaryContainer
+    )
+}
+
+/**
+ * Builds the badge colors for a pigment from HCT tones, so every pigment has the same lightness
+ * and contrast whatever its hue: a soft tile with a deep glyph in light themes, a deep tile with
+ * a light glyph in dark ones.
+ */
+internal fun pigmentTones(pigment: Color, isDark: Boolean): Pair<Color, Color> {
+    val hct = Hct.fromInt(pigment.toArgb())
+    val chroma = hct.chroma.coerceAtMost(48.0)
+    fun tone(t: Double, c: Double = chroma) = Color(Hct.from(hct.hue, c, t).toInt())
+    return if (isDark) tone(30.0, chroma * 0.8) to tone(88.0, chroma * 0.6)
+    else tone(88.0, chroma * 0.55) to tone(32.0)
+}
 
 /**
  * Pure black for OLED screens. Pages are drawn on surfaceContainer, so that is black too; rows

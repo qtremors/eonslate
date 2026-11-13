@@ -49,6 +49,7 @@ class HomeViewModelTest {
         override fun observeTrackers(includeArchived: Boolean): Flow<List<Tracker>> = emptyFlow()
         override fun observeTracker(id: String): Flow<Tracker?> = emptyFlow()
         override suspend fun getTracker(id: String): Tracker? = null
+        override suspend fun nextPosition() = 0
         override suspend fun saveTracker(tracker: Tracker) = ValidationResult.Valid
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
         override suspend fun reorder(orderedIds: List<String>) = Unit

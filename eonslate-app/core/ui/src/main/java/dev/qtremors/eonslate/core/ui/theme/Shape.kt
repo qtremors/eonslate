@@ -14,6 +14,15 @@ val EonslateShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
+/**
+ * Eonslate's signature: a tracker's icon sits on a rounded "slate tile", a square with soft
+ * corners, never a circle. Proportional corners keep the tile the same character at any size.
+ */
+val SlateTileShape: Shape = RoundedCornerShape(percent = 30)
+
+/** Tracker tiles on Home and the preview card in the builder. */
+val SlateCardShape: Shape = RoundedCornerShape(28.dp)
+
 /** Text fields: rounded like the cards around them, not Material's default 4 dp. */
 val FieldShape: Shape = RoundedCornerShape(16.dp)
 

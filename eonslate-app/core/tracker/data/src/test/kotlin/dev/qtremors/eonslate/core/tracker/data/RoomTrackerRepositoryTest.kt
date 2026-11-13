@@ -191,6 +191,15 @@ class RoomTrackerRepositoryTest {
     }
 
     @Test
+    fun nextPositionComesAfterEveryTracker() = runTest {
+        assertEquals(0, trackers.nextPosition())
+        trackers.saveTracker(everyTypeTracker("a", position = 4))
+        trackers.saveTracker(everyTypeTracker("b", position = 2))
+        trackers.setArchived("a", true)
+        assertEquals(5, trackers.nextPosition())
+    }
+
+    @Test
     fun equalPositionsFallBackToCreationOrder() = runTest {
         trackers.saveTracker(everyTypeTracker("late", createdAt = NOW + 10))
         trackers.saveTracker(everyTypeTracker("early", createdAt = NOW))

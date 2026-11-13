@@ -28,6 +28,41 @@ val RobotoFlex = FontFamily(
     flex(FontWeight.Bold)
 )
 
+/**
+ * Eonslate's display voice: the same Roboto Flex file narrowed on its width axis and set heavy,
+ * like lettering cut into a slate. Used for page titles, headlines and big numbers only; body
+ * text stays at normal width for reading.
+ */
+@OptIn(ExperimentalTextApi::class)
+private fun slate(weight: FontWeight) = Font(
+    R.font.roboto_flex,
+    weight = weight,
+    variationSettings = FontVariation.Settings(
+        FontVariation.weight(weight.weight),
+        FontVariation.width(SLATE_WIDTH)
+    )
+)
+
+/** The narrowest end of Roboto Flex's 25 to 151 width axis. At heavy weights the font compresses
+ * gently, so this reads as condensed lettering rather than squeezed text. */
+private const val SLATE_WIDTH = 25f
+
+val EonslateDisplay = FontFamily(
+    slate(FontWeight.Medium),
+    slate(FontWeight.SemiBold),
+    slate(FontWeight.Bold),
+    slate(FontWeight.ExtraBold)
+)
+
+private fun display(size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) =
+    TextStyle(
+        fontFamily = EonslateDisplay,
+        fontWeight = weight,
+        fontSize = size.sp,
+        lineHeight = line.sp,
+        letterSpacing = tracking.sp
+    )
+
 private fun style(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, tracking: Double = 0.0) =
     TextStyle(
         fontFamily = RobotoFlex,
@@ -38,27 +73,27 @@ private fun style(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, 
     )
 
 val EonslateTypography = Typography(
-    displayLarge = style(57, 64, tracking = -0.25),
-    displayMedium = style(45, 52),
-    displaySmall = style(36, 44),
-    headlineLarge = style(32, 40, FontWeight.Medium),
-    headlineMedium = style(28, 36, FontWeight.Medium),
-    headlineSmall = style(24, 32, FontWeight.Medium),
-    titleLarge = style(22, 28, FontWeight.Medium),
-    titleMedium = style(16, 24, FontWeight.Medium, 0.15),
-    titleSmall = style(14, 20, FontWeight.Medium, 0.1),
-    bodyLarge = style(16, 24, tracking = 0.5),
-    bodyMedium = style(14, 20, tracking = 0.25),
+    displayLarge = display(60, 64, FontWeight.ExtraBold, -1.0),
+    displayMedium = display(48, 52, FontWeight.ExtraBold, -0.75),
+    displaySmall = display(38, 44, FontWeight.Bold, -0.5),
+    headlineLarge = display(34, 40, FontWeight.Bold, -0.5),
+    headlineMedium = display(30, 36, FontWeight.Bold, -0.25),
+    headlineSmall = display(26, 32, FontWeight.Bold),
+    titleLarge = display(24, 28, FontWeight.SemiBold),
+    titleMedium = style(16, 24, FontWeight.SemiBold, 0.15),
+    titleSmall = style(14, 20, FontWeight.SemiBold, 0.1),
+    bodyLarge = style(16, 24, tracking = 0.4),
+    bodyMedium = style(14, 20, tracking = 0.2),
     bodySmall = style(12, 16, tracking = 0.4),
-    labelLarge = style(14, 20, FontWeight.Medium, 0.1),
-    labelMedium = style(12, 16, FontWeight.Medium, 0.5),
-    labelSmall = style(11, 16, FontWeight.Medium, 0.5)
+    labelLarge = style(14, 20, FontWeight.SemiBold, 0.1),
+    labelMedium = style(12, 16, FontWeight.SemiBold, 0.4),
+    labelSmall = style(11, 16, FontWeight.SemiBold, 0.5)
 )
 
-/** A reading or measurement shown large, such as "74%" or "5.1 GB". Digits stay aligned. */
-val MetricTextStyle: TextStyle = style(28, 34, FontWeight.SemiBold).copy(
+/** A logged value shown large, such as "72.5 kg" or "6 h 30 m". Digits stay aligned. */
+val MetricTextStyle: TextStyle = display(30, 34, FontWeight.Bold).copy(
     fontFeatureSettings = "tnum"
 )
 
-/** Values in fact rows that are machine strings (build IDs, kernels, codec names). */
+/** Values in rows, such as amounts and times, with aligned digits. */
 val ValueTextStyle: TextStyle = style(14, 20, tracking = 0.1).copy(fontFeatureSettings = "tnum")

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_title_new">New tracker</string>
+    <string name="editor_title_edit">Edit tracker</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_preview_name">Your tracker</string>
+    <string name="editor_preview_no_fields">Add a field to start logging</string>
+
+    <string name="editor_section_details">Details</string>
+    <string name="editor_name">Name</string>
+    <string name="editor_description">Description</string>
+    <string name="editor_description_hint">Optional. What you are tracking and why.</string>
+    <string name="editor_section_icon">Icon</string>
+    <string name="editor_section_color">Pigment</string>
+    <string name="editor_section_fields">Fields</string>
+    <plurals name="editor_field_count">
+        <item quantity="one">%1$d of %2$d</item>
+        <item quantity="other">%1$d of %2$d</item>
+    </plurals>
+    <string name="editor_add_field">Add field</string>
+    <string name="editor_needs_field">Add at least one field to save</string>
+    <string name="editor_bad_limit">A limit is not a number. Open the field to fix it.</string>
+
+    <string name="editor_field_edit">Edit</string>
+    <string name="editor_field_up">Move up</string>
+    <string name="editor_field_down">Move down</string>
+    <string name="editor_field_remove">Remove</string>
+
+    <plurals name="editor_decimals">
+        <item quantity="one">%d decimal</item>
+        <item quantity="other">%d decimals</item>
+    </plurals>
+    <plurals name="editor_choice_count">
+        <item quantity="one">%d choice</item>
+        <item quantity="other">%d choices</item>
+    </plurals>
+    <string name="editor_rating_of">Out of %1$d</string>
+    <string name="editor_text_multiline_short">Several lines</string>
+    <string name="editor_required_short">Required</string>
+
+    <string name="editor_section_manage">Manage</string>
+    <string name="editor_archive">Archive</string>
+    <string name="editor_archive_hint">Hide it from Home and keep everything logged</string>
+    <string name="editor_delete">Delete tracker</string>
+    <string name="editor_delete_hint">Remove it and everything logged to it</string>
+    <string name="editor_delete_title">Delete %1$s?</string>
+    <string name="editor_delete_message">The tracker and every entry logged to it are removed from this device. This cannot be undone.</string>
+    <string name="editor_delete_confirm">Delete</string>
+
+    <string name="editor_discard_title">Leave without saving?</string>
+    <string name="editor_discard_message">Your changes to this tracker will be lost.</string>
+    <string name="editor_discard_confirm">Leave</string>
+
+    <string name="editor_missing_title">Tracker not found</string>
+    <string name="editor_missing_message">It may have been deleted.</string>
+    <string name="editor_missing_action">Go back</string>
+
+    <string name="sheet_title_new">New field</string>
+    <string name="sheet_title_edit">Edit field</string>
+    <string name="sheet_name">Field name</string>
+    <string name="sheet_name_placeholder">Weight, Mood, Pages read</string>
+    <string name="sheet_type">Type</string>
+    <string name="sheet_type_change_warning">Changing the type clears what was already logged in this field when you save.</string>
+    <string name="sheet_required">Required</string>
+    <string name="sheet_required_hint">Every entry must fill it in</string>
+    <string name="sheet_remove">Remove field</string>
+    <string name="sheet_add">Add</string>
+    <string name="sheet_done">Done</string>
+    <string name="sheet_unit">Unit</string>
+    <string name="sheet_unit_placeholder">kg, pages, km</string>
+    <string name="sheet_decimals">Decimals</string>
+    <string name="sheet_min">Lowest</string>
+    <string name="sheet_max">Highest</string>
+    <plurals name="sheet_limit_invalid">
+        <item quantity="one">A number with up to %d decimal</item>
+        <item quantity="other">A number with up to %d decimals</item>
+    </plurals>
+    <string name="sheet_limit_whole">A whole number</string>
+    <string name="sheet_currency">Currency</string>
+    <string name="sheet_currency_hint">Three letters, such as INR, USD or EUR</string>
+    <string name="sheet_rating_scale">Scale</string>
+    <string name="sheet_choices">Choices</string>
+    <string name="sheet_choice_n">Choice %1$d</string>
+    <string name="sheet_choice_remove">Remove choice %1$d</string>
+    <string name="sheet_choice_add">Add choice</string>
+    <string name="sheet_text_multiline">Several lines</string>
+    <string name="sheet_text_multiline_hint">For notes and journal entries</string>
+    <string name="sheet_duration_hint">Logged as hours and minutes, such as a workout or a night\'s sleep.</string>
+    <string name="sheet_yes_no_hint">A simple yes or no, such as \"Took my vitamins\".</string>
+    <string name="sheet_date_hint">A calendar day, such as when a book was finished.</string>
+
+    <!-- In the order of TrackerIcons.all. -->
+    <string-array name="editor_icon_names">
+        <item>Sparkles</item>
+        <item>Money</item>
+        <item>Mood</item>
+        <item>Workout</item>
+        <item>Book</item>
+        <item>Water</item>
+        <item>Medication</item>
+        <item>Sleep</item>
+        <item>Meditation</item>
+        <item>Timer</item>
+        <item>Heart</item>
+        <item>Star</item>
+    </string-array>
+    <!-- In the order of BadgePalette's pigments. -->
+    <string-array name="editor_pigment_names">
+        <item>Slate</item>
+        <item>Ember</item>
+        <item>Moss</item>
+        <item>Tide</item>
+        <item>Clay</item>
+        <item>Saffron</item>
+        <item>Plum</item>
+        <item>Lichen</item>
+        <item>Rust</item>
+        <item>Lagoon</item>
+        <item>Heather</item>
+        <item>Sand</item>
+        <item>Pine</item>
+        <item>Coral</item>
+        <item>Iris</item>
+        <item>Ochre</item>
+        <item>Stone</item>
+    </string-array>
+</resources>

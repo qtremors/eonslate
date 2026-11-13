@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.2
+> **Version:** 2.0.3
 > **Last Updated:** 2026-11-13
 
 ## Architecture
@@ -14,8 +14,10 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:core:navigation:api` | Kotlin JVM | Type-safe `@Serializable` destinations shared by features |
 | `:core:tracker:domain` | Kotlin JVM | Tracker, field and entry models, exact value codecs, validators, repository interfaces |
 | `:core:tracker:data` | Android library | Room database, DAOs, integrity triggers, repositories, Hilt bindings |
+| `:core:tracker:ui` | Android library | Tracker UI shared by features: the tracker slate, field type labels and icons, validation messages |
 | `:core:ui` | Android library | Material 3 Expressive theme, tokens and shared components |
-| `:feature:home` | Android library | Home screen |
+| `:feature:home` | Android library | Home: the grid of tracker slates |
+| `:feature:trackereditor` | Android library | Tracker builder: details, icon, pigment, fields and the field sheet |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
 
@@ -53,9 +55,22 @@ A tracker owns an ordered list of fields; each entry fills some of them. Values 
 
 Versions live in `eonslate-app/gradle/libs.versions.toml`.
 
+## Identity
+
+Eonslate has its own look, "Slate and Ember". It uses Material 3 Expressive for behavior and components, but never looks like a copy of another app.
+
+| Element | Rule |
+| :--- | :--- |
+| Color | `BrandSeed` (slate blue) drives primary, secondary and neutrals. `EmberSeed` (amber) always fills tertiary, through `eonslateColorScheme`. The Slate preset is the default; wallpaper colors are opt-in. |
+| Pigments | `BadgePalette` holds seventeen mineral pigments (Slate, Ember, Moss, Tide...). Tiles and glyphs come from fixed HCT tones, so contrast is the same for every hue. A tracker stores its pigment by index, so new pigments go at the end. |
+| Type | `EonslateDisplay` is Roboto Flex at the narrow end of its width axis, set heavy, for titles, headlines and big values. Body text stays at normal width. |
+| Shape | Tracker icons sit on `SlateTileShape` (a square with 30% corners), never a circle. Tracker cards use `SlateCardShape`. Empty states use the slanted slate. |
+| Accent | Ember marks the main action (Save, New tracker) and what is alive, such as progress and streaks. |
+| Signature | `TrackerSlate`: a pigment-tinted card with the icon tile, the name in the display face and one line about what was logged. |
+
 ## Design system
 
-All screens use `:core:ui`. It provides `EonslateTheme` (system, light, dark and pure black; wallpaper, preset or custom colors), shape, spacing and type tokens, `EonslateScaffold` with the large flexible top bar, connected rows and choices, `ExpressiveSwitch`, `EonslateMenu`, `EonslateBottomSheet`, `InlineSearchField`, `LoadingState`, `EmptyState` and `rememberAppHaptics()`. A screen that needs something new adds it to `:core:ui` first.
+All screens use `:core:ui`. It provides `EonslateTheme` (system, light, dark and pure black; wallpaper, preset or custom colors), shape, spacing and type tokens, `EonslateScaffold` with the large flexible top bar, connected rows and choices, `ExpressiveSwitch`, `EonslateMenu`, `EonslateBottomSheet`, `InlineSearchField`, `FormField` (always the 16 dp `FieldShape`), `ConfirmDialog`, `LoadingState`, `EmptyState` and `rememberAppHaptics()`. `EonslateScaffold` takes `onBack` for pages below the top level and a `floatingActionButton`. A screen that needs something new adds it to `:core:ui` first.
 
 Every module with Compose UI opts in to `ExperimentalMaterial3Api` and `ExperimentalMaterial3ExpressiveApi`.
 

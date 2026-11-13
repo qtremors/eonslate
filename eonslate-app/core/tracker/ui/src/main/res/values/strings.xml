@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="field_type_number">Number</string>
+    <string name="field_type_money">Money</string>
+    <string name="field_type_duration">Duration</string>
+    <string name="field_type_rating">Rating</string>
+    <string name="field_type_yes_no">Yes or no</string>
+    <string name="field_type_single_choice">One choice</string>
+    <string name="field_type_multi_choice">Several choices</string>
+    <string name="field_type_text">Text</string>
+    <string name="field_type_date">Date</string>
+
+    <string name="error_internal">Something is off here. Try again.</string>
+    <string name="error_tracker_not_found">This tracker no longer exists.</string>
+    <string name="error_tracker_name_blank">Give the tracker a name</string>
+    <string name="error_too_long">Keep it under %1$d characters</string>
+    <string name="error_no_fields">Add at least one field</string>
+    <string name="error_too_many_fields">A tracker can have up to %1$d fields</string>
+    <string name="error_field_name_blank">Give the field a name</string>
+    <string name="error_duplicate_field_name">Another field already has this name</string>
+    <string name="error_decimals">Use 0 to %1$d decimals</string>
+    <string name="error_min_above_max">The lowest value is above the highest</string>
+    <string name="error_unknown_currency">Use a three-letter currency code, such as USD</string>
+    <string name="error_max_duration">The longest time must be more than zero</string>
+    <string name="error_rating_scale">Pick a scale from %1$d to %2$d</string>
+    <string name="error_no_options">Add at least one choice</string>
+    <string name="error_too_many_options">Up to %1$d choices</string>
+    <string name="error_option_blank">Name this choice</string>
+    <string name="error_duplicate_option">Two choices have this name</string>
+    <string name="error_text_limit">Allow 1 to %1$d characters</string>
+    <string name="error_entry_empty">Fill in a field or write a note</string>
+    <string name="error_required">Required</string>
+    <string name="error_below_min">Below the lowest allowed value</string>
+    <string name="error_above_max">Above the highest allowed value</string>
+    <string name="error_negative_duration">A time cannot be negative</string>
+    <string name="error_rating_range">Pick 1 to %1$d</string>
+    <string name="error_unknown_option">This choice was removed</string>
+    <string name="error_text_blank">Write something or leave it empty</string>
+    <string name="error_line_break">Keep it on one line</string>
+    <string name="error_date_range">Pick a real date</string>
+    <string name="error_not_a_number">Not a number</string>
+    <string name="error_too_precise">Use up to %1$d decimals</string>
+</resources>

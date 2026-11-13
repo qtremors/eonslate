@@ -21,6 +21,9 @@ interface TrackerRepository {
 
     suspend fun getTracker(id: String): Tracker?
 
+    /** The position that puts a new tracker after every existing one, archived ones included. */
+    suspend fun nextPosition(): Int
+
     /**
      * Validates [tracker] and, when valid, inserts or updates it with exactly its fields in one
      * transaction. Fields removed from the tracker are deleted with their logged values; fields

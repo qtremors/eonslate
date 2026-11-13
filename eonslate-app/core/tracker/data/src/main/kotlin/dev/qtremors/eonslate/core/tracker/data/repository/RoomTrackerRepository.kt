@@ -48,6 +48,8 @@ class RoomTrackerRepository @Inject constructor(
 
     override suspend fun getTracker(id: String): Tracker? = trackers.getTracker(id)?.toDomain()
 
+    override suspend fun nextPosition(): Int = trackers.nextPosition()
+
     override suspend fun saveTracker(tracker: Tracker): ValidationResult {
         val result = TrackerValidator.validate(tracker)
         if (!result.isValid) return result

@@ -16,19 +16,19 @@ import androidx.compose.ui.platform.LocalContext
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-/** Where accent colors come from. Wallpaper is the default; it falls back to the preset below Android 12. */
+/** Where accent colors come from. Eonslate's own preset is the default; wallpaper is opt-in (Android 12+). */
 enum class AccentSource { WALLPAPER, PRESET, CUSTOM }
 
 /**
  * Everything the theme needs, kept in the app's settings store. Defaults:
- * system light/dark, wallpaper colors, haptics on, full motion.
+ * system light/dark, the Slate preset, haptics on, full motion.
  */
 @Immutable
 data class ThemeOptions(
     val mode: ThemeMode = ThemeMode.SYSTEM,
     val oled: Boolean = false,
-    val accentSource: AccentSource = AccentSource.WALLPAPER,
-    val preset: ThemePreset = ThemePreset.CYAN,
+    val accentSource: AccentSource = AccentSource.PRESET,
+    val preset: ThemePreset = ThemePreset.SLATE,
     val customAccent: Color = BrandSeed,
     val hapticsEnabled: Boolean = true,
     val reduceMotion: Boolean = false,
@@ -60,8 +60,8 @@ fun EonslateTheme(
         val base = when {
             options.accentSource == AccentSource.WALLPAPER && wallpaperAvailable ->
                 if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            options.accentSource == AccentSource.CUSTOM -> seedColorScheme(options.customAccent, dark)
-            else -> seedColorScheme(options.preset.seed, dark)
+            options.accentSource == AccentSource.CUSTOM -> eonslateColorScheme(options.customAccent, dark)
+            else -> eonslateColorScheme(options.preset.seed, dark)
         }
         if (dark && options.oled) base.toOled() else base
     }

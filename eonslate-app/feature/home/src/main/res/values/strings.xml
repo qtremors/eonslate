@@ -3,6 +3,8 @@
     <string name="home_title">Eonslate</string>
     <string name="home_empty_title">Nothing tracked yet</string>
     <string name="home_empty_message">Trackers you create will show up here. Everything stays on this device.</string>
+    <string name="home_new_tracker">New tracker</string>
+    <string name="home_empty_action">Create a tracker</string>
     <string name="home_no_entries">Nothing logged yet</string>
     <!-- %1$s is the entry count, such as "12 entries"; %2$s is when the latest was, such as "2 hours ago". -->
     <string name="home_entry_summary">%1$s, latest %2$s</string>

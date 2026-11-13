@@ -33,8 +33,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":core:ui"))
-    implementation(project(":core:tracker:domain"))
+    implementation(project(":core:tracker:ui"))
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.hilt.android)
