@@ -42,6 +42,13 @@ object BadgePalette {
     fun forKey(key: String, dark: Boolean = false): BadgeColors =
         forColor(pastels[abs(key.hashCode()) % pastels.size], dark)
 
+    /** The number of pastels, which is the number of colors a tracker can pick from. */
+    val size: Int get() = pastels.size
+
+    /** The pastel the user picked by [index]; out-of-range indices wrap instead of failing. */
+    fun forIndex(index: Int, dark: Boolean = false): BadgeColors =
+        forColor(pastels[Math.floorMod(index, pastels.size)], dark)
+
     /** Same idea for callers that want a specific pastel, such as status colors. */
     fun forColor(pastel: Color, dark: Boolean = false): BadgeColors =
         if (dark) BadgeColors(container = deep(pastel), content = pastel) else BadgeColors(pastel, rich(pastel))
@@ -72,10 +79,14 @@ fun IconBadge(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     iconSize: Dp = 22.dp,
-    colors: BadgeColors? = null
+    colors: BadgeColors? = null,
+    /** A picked palette color; when set it wins over the color derived from [key]. */
+    colorIndex: Int? = null
 ) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < DARK_SURFACE
-    val resolved = colors ?: remember(key, dark) { BadgePalette.forKey(key, dark) }
+    val resolved = colors ?: remember(key, colorIndex, dark) {
+        if (colorIndex != null) BadgePalette.forIndex(colorIndex, dark) else BadgePalette.forKey(key, dark)
+    }
     Box(
         modifier = modifier
             .size(size)

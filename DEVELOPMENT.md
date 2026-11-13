@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.1
+> **Version:** 2.0.2
 > **Last Updated:** 2026-11-13
 
 ## Architecture
@@ -12,10 +12,33 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | :--- | :--- | :--- |
 | `:app` | Android application | Entry point, splash, navigation host, dependency injection root |
 | `:core:navigation:api` | Kotlin JVM | Type-safe `@Serializable` destinations shared by features |
+| `:core:tracker:domain` | Kotlin JVM | Tracker, field and entry models, exact value codecs, validators, repository interfaces |
+| `:core:tracker:data` | Android library | Room database, DAOs, integrity triggers, repositories, Hilt bindings |
 | `:core:ui` | Android library | Material 3 Expressive theme, tokens and shared components |
 | `:feature:home` | Android library | Home screen |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
+
+## Tracker data
+
+A tracker owns an ordered list of fields; each entry fills some of them. Values are never floating point:
+
+| Field type | Stored as | Column |
+| :--- | :--- | :--- |
+| Number | Whole number scaled by 10^decimals (12.5 kg with one decimal is 125) | `long_value` |
+| Money | Minor units of the field's ISO 4217 currency | `long_value` |
+| Duration | Seconds | `long_value` |
+| Rating | 1 to the field's scale | `long_value` |
+| Yes/no | 0 or 1 | `long_value` |
+| Date | Days since 1970-01-01 | `long_value` |
+| Single choice | Option id | `text_value` |
+| Multi choice | JSON array of option ids, sorted | `text_value` |
+| Text | The text | `text_value` |
+
+- Field rules live in `FieldConfig`, stored as JSON keyed by `kind`. Unknown properties are ignored, so new optional settings need no migration.
+- `saveTracker` validates, then writes the tracker and exactly its fields in one transaction. `FieldValueAdapter` rescales values when decimals or currency digits change, and drops values whose type or option is gone. Limits (min, max, scale, length) apply to new input only.
+- SQLite triggers in `TrackerIntegrity` refuse rows that break the rules. Room does not track triggers, so they are reinstalled on every open and no migration has to remember them.
+- Schemas are exported to `eonslate-app/core/tracker/data/schemas/` and committed. A schema change bumps `TrackerDatabase.VERSION`, adds a `Migration` to `TrackerMigrations.ALL`, and adds a test to `TrackerMigrationTest` that writes data with `ExportedSchema.create` under the old version and reads it back with the current app.
 
 ## Technology stack
 
@@ -46,6 +69,10 @@ Run from `eonslate-app/`:
 
 ```bash
 ./gradlew testDebugUnitTest
+```
+
+```bash
+./gradlew :core:tracker:domain:test
 ```
 
 ```bash
