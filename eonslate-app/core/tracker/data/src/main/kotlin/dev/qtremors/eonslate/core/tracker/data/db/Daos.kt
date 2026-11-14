@@ -82,6 +82,13 @@ interface EntryDao {
     @Query("SELECT * FROM entries WHERE id = :id")
     suspend fun getEntry(id: String): EntryWithValues?
 
+    @Transaction
+    @Query(
+        """SELECT * FROM entries WHERE tracker_id = :trackerId
+           ORDER BY occurred_at DESC, created_at DESC, id DESC LIMIT 1"""
+    )
+    suspend fun getLatestEntry(trackerId: String): EntryWithValues?
+
     @Upsert
     suspend fun upsertEntry(entry: EntryEntity)
 

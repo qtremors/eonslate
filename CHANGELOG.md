@@ -1,10 +1,21 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.3
-> **Last Updated:** 2026-11-13
+> **Version:** 2.0.4
+> **Last Updated:** 2026-11-14
 
 ---
+
+## [2.0.4] - 2026-11-14
+
+- **Logging Entries**: Log to any tracker from the button on its slate. Every field type has its own input: numbers with their unit, money with its currency, hours and minutes, rating and yes or no buttons, choices, text and a date picker.
+- **One Tap Habits**: A tracker made of a single yes or no logs "Yes" straight from Home, with a check on its slate instead of a plus.
+- **When It Happened**: Each entry starts at the current time and can be moved to any day and time. It keeps the time zone it was logged in, so the day stays right after travelling.
+- **Exact Values**: Input with more decimals than a field allows is refused in place instead of being rounded, and required fields say so before saving.
+- **Notes**: Any entry can carry a note, and a note alone is enough to log.
+- **Same As Last Time**: A new entry can be filled with the values of the tracker's latest one in one tap, keeping its own time and note.
+- **Screen Reader Names**: The main action on every page (Save, Log it, New tracker) is now announced by its name.
+- **Readable Values**: Values are shown in the device's language and number format, with each currency's own symbol and digits.
 
 ## [2.0.3] - 2026-11-13
 

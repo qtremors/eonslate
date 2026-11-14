@@ -37,6 +37,8 @@ class RoomEntryRepository @Inject constructor(
 
     override suspend fun getEntry(id: String): Entry? = entries.getEntry(id)?.toDomain()
 
+    override suspend fun getLatestEntry(trackerId: String): Entry? = entries.getLatestEntry(trackerId)?.toDomain()
+
     override suspend fun saveEntry(entry: Entry): ValidationResult =
         // Validating inside the transaction means the tracker cannot change in between.
         database.withTransaction {

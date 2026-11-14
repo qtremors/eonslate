@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +50,7 @@ import dev.qtremors.eonslate.core.ui.components.ConfirmDialog
 import dev.qtremors.eonslate.core.ui.components.ConnectedGroup
 import dev.qtremors.eonslate.core.ui.components.ConnectedItem
 import dev.qtremors.eonslate.core.ui.components.ConnectedRow
+import dev.qtremors.eonslate.core.ui.components.EmberActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
@@ -82,12 +82,10 @@ fun TrackerEditorScreen(
         modifier = modifier,
         floatingActionButton = {
             if (draft != null) {
-                ExtendedFloatingActionButton(
+                EmberActionButton(
+                    text = stringResource(R.string.editor_save),
+                    icon = Icons.Rounded.Check,
                     onClick = viewModel::save,
-                    icon = { Icon(Icons.Rounded.Check, contentDescription = null) },
-                    text = { Text(stringResource(R.string.editor_save)) },
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             }
         },

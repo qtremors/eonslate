@@ -11,4 +11,8 @@ sealed interface Destination {
     /** Creates a tracker when [trackerId] is null, or edits the tracker with that id. */
     @Serializable
     data class TrackerEditor(val trackerId: String? = null) : Destination
+
+    /** Logs a new entry to [trackerId], or edits the entry [entryId] when it is set. */
+    @Serializable
+    data class LogEntry(val trackerId: String, val entryId: String? = null) : Destination
 }

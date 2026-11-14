@@ -10,6 +10,15 @@
     <string name="field_type_text">Text</string>
     <string name="field_type_date">Date</string>
 
+    <string name="value_yes">Yes</string>
+    <string name="value_no">No</string>
+    <!-- Hours and minutes of a duration, such as "6 h 30 m". -->
+    <string name="value_hours_minutes">%1$d h %2$02d m</string>
+    <!-- Minutes and seconds of a short duration, such as "4 m 05 s". -->
+    <string name="value_minutes_seconds">%1$d m %2$02d s</string>
+    <string name="value_rating">%1$d/%2$d</string>
+    <string name="value_removed_option">Removed choice</string>
+
     <string name="error_internal">Something is off here. Try again.</string>
     <string name="error_tracker_not_found">This tracker no longer exists.</string>
     <string name="error_tracker_name_blank">Give the tracker a name</string>

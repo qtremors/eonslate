@@ -103,6 +103,18 @@ class RoomEntryRepositoryTest {
     }
 
     @Test
+    fun latestEntryIsTheOneThatHappenedLast() = runTest {
+        assertNull(entries.getLatestEntry("t1"))
+        entries.saveEntry(entry("logged-late", occurredAt = 1_000))
+        entries.saveEntry(entry("happened-late", occurredAt = 5_000))
+        entries.saveEntry(entry("early", occurredAt = 2_000))
+
+        assertEquals("happened-late", entries.getLatestEntry("t1")!!.id)
+        assertEquals(everyValue(), entries.getLatestEntry("t1")!!.values)
+        assertNull(entries.getLatestEntry("ghost"))
+    }
+
+    @Test
     fun deletingEntryDeletesItsValues() = runTest {
         entries.saveEntry(entry())
         entries.deleteEntry("e1")

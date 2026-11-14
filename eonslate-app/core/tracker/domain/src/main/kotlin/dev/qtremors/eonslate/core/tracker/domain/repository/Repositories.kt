@@ -50,6 +50,9 @@ interface EntryRepository {
 
     suspend fun getEntry(id: String): Entry?
 
+    /** The entry of [trackerId] that happened last, or null when nothing is logged yet. */
+    suspend fun getLatestEntry(trackerId: String): Entry?
+
     /**
      * Validates [entry] against its tracker and, when valid, inserts or replaces it and its
      * values in one transaction. An entry for a tracker that does not exist is invalid.

@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.0.3
-> **Last Updated:** 2026-11-13
+> **Version:** 2.0.4
+> **Last Updated:** 2026-11-14
 
 ## Roadmap
 
@@ -13,7 +13,7 @@ Each step is planned as one release commit.
 | 1 | 2.0.1 | Project foundation, toolchain, Expressive design system | Done |
 | 2 | 2.0.2 | Tracker domain model, Room database, schema export, migration tests | Done |
 | 3 | 2.0.3 | Tracker builder: create and edit trackers and their fields | Done |
-| 4 | 2.0.4 | Logging entries: quick add, typed inputs for every field type | Planned |
+| 4 | 2.0.4 | Logging entries: quick add, typed inputs for every field type | Done |
 | 5 | 2.0.5 | Tracker detail: list and calendar views, edit and delete with undo | Planned |
 | 6 | 2.0.6 | Insights: charts, streaks, totals and averages | Planned |
 | 7 | 2.0.7 | Templates gallery, welcome flow, and the brand: logo (`Eonslate.png`, `Eonslate.svg`) and themed adaptive icons | Planned |
