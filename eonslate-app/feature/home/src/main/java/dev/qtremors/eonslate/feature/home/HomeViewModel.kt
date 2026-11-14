@@ -20,7 +20,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    repository: TrackerRepository,
+    private val repository: TrackerRepository,
     private val entries: EntryRepository,
     private val clock: AppClock,
     private val ids: IdGenerator,
@@ -47,7 +47,27 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /** Moves [tracker] [by] places in the home order, keeping everyone else's order. */
+    fun move(tracker: Tracker, by: Int) {
+        val ids = trackers.value?.map { it.tracker.id } ?: return
+        val order = moved(ids, tracker.id, by) ?: return
+        viewModelScope.launch { repository.reorder(order) }
+    }
+
+    fun setArchived(tracker: Tracker, archived: Boolean) {
+        viewModelScope.launch { repository.setArchived(tracker.id, archived) }
+    }
+
     companion object {
+        /** [ids] with [id] moved [by] places, clamped to the ends; null when nothing would change. */
+        fun moved(ids: List<String>, id: String, by: Int): List<String>? {
+            val from = ids.indexOf(id)
+            if (from < 0) return null
+            val to = (from + by).coerceIn(0, ids.lastIndex)
+            if (to == from) return null
+            return ids.toMutableList().apply { add(to, removeAt(from)) }
+        }
+
         /** Keeps the query alive across a rotation, which takes well under this. */
         private const val STOP_TIMEOUT_MILLIS = 5_000L
 

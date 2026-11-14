@@ -65,10 +65,11 @@ import dev.qtremors.eonslate.core.ui.components.ToggleRow
 fun TrackerEditorScreen(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    onDeleted: () -> Unit = onDone,
     viewModel: TrackerEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.done) { if (state.done) onDone() }
+    LaunchedEffect(state.done) { if (state.done) (if (state.deleted) onDeleted else onDone)() }
 
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }

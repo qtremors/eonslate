@@ -8,6 +8,7 @@ import dev.qtremors.eonslate.core.tracker.data.db.toDomain
 import dev.qtremors.eonslate.core.tracker.data.db.toEntity
 import dev.qtremors.eonslate.core.tracker.data.db.valueEntities
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
+import dev.qtremors.eonslate.core.tracker.domain.model.EntryTime
 import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.validation.EntryValidator
 import dev.qtremors.eonslate.core.tracker.domain.validation.ValidationError
@@ -28,6 +29,16 @@ class RoomEntryRepository @Inject constructor(
     override fun observeEntries(trackerId: String): Flow<List<Entry>> =
         entries.observeEntries(trackerId)
             .map { rows -> rows.map { it.toDomain() } }
+            .distinctUntilChanged()
+
+    override fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<Entry>> =
+        entries.observeRecentEntries(trackerId, limit)
+            .map { rows -> rows.map { it.toDomain() } }
+            .distinctUntilChanged()
+
+    override fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>> =
+        entries.observeEntryTimes(trackerId)
+            .map { rows -> rows.map { EntryTime(it.occurredAt, it.zoneId) } }
             .distinctUntilChanged()
 
     override fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>> =

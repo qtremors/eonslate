@@ -18,9 +18,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** The log screen's inputs, driven the way a person would: typing, tapping, clearing. */
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = PHONE)
 class FieldInputCardUiTest {
     @get:Rule
     val compose = createComposeRule()
@@ -95,3 +97,6 @@ class FieldInputCardUiTest {
         compose.onNodeWithText("Fill this in").assertIsDisplayed()
     }
 }
+
+/** A typical phone, so screens lay out as they do on a device. */
+private const val PHONE = "en-rUS-w411dp-h891dp-xxhdpi"

@@ -23,6 +23,8 @@ data class ValueWords(
     val no: String,
     /** Formats hours and minutes, such as "6 h 30 m". */
     val hoursMinutes: (hours: Long, minutes: Int) -> String,
+    /** Formats whole minutes under an hour, such as "32 m". */
+    val minutes: (minutes: Int) -> String,
     /** Formats minutes and seconds for short times, such as "4 m 05 s". */
     val minutesSeconds: (minutes: Int, seconds: Int) -> String,
     /** Formats a rating out of its scale, such as "4/5". */
@@ -77,8 +79,11 @@ object ValueFormat {
 
     fun duration(seconds: Long, words: ValueWords): String {
         val parts = DurationSeconds.split(seconds.coerceAtLeast(0))
-        return if (parts.hours == 0L && parts.seconds != 0) words.minutesSeconds(parts.minutes, parts.seconds)
-        else words.hoursMinutes(parts.hours, parts.minutes)
+        return when {
+            parts.hours == 0L && parts.seconds != 0 -> words.minutesSeconds(parts.minutes, parts.seconds)
+            parts.hours == 0L -> words.minutes(parts.minutes)
+            else -> words.hoursMinutes(parts.hours, parts.minutes)
+        }
     }
 
     fun date(epochDay: Long, locale: Locale): String =

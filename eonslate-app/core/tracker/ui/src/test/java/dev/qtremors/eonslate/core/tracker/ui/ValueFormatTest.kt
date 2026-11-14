@@ -13,6 +13,7 @@ class ValueFormatTest {
         yes = "Yes",
         no = "No",
         hoursMinutes = { h, m -> "$h h ${m.toString().padStart(2, '0')} m" },
+        minutes = { m -> "$m m" },
         minutesSeconds = { m, s -> "$m m ${s.toString().padStart(2, '0')} s" },
         rating = { v, max -> "$v/$max" },
         removedOption = "Removed",
@@ -42,7 +43,9 @@ class ValueFormatTest {
     @Test
     fun durationsReadAsHoursAndMinutes() {
         assertEquals("6 h 30 m", fmt(FieldConfig.Duration(), FieldValue.Duration(23_400)))
-        assertEquals("0 h 45 m", fmt(FieldConfig.Duration(), FieldValue.Duration(2_700)))
+        assertEquals("45 m", fmt(FieldConfig.Duration(), FieldValue.Duration(2_700)))
+        assertEquals("0 m", fmt(FieldConfig.Duration(), FieldValue.Duration(0)))
+        assertEquals("1 h 00 m", fmt(FieldConfig.Duration(), FieldValue.Duration(3_600)))
         assertEquals("4 m 05 s", fmt(FieldConfig.Duration(), FieldValue.Duration(245)))
         assertEquals("100 h 00 m", fmt(FieldConfig.Duration(), FieldValue.Duration(360_000)))
     }

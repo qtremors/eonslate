@@ -2,6 +2,7 @@ package dev.qtremors.eonslate.feature.entry
 
 import androidx.lifecycle.SavedStateHandle
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
+import dev.qtremors.eonslate.core.tracker.domain.model.EntryTime
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
@@ -193,6 +194,8 @@ class LogEntryViewModelTest {
         val saved = mutableListOf<Entry>()
         override fun observeEntries(trackerId: String): Flow<List<Entry>> = emptyFlow()
         override fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>> = emptyFlow()
+        override fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<Entry>> = emptyFlow()
+        override fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>> = emptyFlow()
         override suspend fun getEntry(id: String) = saved.lastOrNull { it.id == id }
         override suspend fun getLatestEntry(trackerId: String) =
             saved.filter { it.trackerId == trackerId }.maxByOrNull { it.occurredAt }

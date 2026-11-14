@@ -14,6 +14,8 @@
     <string name="value_no">No</string>
     <!-- Hours and minutes of a duration, such as "6 h 30 m". -->
     <string name="value_hours_minutes">%1$d h %2$02d m</string>
+    <!-- Whole minutes of a duration under an hour, such as "32 m". -->
+    <string name="value_minutes">%1$d m</string>
     <!-- Minutes and seconds of a short duration, such as "4 m 05 s". -->
     <string name="value_minutes_seconds">%1$d m %2$02d s</string>
     <string name="value_rating">%1$d/%2$d</string>

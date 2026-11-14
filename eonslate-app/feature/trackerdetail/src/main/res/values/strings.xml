@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="detail_edit_tracker">Edit tracker</string>
+    <string name="detail_log">Log it</string>
+    <string name="detail_no_description">Every entry, by day</string>
+    <string name="detail_total_all">Entries</string>
+    <string name="detail_total_week">Last 7 days</string>
+    <string name="detail_total_days">Days logged</string>
+    <string name="detail_view_list">List</string>
+    <string name="detail_view_calendar">Calendar</string>
+    <string name="detail_previous_month">Previous month</string>
+    <string name="detail_next_month">Next month</string>
+    <string name="detail_back_to_today">Back to this month</string>
+    <!-- %1$s is a full date, %2$d the number of entries on it. -->
+    <plurals name="detail_day_entries">
+        <item quantity="one">%1$s, %2$d entry</item>
+        <item quantity="other">%1$s, %2$d entries</item>
+    </plurals>
+    <string name="detail_today">Today</string>
+    <string name="detail_yesterday">Yesterday</string>
+    <string name="detail_entry_empty">Logged</string>
+    <string name="detail_entry_edit">Edit</string>
+    <string name="detail_entry_delete">Delete</string>
+    <string name="detail_deleted">Entry deleted</string>
+    <!-- %1$s is a time zone id such as Europe/Paris. -->
+    <string name="detail_sheet_zone">Logged in %1$s</string>
+    <string name="detail_sheet_note">Note</string>
+    <string name="detail_sheet_delete_hint">You can undo this right after</string>
+    <string name="detail_undo">Undo</string>
+    <string name="detail_show_older">Show older</string>
+    <string name="detail_empty_title">Nothing logged yet</string>
+    <string name="detail_empty_message">Entries you log show up here, newest first.</string>
+    <string name="detail_empty_day_title">Nothing on this day</string>
+    <string name="detail_empty_day_message">Pick another day, or tap it again to see every entry.</string>
+    <string name="detail_archived">Archived. It stays off Home until you bring it back.</string>
+    <string name="detail_unarchive">Unarchive</string>
+    <string name="detail_missing_title">Tracker not found</string>
+    <string name="detail_missing_message">It may have been deleted.</string>
+    <string name="detail_missing_action">Go back</string>
+</resources>

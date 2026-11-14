@@ -28,9 +28,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** The builder's pickers and field sheet, driven through the real view model. */
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = PHONE)
 class TrackerEditorUiTest {
     @get:Rule
     val compose = createComposeRule()
@@ -105,3 +107,6 @@ class TrackerEditorUiTest {
         override suspend fun deleteTracker(id: String) = Unit
     }
 }
+
+/** A typical phone, so screens lay out as they do on a device. */
+private const val PHONE = "en-rUS-w411dp-h891dp-xxhdpi"

@@ -48,6 +48,8 @@ data class EditorState(
     val saving: Boolean = false,
     /** Set once the tracker is saved or deleted; the screen then leaves. */
     val done: Boolean = false,
+    /** True when [done] came from deleting, so the screen leaves past the tracker's own page. */
+    val deleted: Boolean = false,
 ) {
     fun errorsFor(fieldId: String): List<ValidationError> = errors.filter { it.fieldIdOrNull() == fieldId }
 
@@ -253,7 +255,7 @@ class TrackerEditorViewModel @Inject constructor(
         val draft = _state.value.draft ?: return
         viewModelScope.launch {
             if (!draft.isNew) repository.deleteTracker(draft.id)
-            _state.update { it.copy(done = true, dirty = false) }
+            _state.update { it.copy(done = true, deleted = !draft.isNew, dirty = false) }
             savedState.remove<String>(KEY_DRAFT)
         }
     }

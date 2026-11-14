@@ -124,6 +124,12 @@ data class TrackerSummaryRow(
     @ColumnInfo(name = "last_entry_at") val lastEntryAt: Long?,
 )
 
+/** When an entry happened, read without its values. */
+data class EntryTimeRow(
+    @ColumnInfo(name = "occurred_at") val occurredAt: Long,
+    @ColumnInfo(name = "zone_id") val zoneId: String,
+)
+
 /** An entry read together with its values. */
 data class EntryWithValues(
     @Embedded val entry: EntryEntity,

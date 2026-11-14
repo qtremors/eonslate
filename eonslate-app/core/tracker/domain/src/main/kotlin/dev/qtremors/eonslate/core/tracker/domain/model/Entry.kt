@@ -25,6 +25,15 @@ data class Entry(
 }
 
 /**
+ * When an entry happened, without its values: enough to count entries per day or week without
+ * reading every value of a long history.
+ */
+data class EntryTime(
+    val occurredAt: Long,
+    val zoneId: String,
+)
+
+/**
  * A value for one field, always held exactly. Nothing is a floating point number: decimals are
  * scaled whole numbers, money is minor units, durations are seconds and dates are epoch days.
  */

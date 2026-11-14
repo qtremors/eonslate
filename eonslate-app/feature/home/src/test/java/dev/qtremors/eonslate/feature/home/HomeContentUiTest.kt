@@ -4,7 +4,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
@@ -16,8 +19,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = PHONE)
 class HomeContentUiTest {
     @get:Rule
     val compose = createComposeRule()
@@ -36,6 +41,9 @@ class HomeContentUiTest {
         createdAt = 0,
     )
 
+    private val moves = mutableListOf<Pair<String, Int>>()
+    private val archived = mutableListOf<String>()
+    private val edited = mutableListOf<String>()
     private val opened = mutableListOf<String>()
     private val logged = mutableListOf<String>()
     private var created = 0
@@ -48,6 +56,11 @@ class HomeContentUiTest {
                     onNewTracker = { created++ },
                     onOpenTracker = { opened += it },
                     onLog = { logged += it.id },
+                    actions = SlateActions(
+                        onMove = { t, by -> moves += t.id to by },
+                        onEdit = { edited += it.id },
+                        onArchive = { archived += it.id },
+                    ),
                     nowMillis = now,
                 )
             }
@@ -93,6 +106,27 @@ class HomeContentUiTest {
         assertEquals(1, created)
     }
 
+    @Test
+    fun longPressOffersMoveEditAndArchive() {
+        show(listOf(TrackerSummary(stretch, 0, null), TrackerSummary(run, 0, null)))
+        compose.onNodeWithText("Stretch").performTouchInput { longClick() }
+        compose.onNodeWithText("Move earlier").assertIsNotEnabled()
+        compose.onNodeWithText("Move later").performClick()
+        assertEquals(listOf("s" to 1), moves)
+
+        compose.onNodeWithText("Run").performTouchInput { longClick() }
+        compose.onNodeWithText("Move later").assertIsNotEnabled()
+        compose.onNodeWithText("Archive").performClick()
+        assertEquals(listOf("r"), archived)
+
+        compose.onNodeWithText("Run").performTouchInput { longClick() }
+        compose.onNodeWithText("Edit").performClick()
+        assertEquals(listOf("r"), edited)
+    }
+
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTextCount(text: String): Int =
         onAllNodes(androidx.compose.ui.test.hasText(text)).fetchSemanticsNodes().size
 }
+
+/** A typical phone, so screens lay out as they do on a device. */
+private const val PHONE = "en-rUS-w411dp-h891dp-xxhdpi"

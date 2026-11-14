@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.4
+> **Version:** 2.0.5
 > **Last Updated:** 2026-11-14
 
 ## Architecture
@@ -16,11 +16,26 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:core:tracker:data` | Android library | Room database, DAOs, integrity triggers, repositories, Hilt bindings |
 | `:core:tracker:ui` | Android library | Tracker UI shared by features: the tracker slate, field type labels and icons, validation messages |
 | `:core:ui` | Android library | Material 3 Expressive theme, tokens and shared components |
-| `:feature:home` | Android library | Home: the grid of tracker slates |
+| `:feature:home` | Android library | Home: the grid of tracker slates, and the archived trackers page |
 | `:feature:entry` | Android library | Logging and editing an entry: typed inputs, date and time, note |
+| `:feature:trackerdetail` | Android library | A tracker's page: totals, entries by day, month calendar, delete with undo |
 | `:feature:trackereditor` | Android library | Tracker builder: details, icon, pigment, fields and the field sheet |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
+
+## Navigation
+
+Destinations are `@Serializable` types in `:core:navigation:api`; `EonslateNavHost` in `:app` wires each to its screen.
+
+| Destination | Screen | Opened from |
+| :--- | :--- | :--- |
+| `Home` | Grid of tracker slates | Start |
+| `Archived` | Archived trackers | Home top bar |
+| `TrackerDetail(trackerId)` | A tracker's page | A slate on Home or Archived |
+| `TrackerEditor(trackerId?)` | Tracker builder; null creates | New tracker, the detail pencil, a slate's menu |
+| `LogEntry(trackerId, entryId?)` | Log or edit an entry | A slate's button, Log it, an entry's Edit |
+
+Deleting a tracker from its editor returns to Home, since its detail page no longer exists.
 
 ## Tracker data
 
@@ -42,6 +57,7 @@ A tracker owns an ordered list of fields; each entry fills some of them. Values 
 - `saveTracker` validates, then writes the tracker and exactly its fields in one transaction. `FieldValueAdapter` rescales values when decimals or currency digits change, and drops values whose type or option is gone. Limits (min, max, scale, length) apply to new input only.
 - SQLite triggers in `TrackerIntegrity` refuse rows that break the rules. Room does not track triggers, so they are reinstalled on every open and no migration has to remember them.
 - The log screen keeps what a person types as `FieldInput` text and selections. `EntryInputs.read` turns each into an exact `FieldValue` or reports it unreadable; it never rounds. `ValueFormat` (in `:core:tracker:ui`) turns values back into locale-aware text.
+- Long histories are paged: lists read `observeRecentEntries(trackerId, limit)`, while totals and calendars read `observeEntryTimes`, which selects only `occurred_at` and `zone_id`. A picked day is read with `dayWindow(day)`, its UTC day widened by 14 hours each way to cover every zone, then filtered by each entry's own day.
 - Entries store `occurredAt` (epoch milliseconds) and the IANA `zoneId` they were logged in; the day an entry belongs to is always computed in that zone.
 - Schemas are exported to `eonslate-app/core/tracker/data/schemas/` and committed. A schema change bumps `TrackerDatabase.VERSION`, adds a `Migration` to `TrackerMigrations.ALL`, and adds a test to `TrackerMigrationTest` that writes data with `ExportedSchema.create` under the old version and reads it back with the current app.
 
@@ -93,7 +109,7 @@ Run from `eonslate-app/`:
 ./gradlew :core:tracker:domain:test
 ```
 
-UI tests run on the JVM with Robolectric and Compose's test rule (`FieldInputCardUiTest`, `HomeContentUiTest`, `TrackerEditorUiTest`). Each module's `src/test/resources/robolectric.properties` pins SDK 35 and a phone-sized screen.
+UI tests run on the JVM with Robolectric and Compose's test rule (`FieldInputCardUiTest`, `HomeContentUiTest`, `TrackerEditorUiTest`, `MonthCalendarUiTest`). Each module's `src/test/resources/robolectric.properties` pins SDK 35, and every UI test class sets a phone-sized screen with `@Config(qualifiers = ...)`.
 
 ```bash
 ./gradlew assembleRelease

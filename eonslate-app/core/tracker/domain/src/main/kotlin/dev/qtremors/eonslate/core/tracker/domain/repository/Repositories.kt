@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.domain.repository
 
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
+import dev.qtremors.eonslate.core.tracker.domain.model.EntryTime
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerSummary
 import dev.qtremors.eonslate.core.tracker.domain.validation.ValidationResult
@@ -44,6 +45,12 @@ interface TrackerRepository {
 interface EntryRepository {
     /** Entries of one tracker, newest first. */
     fun observeEntries(trackerId: String): Flow<List<Entry>>
+
+    /** The newest [limit] entries of one tracker, newest first, for a list that pages back. */
+    fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<Entry>>
+
+    /** When every entry of one tracker happened, newest first, without values. */
+    fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>>
 
     /** Entries of one tracker that occurred in [fromMillis, untilMillis), newest first. */
     fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>>

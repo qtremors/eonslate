@@ -115,6 +115,23 @@ class RoomEntryRepositoryTest {
     }
 
     @Test
+    fun recentEntriesAreTheNewestPage() = runTest {
+        (1..5).forEach { entries.saveEntry(entry("e$it", occurredAt = it * 1_000L)) }
+        assertEquals(listOf("e5", "e4"), entries.observeRecentEntries("t1", 2).first().map { it.id })
+        assertEquals(5, entries.observeRecentEntries("t1", 50).first().size)
+    }
+
+    @Test
+    fun entryTimesCarryOnlyWhenAndWhere() = runTest {
+        entries.saveEntry(entry("a", occurredAt = 1_000))
+        entries.saveEntry(entry("b", occurredAt = 3_000))
+        assertEquals(
+            listOf(dev.qtremors.eonslate.core.tracker.domain.model.EntryTime(3_000, "Asia/Kolkata"), dev.qtremors.eonslate.core.tracker.domain.model.EntryTime(1_000, "Asia/Kolkata")),
+            entries.observeEntryTimes("t1").first(),
+        )
+    }
+
+    @Test
     fun deletingEntryDeletesItsValues() = runTest {
         entries.saveEntry(entry())
         entries.deleteEntry("e1")

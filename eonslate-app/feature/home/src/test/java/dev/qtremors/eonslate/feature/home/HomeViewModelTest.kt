@@ -2,6 +2,7 @@ package dev.qtremors.eonslate.feature.home
 
 import app.cash.turbine.test
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
+import dev.qtremors.eonslate.core.tracker.domain.model.EntryTime
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
@@ -76,10 +77,21 @@ class HomeViewModelTest {
         assertEquals("Asia/Kolkata", logged.zoneId)
     }
 
+    @Test
+    fun movingKeepsEveryoneElsesOrder() {
+        val ids = listOf("a", "b", "c", "d")
+        assertEquals(listOf("a", "c", "b", "d"), HomeViewModel.moved(ids, "c", -1))
+        assertEquals(listOf("b", "c", "d", "a"), HomeViewModel.moved(ids, "a", 10))
+        assertEquals(null, HomeViewModel.moved(ids, "a", -1))
+        assertEquals(null, HomeViewModel.moved(ids, "ghost", 1))
+    }
+
     private class FakeEntries : EntryRepository {
         val saved = mutableListOf<Entry>()
         override fun observeEntries(trackerId: String): Flow<List<Entry>> = emptyFlow()
         override fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>> = emptyFlow()
+        override fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<Entry>> = emptyFlow()
+        override fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>> = emptyFlow()
         override suspend fun getEntry(id: String): Entry? = null
         override suspend fun getLatestEntry(trackerId: String): Entry? = null
         override suspend fun saveEntry(entry: Entry): ValidationResult = ValidationResult.Valid.also { saved += entry }

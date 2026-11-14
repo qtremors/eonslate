@@ -72,6 +72,17 @@ interface EntryDao {
 
     @Transaction
     @Query(
+        """SELECT * FROM entries WHERE tracker_id = :trackerId
+           ORDER BY occurred_at DESC, created_at DESC, id DESC LIMIT :limit"""
+    )
+    fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<EntryWithValues>>
+
+    /** Only two columns, so a history of thousands of entries stays cheap to read. */
+    @Query("SELECT occurred_at, zone_id FROM entries WHERE tracker_id = :trackerId ORDER BY occurred_at DESC")
+    fun observeEntryTimes(trackerId: String): Flow<List<EntryTimeRow>>
+
+    @Transaction
+    @Query(
         """SELECT * FROM entries
            WHERE tracker_id = :trackerId AND occurred_at >= :fromMillis AND occurred_at < :untilMillis
            ORDER BY occurred_at DESC, created_at DESC, id DESC"""

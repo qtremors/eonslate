@@ -1,10 +1,22 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.4
+> **Version:** 2.0.5
 > **Last Updated:** 2026-11-14
 
 ---
+
+## [2.0.5] - 2026-11-14
+
+- **Tracker Pages**: Tapping a tracker on Home opens its own page with its totals (entries, the last seven days, days logged) and every entry grouped by day, newest first. Editing the tracker moves to the pencil at the top.
+- **Calendar**: Switch any tracker to a month calendar. Days with entries wear the tracker's pigment, today is ringed in ember, and tapping a day shows only its entries. A far month offers a way back to this one.
+- **Entry Details**: Tap an entry to see all of it: the full date and time, the zone it was logged in when that differs from the phone's, every value and the note, which can be selected and copied.
+- **Edit and Undo**: Edit or delete an entry from its details or by long-pressing it. A deleted entry can be brought back with Undo, exactly as it was.
+- **Organize Home**: Long-press a tracker on Home to move it earlier or later, edit it, or archive it with Undo.
+- **The Right Day**: Entries are grouped by the day they happened in the time zone they were logged in, so a late night entry never jumps to the next day after travelling.
+- **Archived Trackers**: Archived trackers have their own page from Home, and each can be brought back from its tracker page.
+- **Shorter Times**: Durations under an hour read as minutes, such as "32 m".
+- **Long Histories**: A tracker page shows its newest entries first and loads older ones with Show older, while its totals and calendar still count every entry. Years of daily logging stay quick to open.
 
 ## [2.0.4] - 2026-11-14
 
