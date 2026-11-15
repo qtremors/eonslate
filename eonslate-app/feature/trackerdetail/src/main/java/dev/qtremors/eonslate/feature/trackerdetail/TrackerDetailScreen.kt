@@ -202,7 +202,15 @@ private fun DetailContent(
                 ConnectedChoices(
                     options = DetailView.entries,
                     selected = state.view,
-                    label = { stringResource(if (it == DetailView.LIST) R.string.detail_view_list else R.string.detail_view_calendar) },
+                    label = {
+                        stringResource(
+                            when (it) {
+                                DetailView.LIST -> R.string.detail_view_list
+                                DetailView.CALENDAR -> R.string.detail_view_calendar
+                                DetailView.INSIGHTS -> R.string.detail_view_insights
+                            }
+                        )
+                    },
                     onSelect = viewModel::setView,
                 )
             }
@@ -220,6 +228,13 @@ private fun DetailContent(
                     modifier = Modifier.padding(top = 12.dp),
                 )
             }
+        }
+
+        if (state.view == DetailView.INSIGHTS) {
+            item(key = "insights") {
+                InsightsView(state = state, tracker = tracker, today = today, modifier = Modifier.padding(top = 12.dp))
+            }
+            return@LazyColumn
         }
 
         if (groups.isEmpty()) {

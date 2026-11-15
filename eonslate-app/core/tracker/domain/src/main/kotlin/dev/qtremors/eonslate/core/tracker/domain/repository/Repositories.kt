@@ -52,6 +52,9 @@ interface EntryRepository {
     /** When every entry of one tracker happened, newest first, without values. */
     fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>>
 
+    /** When every entry happened, by tracker id, for streaks on Home. */
+    fun observeEntryTimesByTracker(): Flow<Map<String, List<EntryTime>>>
+
     /** Entries of one tracker that occurred in [fromMillis, untilMillis), newest first. */
     fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>>
 

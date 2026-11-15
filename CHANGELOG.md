@@ -1,10 +1,26 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.5
-> **Last Updated:** 2026-11-14
+> **Version:** 2.0.6
+> **Last Updated:** 2026-11-15
 
 ---
+
+## [2.0.6] - 2026-11-15
+
+- **Insights**: Every tracker page has an Insights view next to List and Calendar.
+- **Streaks**: See the current and longest run of days with an entry, and when the longest one ended. A streak stays alive until the day is over, and a record streak glows in ember.
+- **Days, Weeks and Months**: Look back 30 days, 12 weeks or 12 months. Weeks start on your locale's first day; numbers show each week's or month's average, while money and time show its total.
+- **Compared With Before**: See how many entries today, this week or this month has against the one before.
+- **Logged Per Period**: A bar chart shows how often the tracker was logged in each day, week or month, with the current one in ember. Tap a bar to read it.
+- **Streaks On Home**: A tracker with a streak of two days or more shows it on its slate with an ember flame.
+- **Personal Records**: Numbers show their record and the day it was set; money and time show their best day.
+- **Today On Home**: Home says how many trackers have been logged today, with an ember meter.
+- **Labels Where They Help**: Each chart names its busiest day or its latest value right on the chart, and nothing else.
+- **Tap To Read, Tap Again To Let Go**: Picking a bar or point on a chart and tapping it again now clears the pick.
+- **What Each Field Adds Up To**: Numbers show their average and range on a line chart, money and time show their total and average on daily bars, ratings show their average and how often each score was given, yes or no shows its yes rate, and choices show how often each was picked.
+- **Exact Numbers**: Totals and averages are computed exactly, in each field's own unit and currency, never with rounding errors.
+- **Readable Without Color**: Every chart can switch to a table, and screen readers hear a summary of each chart.
 
 ## [2.0.5] - 2026-11-14
 

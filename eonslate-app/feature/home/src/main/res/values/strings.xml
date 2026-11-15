@@ -8,6 +8,9 @@
     <!-- Spoken by screen readers for the quick log button on a tracker. -->
     <string name="home_log">Log %1$s</string>
     <string name="home_just_now">just now</string>
+    <!-- %1$d trackers logged today out of %2$d. -->
+    <string name="home_today">%1$d of %2$d logged today</string>
+    <string name="home_today_all">All %1$d logged today</string>
     <string name="home_archived">Archived trackers</string>
     <string name="home_move_earlier">Move earlier</string>
     <string name="home_move_later">Move later</string>

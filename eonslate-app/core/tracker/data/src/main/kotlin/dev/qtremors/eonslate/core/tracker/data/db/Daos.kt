@@ -81,6 +81,9 @@ interface EntryDao {
     @Query("SELECT occurred_at, zone_id FROM entries WHERE tracker_id = :trackerId ORDER BY occurred_at DESC")
     fun observeEntryTimes(trackerId: String): Flow<List<EntryTimeRow>>
 
+    @Query("SELECT tracker_id, occurred_at, zone_id FROM entries")
+    fun observeAllEntryTimes(): Flow<List<TrackerEntryTimeRow>>
+
     @Transaction
     @Query(
         """SELECT * FROM entries

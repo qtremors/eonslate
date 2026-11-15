@@ -33,7 +33,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
     private val summaries = MutableSharedFlow<List<TrackerSummary>>()
-    private val entries = FakeEntries()
+    private val times = kotlinx.coroutines.flow.MutableStateFlow<Map<String, List<EntryTime>>>(emptyMap())
+    private val entries = FakeEntries(times)
     private val clock = object : AppClock {
         override fun nowMillis() = 5_000L
         override fun zoneId() = "Asia/Kolkata"
@@ -86,13 +87,45 @@ class HomeViewModelTest {
         assertEquals(null, HomeViewModel.moved(ids, "ghost", 1))
     }
 
-    private class FakeEntries : EntryRepository {
+    @Test
+    fun todayCountsTrackersLoggedToday() = runTest {
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"))
+        val noon = today.atTime(12, 0).atZone(java.time.ZoneId.of("Asia/Kolkata")).toInstant().toEpochMilli()
+        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" })
+        viewModel.today.test {
+            assertNull(awaitItem())
+            times.value = mapOf("a" to listOf(EntryTime(noon, "Asia/Kolkata")))
+            summaries.emit(
+                listOf(
+                    TrackerSummary(Tracker(id = "a", name = "A", createdAt = 0), 1, noon),
+                    TrackerSummary(Tracker(id = "b", name = "B", createdAt = 0), 0, null),
+                )
+            )
+            assertEquals(dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress(1, 2), awaitItem())
+        }
+    }
+
+    @Test
+    fun streaksCountBackFromToday() = runTest {
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"))
+        fun at(back: Long) = EntryTime(today.minusDays(back).atTime(12, 0).atZone(java.time.ZoneId.of("Asia/Kolkata")).toInstant().toEpochMilli(), "Asia/Kolkata")
+        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" })
+        times.value = mapOf("run" to listOf(at(0), at(1), at(2)), "old" to listOf(at(5)))
+        viewModel.streaks.test {
+            var latest = awaitItem()
+            while (latest.isEmpty()) latest = awaitItem()
+            assertEquals(mapOf("run" to 3), latest)
+        }
+    }
+
+    private class FakeEntries(private val times: Flow<Map<String, List<EntryTime>>>) : EntryRepository {
         val saved = mutableListOf<Entry>()
         override fun observeEntries(trackerId: String): Flow<List<Entry>> = emptyFlow()
         override fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>> = emptyFlow()
         override fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<Entry>> = emptyFlow()
         override fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>> = emptyFlow()
         override suspend fun getEntry(id: String): Entry? = null
+        override fun observeEntryTimesByTracker(): Flow<Map<String, List<EntryTime>>> = times
         override suspend fun getLatestEntry(trackerId: String): Entry? = null
         override suspend fun saveEntry(entry: Entry): ValidationResult = ValidationResult.Valid.also { saved += entry }
         override suspend fun deleteEntry(id: String) = Unit

@@ -8,6 +8,85 @@
     <string name="detail_total_days">Days logged</string>
     <string name="detail_view_list">List</string>
     <string name="detail_view_calendar">Calendar</string>
+    <string name="detail_view_insights">Insights</string>
+
+    <string name="insights_current_streak">Current streak</string>
+    <string name="insights_longest_streak">Longest streak</string>
+    <string name="insights_streak_ongoing">Still going</string>
+    <!-- %1$s the day the longest streak ended, such as "3 Nov". -->
+    <string name="insights_streak_ended">Ended %1$s</string>
+    <plurals name="insights_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="insights_activity">Logged per day</string>
+    <string name="insights_activity_weeks">Logged per week</string>
+    <string name="insights_activity_months">Logged per month</string>
+    <plurals name="insights_entries">
+        <item quantity="one">%d entry</item>
+        <item quantity="other">%d entries</item>
+    </plurals>
+    <!-- %1$d entries over the period named by %2$s, such as "30 days". -->
+    <plurals name="insights_entries_in_period">
+        <item quantity="one">%1$d entry in the last %2$s</item>
+        <item quantity="other">%1$d entries in the last %2$s</item>
+    </plurals>
+    <string name="insights_period_days">30 days</string>
+    <string name="insights_period_weeks">12 weeks</string>
+    <string name="insights_period_months">12 months</string>
+    <string name="insights_this_week">This week</string>
+    <string name="insights_this_month">This month</string>
+    <string name="insights_yesterday">yesterday</string>
+    <string name="insights_last_week">last week</string>
+    <string name="insights_last_month">last month</string>
+    <!-- %1$d how many more, %2$s the period before, such as "last week". -->
+    <string name="insights_more_than">%1$d more than %2$s</string>
+    <string name="insights_fewer_than">%1$d fewer than %2$s</string>
+    <string name="insights_same_as">The same as %1$s</string>
+    <!-- %1$s the day a week starts, such as "9 Nov". -->
+    <string name="insights_week_of">Week of %1$s</string>
+    <!-- %1$s is a day such as "Tue 10 Nov", %2$s what it held. -->
+    <string name="insights_day_reading">%1$s: %2$s</string>
+    <!-- Spoken summary: the period, total entries, the busiest day, week or month. -->
+    <string name="insights_activity_summary">Entries over the last %1$s: %2$d in all, most in %3$s.</string>
+    <!-- %1$s the record value, %2$s the day it was set. -->
+    <string name="insights_record">Record %1$s, on %2$s</string>
+    <string name="insights_record_day">Best day %1$s, on %2$s</string>
+    <string name="insights_show_table">Table</string>
+    <string name="insights_today">Today</string>
+    <string name="insights_show_chart">Chart</string>
+    <string name="insights_nothing_yet">Nothing logged in this field yet</string>
+    <!-- %1$s total, %2$s average per entry. -->
+    <string name="insights_numeric_sum">%1$s in all, %2$s on average</string>
+    <!-- %1$s average, %2$s lowest, %3$s highest. -->
+    <string name="insights_numeric_range">Average %1$s, from %2$s to %3$s</string>
+    <!-- Spoken summary of a field chart: field name, the period, then its caption. -->
+    <string name="insights_field_summary">%1$s over the last %2$s. %3$s</string>
+    <!-- Spoken summary of a rating's scores: field name, then its caption. -->
+    <string name="insights_scores_summary">How often each %1$s score was given. %2$s</string>
+    <!-- %1$s average, %2$d scale, %3$d how many ratings. -->
+    <plurals name="insights_rating_average">
+        <item quantity="one">Average %1$s out of %2$d, from %3$d rating</item>
+        <item quantity="other">Average %1$s out of %2$d, from %3$d ratings</item>
+    </plurals>
+    <!-- %1$d a score, %2$s how often it was given. -->
+    <string name="insights_rating_reading">%1$d given %2$s</string>
+    <plurals name="insights_times">
+        <item quantity="one">once</item>
+        <item quantity="other">%d times</item>
+    </plurals>
+    <!-- %1$d percent yes, %2$d yes answers, %3$d answers. -->
+    <string name="insights_yes_rate">%1$d%% yes, %2$d of %3$d</string>
+    <plurals name="insights_answered">
+        <item quantity="one">Answered once</item>
+        <item quantity="other">Answered %d times</item>
+    </plurals>
+    <!-- %1$s a choice, %2$s how often it was picked. -->
+    <string name="insights_choice_reading">%1$s, picked %2$s</string>
+    <plurals name="insights_filled_in">
+        <item quantity="one">Filled in once</item>
+        <item quantity="other">Filled in %d times</item>
+    </plurals>
     <string name="detail_previous_month">Previous month</string>
     <string name="detail_next_month">Next month</string>
     <string name="detail_back_to_today">Back to this month</string>

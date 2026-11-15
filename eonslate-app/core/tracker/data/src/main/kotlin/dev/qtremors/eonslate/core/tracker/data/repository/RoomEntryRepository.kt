@@ -41,6 +41,11 @@ class RoomEntryRepository @Inject constructor(
             .map { rows -> rows.map { EntryTime(it.occurredAt, it.zoneId) } }
             .distinctUntilChanged()
 
+    override fun observeEntryTimesByTracker(): Flow<Map<String, List<EntryTime>>> =
+        entries.observeAllEntryTimes()
+            .map { rows -> rows.groupBy({ it.trackerId }, { EntryTime(it.occurredAt, it.zoneId) }) }
+            .distinctUntilChanged()
+
     override fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long): Flow<List<Entry>> =
         entries.observeEntriesBetween(trackerId, fromMillis, untilMillis)
             .map { rows -> rows.map { it.toDomain() } }

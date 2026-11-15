@@ -28,7 +28,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 
-enum class DetailView { LIST, CALENDAR }
+enum class DetailView { LIST, CALENDAR, INSIGHTS }
 
 data class DetailState(
     val loading: Boolean = true,
@@ -41,6 +41,8 @@ data class DetailState(
     val times: List<EntryTime> = emptyList(),
     /** Every entry of [selectedDay], however far back; null when no day is picked. */
     val dayEntries: List<Entry>? = null,
+    /** Every entry with its values, read only while insights are shown; null until then. */
+    val allEntries: List<Entry>? = null,
     val view: DetailView = DetailView.LIST,
     val month: YearMonth = YearMonth.now(),
     /** A day picked on the calendar; the list below it shows only that day. */
@@ -97,13 +99,21 @@ class TrackerDetailViewModel @Inject constructor(
         }
     }
 
+    /** The whole history, only while insights need it, so the list and calendar stay light. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val insightEntries: Flow<List<Entry>?> = ui.map { it.view }.distinctUntilChanged().flatMapLatest { view ->
+        if (view == DetailView.INSIGHTS) entries.observeEntries(trackerId) else flowOf(null)
+    }
+
+    private val extra: Flow<Pair<List<Entry>?, List<Entry>?>> = combine(dayEntries, insightEntries) { day, all -> day to all }
+
     val state: StateFlow<DetailState> = combine(
         trackers.observeTracker(trackerId),
         entries.observeEntryTimes(trackerId),
         recent,
-        dayEntries,
+        extra,
         ui,
-    ) { tracker, times, list, day, u ->
+    ) { tracker, times, list, (day, all), u ->
         if (tracker == null) DetailState(loading = false, missing = true)
         else DetailState(
             loading = false,
@@ -111,6 +121,7 @@ class TrackerDetailViewModel @Inject constructor(
             entries = list,
             times = times,
             dayEntries = day,
+            allEntries = all,
             view = u.view,
             month = u.month,
             selectedDay = u.day,

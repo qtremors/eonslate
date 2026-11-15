@@ -130,6 +130,13 @@ data class EntryTimeRow(
     @ColumnInfo(name = "zone_id") val zoneId: String,
 )
 
+/** When an entry happened and which tracker it belongs to. */
+data class TrackerEntryTimeRow(
+    @ColumnInfo(name = "tracker_id") val trackerId: String,
+    @ColumnInfo(name = "occurred_at") val occurredAt: Long,
+    @ColumnInfo(name = "zone_id") val zoneId: String,
+)
+
 /** An entry read together with its values. */
 data class EntryWithValues(
     @Embedded val entry: EntryEntity,

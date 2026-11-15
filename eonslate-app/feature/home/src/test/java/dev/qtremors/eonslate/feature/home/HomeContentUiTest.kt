@@ -41,6 +41,7 @@ class HomeContentUiTest {
         createdAt = 0,
     )
 
+    private var todayProgress: dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress? = null
     private val moves = mutableListOf<Pair<String, Int>>()
     private val archived = mutableListOf<String>()
     private val edited = mutableListOf<String>()
@@ -56,6 +57,8 @@ class HomeContentUiTest {
                     onNewTracker = { created++ },
                     onOpenTracker = { opened += it },
                     onLog = { logged += it.id },
+                    streaks = mapOf("s" to 4),
+                    today = todayProgress,
                     actions = SlateActions(
                         onMove = { t, by -> moves += t.id to by },
                         onEdit = { edited += it.id },
@@ -104,6 +107,27 @@ class HomeContentUiTest {
         // Screen readers meet the main action by its name.
         compose.onNodeWithContentDescription("New tracker").assertExists().performClick()
         assertEquals(1, created)
+    }
+
+    @Test
+    fun todayLineSaysWhatIsLeft() {
+        todayProgress = dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress(1, 2)
+        show(listOf(TrackerSummary(stretch, 1, now), TrackerSummary(run, 0, null)))
+        compose.onNodeWithText("1 of 2 logged today").assertIsDisplayed()
+    }
+
+    @Test
+    fun everythingLoggedTodaySaysSo() {
+        todayProgress = dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress(2, 2)
+        show(listOf(TrackerSummary(stretch, 1, now), TrackerSummary(run, 1, now)))
+        compose.onNodeWithText("All 2 logged today").assertIsDisplayed()
+    }
+
+    @Test
+    fun aStreakShowsOnItsSlate() {
+        show(listOf(TrackerSummary(stretch, 4, now), TrackerSummary(run, 0, null)))
+        compose.onNodeWithContentDescription("4-day streak").assertExists()
+        assertEquals(1, compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("day streak", substring = true)).fetchSemanticsNodes().size)
     }
 
     @Test

@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.0.5
-> **Last Updated:** 2026-11-14
+> **Version:** 2.0.6
+> **Last Updated:** 2026-11-15
 
 ## Roadmap
 
@@ -15,7 +15,7 @@ Each step is planned as one release commit.
 | 3 | 2.0.3 | Tracker builder: create and edit trackers and their fields | Done |
 | 4 | 2.0.4 | Logging entries: quick add, typed inputs for every field type | Done |
 | 5 | 2.0.5 | Tracker detail: list and calendar views, edit and delete with undo | Done |
-| 6 | 2.0.6 | Insights: charts, streaks, totals and averages | Planned |
+| 6 | 2.0.6 | Insights: charts, streaks, totals and averages | Done |
 | 7 | 2.0.7 | Templates gallery, welcome flow, and the brand: logo (`Eonslate.png`, `Eonslate.svg`) and themed adaptive icons | Planned |
 | 8 | 2.0.7 | Settings, About and Licenses screens | Planned |
 | 9 | 2.0.8 | Backup and restore: encrypted archives, recoverable restores | Planned |

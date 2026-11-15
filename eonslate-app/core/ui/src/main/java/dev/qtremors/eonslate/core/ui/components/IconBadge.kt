@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.ui.theme.SlateTileShape
+import dev.qtremors.eonslate.core.ui.theme.pigmentMark
 import dev.qtremors.eonslate.core.ui.theme.pigmentTones
 import kotlin.math.abs
 
@@ -63,6 +64,9 @@ object BadgePalette {
 
     /** The pigment the user picked by [index]. */
     fun forIndex(index: Int, dark: Boolean = false): BadgeColors = forColor(pigment(index), dark)
+
+    /** The pigment at [index] as a chart mark color, for lines and bars on cards. */
+    fun mark(index: Int, dark: Boolean = false): Color = pigmentMark(pigment(index), dark)
 
     /** Tile and glyph colors for any color, such as a status color. */
     fun forColor(color: Color, dark: Boolean = false): BadgeColors {

@@ -12,10 +12,18 @@ import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
 import dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator
+import dev.qtremors.eonslate.core.tracker.domain.insights.Streaks
+import dev.qtremors.eonslate.core.tracker.domain.insights.Today
+import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
+import dev.qtremors.eonslate.core.tracker.domain.insights.localDay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,6 +36,20 @@ class HomeViewModel @Inject constructor(
     /** Active trackers in home order; null until the first read, so loading never looks empty. */
     val trackers: StateFlow<List<TrackerSummary>?> = repository.observeSummaries()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
+    /** Each tracker's current streak in days, by id; trackers without one are left out. */
+    val streaks: StateFlow<Map<String, Int>> = entries.observeEntryTimesByTracker()
+        .map { byTracker ->
+            val today = LocalDate.now(ZoneId.of(clock.zoneId()))
+            byTracker.mapValues { (_, times) -> Streaks.of(times.map { it.localDay() }, today).current }.filterValues { it > 0 }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+
+    /** How many active trackers have an entry today; null until both reads arrive. */
+    val today: StateFlow<TodayProgress?> = combine(repository.observeSummaries(), entries.observeEntryTimesByTracker()) { summaries, times ->
+        val day = LocalDate.now(ZoneId.of(clock.zoneId()))
+        Today.progress(summaries.map { it.tracker.id }, times.mapValues { (_, list) -> list.map { it.localDay() } }, day)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
     /** Logs "yes" now to a tracker that is a single yes or no, such as a daily habit. */
     fun quickLog(tracker: Tracker) {

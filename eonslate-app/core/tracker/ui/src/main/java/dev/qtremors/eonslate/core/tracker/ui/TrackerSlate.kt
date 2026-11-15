@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,7 +27,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.ui.components.BadgePalette
@@ -31,6 +38,7 @@ import dev.qtremors.eonslate.core.ui.components.IconBadge
 import dev.qtremors.eonslate.core.ui.components.TrackerIcons
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
+import dev.qtremors.eonslate.core.ui.theme.SlateTileShape
 
 /**
  * Eonslate's signature tile: one tracker as a slate tinted with its pigment, its icon on a slate
@@ -48,6 +56,8 @@ fun TrackerSlate(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    /** The current streak in days; from two days on it shows as an ember pill. */
+    streak: Int = 0,
     action: (@Composable RowScope.() -> Unit)? = null
 ) {
     val haptics = rememberAppHaptics()
@@ -98,6 +108,7 @@ fun TrackerSlate(
                 }
             }
             Column(Modifier.padding(top = 12.dp)) {
+                if (streak >= 2) StreakPill(streak)
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleLarge,
@@ -115,5 +126,24 @@ fun TrackerSlate(
                 )
             }
         }
+    }
+}
+
+/** A small ember pill with a flame and the streak's days, such as "3". */
+@Composable
+private fun StreakPill(days: Int) {
+    val colors = MaterialTheme.colorScheme
+    val description = pluralStringResource(R.plurals.slate_streak, days, days)
+    Row(
+        modifier = Modifier
+            .padding(bottom = 6.dp)
+            .clip(SlateTileShape)
+            .background(colors.tertiaryContainer)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clearAndSetSemantics { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = colors.onTertiaryContainer, modifier = Modifier.size(14.dp))
+        Text(days.toString(), style = MaterialTheme.typography.labelMedium, color = colors.onTertiaryContainer, modifier = Modifier.padding(start = 2.dp))
     }
 }

@@ -68,6 +68,15 @@ class ValueFormatTest {
     }
 
     @Test
+    fun computedAmountsUseTheFieldsUnits() {
+        val weight = f(FieldConfig.Number("kg", 1))
+        assertEquals("72.53 kg", ValueFormat.amount(weight, java.math.BigDecimal("72.533"), words, us, decimals = 2))
+        assertEquals("-\$35.25", ValueFormat.amount(f(FieldConfig.Money("USD")), java.math.BigDecimal("-35.2500"), words, us, decimals = 2))
+        assertEquals("1 h 30 m", ValueFormat.amount(f(FieldConfig.Duration()), java.math.BigDecimal("5400.4"), words, us))
+        assertEquals("3.8", ValueFormat.amount(f(FieldConfig.Rating(5)), java.math.BigDecimal("3.75"), words, us, decimals = 1))
+    }
+
+    @Test
     fun datesFollowTheLocale() {
         assertEquals("Nov 10, 2026", fmt(FieldConfig.Date, FieldValue.Date(java.time.LocalDate.of(2026, 11, 10).toEpochDay())))
     }

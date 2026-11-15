@@ -1,8 +1,8 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.5
-> **Last Updated:** 2026-11-14
+> **Version:** 2.0.6
+> **Last Updated:** 2026-11-15
 
 ## Architecture
 
@@ -12,7 +12,7 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | :--- | :--- | :--- |
 | `:app` | Android application | Entry point, splash, navigation host, dependency injection root |
 | `:core:navigation:api` | Kotlin JVM | Type-safe `@Serializable` destinations shared by features |
-| `:core:tracker:domain` | Kotlin JVM | Tracker, field and entry models, exact value codecs, validators, repository interfaces |
+| `:core:tracker:domain` | Kotlin JVM | Tracker, field and entry models, exact value codecs, validators, insights (streaks, field stats, daily series), repository interfaces |
 | `:core:tracker:data` | Android library | Room database, DAOs, integrity triggers, repositories, Hilt bindings |
 | `:core:tracker:ui` | Android library | Tracker UI shared by features: the tracker slate, field type labels and icons, validation messages |
 | `:core:ui` | Android library | Material 3 Expressive theme, tokens and shared components |
@@ -86,6 +86,18 @@ Eonslate has its own look, "Slate and Ember". It uses Material 3 Expressive for 
 | Shape | Tracker icons sit on `SlateTileShape` (a square with 30% corners), never a circle. Tracker cards use `SlateCardShape`. Empty states use the slanted slate. |
 | Accent | Ember marks the main action (Save, New tracker) and what is alive, such as progress and streaks. |
 | Signature | `TrackerSlate`: a pigment-tinted card with the icon tile, the name in the display face and one line about what was logged. |
+
+## Charts
+
+`BarChart`, `LineChart`, `Meter`, `ChartAxis` and `ChartTicks` in `:core:ui` draw on a Compose `Canvas`, with no chart library. Every chart follows the same rules:
+
+- One series per chart in the tracker's pigment (`BadgePalette.mark`), so no legend; the card title names it. Today and records use ember.
+- Thin marks: bars at most 28 dp wide with 2 dp gaps and 4 dp rounded data ends on a zero baseline; a 2 dp line with 8 dp markers ringed in the surface color. A hairline baseline, no grid.
+- Direct labels are selective: a bar chart names only its peak (`peakLabel`, with headroom reserved above the bar) and a line only its latest value (`endLabel`). Everything else is read by tapping or in the table.
+- A tap picks a mark and the card's caption reads it. Every chart card has a table view, and each chart has a spoken summary.
+- Big standalone numbers use proportional digits; axis ticks are tabular.
+
+Insights are computed in `:core:tracker:domain` (`Streaks`, `FieldInsights`, and `Periods` for day, week and month buckets that start on the locale's first weekday, `Records` for personal bests, `Today` for Home's progress line) with exact `BigDecimal` sums and averages. The tracker page reads every entry with values only while Insights is open.
 
 ## Design system
 

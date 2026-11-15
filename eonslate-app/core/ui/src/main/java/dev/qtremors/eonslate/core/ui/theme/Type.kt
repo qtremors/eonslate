@@ -90,10 +90,11 @@ val EonslateTypography = Typography(
     labelSmall = style(11, 16, FontWeight.SemiBold, 0.5)
 )
 
-/** A logged value shown large, such as "72.5 kg" or "6 h 30 m". Digits stay aligned. */
-val MetricTextStyle: TextStyle = display(30, 34, FontWeight.Bold).copy(
-    fontFeatureSettings = "tnum"
-)
+/**
+ * A logged value shown large, such as "72.5 kg" or "6 h 30 m". Proportional digits: equal-width
+ * digits look loose at this size, and a standalone number never needs to line up with another.
+ */
+val MetricTextStyle: TextStyle = display(30, 34, FontWeight.Bold)
 
 /** Values in rows, such as amounts and times, with aligned digits. */
 val ValueTextStyle: TextStyle = style(14, 20, tracking = 0.1).copy(fontFeatureSettings = "tnum")

@@ -145,6 +145,18 @@ class TrackerDetailViewModelTest {
     }
 
     @Test
+    fun theWholeHistoryIsReadOnlyForInsights() = runTest {
+        entries.list.value = listOf(entryOn("a", "2026-11-10"))
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        assertNull(vm.state.value.allEntries)
+        vm.setView(DetailView.INSIGHTS)
+        assertEquals(listOf("a"), vm.state.value.allEntries!!.map { it.id })
+        vm.setView(DetailView.LIST)
+        assertNull(vm.state.value.allEntries)
+    }
+
+    @Test
     fun archiveIsPassedThrough() = runTest {
         val vm = vm()
         vm.setArchived(true)
@@ -177,6 +189,7 @@ class TrackerDetailViewModelTest {
             list.map { all -> all.sortedByDescending { it.occurredAt }.take(limit) }
         override fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>> =
             list.map { all -> all.sortedByDescending { it.occurredAt }.map { EntryTime(it.occurredAt, it.zoneId) } }
+        override fun observeEntryTimesByTracker(): Flow<Map<String, List<EntryTime>>> = emptyFlow()
         override suspend fun getEntry(id: String) = list.value.firstOrNull { it.id == id }
         override suspend fun getLatestEntry(trackerId: String) = list.value.maxByOrNull { it.occurredAt }
         override suspend fun saveEntry(entry: Entry): ValidationResult {

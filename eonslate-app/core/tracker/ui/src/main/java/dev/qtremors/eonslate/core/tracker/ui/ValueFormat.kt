@@ -62,6 +62,28 @@ object ValueFormat {
             is FieldValue.Date -> date(value.epochDay, locale)
         }
 
+    /**
+     * A computed amount in [field]'s units, such as an average or a total: the unit for numbers,
+     * the currency for money, hours and minutes for durations (given in seconds). [decimals] is
+     * how many fraction digits to show; averages pass one more than the field has.
+     */
+    fun amount(field: FieldDefinition, value: BigDecimal, words: ValueWords, locale: Locale = Locale.getDefault(), decimals: Int = value.scale().coerceAtLeast(0)): String =
+        when (val config = field.config) {
+            is FieldConfig.Number -> {
+                val text = decimal(value.setScale(decimals, java.math.RoundingMode.HALF_UP), decimals, locale)
+                config.unit?.takeIf { it.isNotBlank() }?.let { "$text $it" } ?: text
+            }
+            is FieldConfig.Money -> {
+                val format = NumberFormat.getCurrencyInstance(locale)
+                runCatching { format.currency = Currency.getInstance(config.currencyCode) }
+                format.minimumFractionDigits = decimals
+                format.maximumFractionDigits = decimals
+                format.format(value.setScale(decimals, java.math.RoundingMode.HALF_UP))
+            }
+            is FieldConfig.Duration -> duration(value.setScale(0, java.math.RoundingMode.HALF_UP).toLong(), words)
+            else -> decimal(value, decimals, locale)
+        }
+
     fun decimal(value: BigDecimal, decimals: Int, locale: Locale): String =
         NumberFormat.getNumberInstance(locale).apply {
             minimumFractionDigits = decimals

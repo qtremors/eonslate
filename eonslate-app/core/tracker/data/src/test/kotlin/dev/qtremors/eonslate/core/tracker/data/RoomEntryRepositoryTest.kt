@@ -132,6 +132,17 @@ class RoomEntryRepositoryTest {
     }
 
     @Test
+    fun entryTimesAreGroupedByTracker() = runTest {
+        trackers.saveTracker(everyTypeTracker("t2"))
+        entries.saveEntry(entry("a", occurredAt = 1_000))
+        entries.saveEntry(entry("b", trackerId = "t2", occurredAt = 2_000))
+        entries.saveEntry(entry("c", trackerId = "t2", occurredAt = 3_000))
+        val byTracker = entries.observeEntryTimesByTracker().first()
+        assertEquals(setOf("t1", "t2"), byTracker.keys)
+        assertEquals(2, byTracker.getValue("t2").size)
+    }
+
+    @Test
     fun deletingEntryDeletesItsValues() = runTest {
         entries.saveEntry(entry())
         entries.deleteEntry("e1")

@@ -56,6 +56,15 @@ fun eonslateColorScheme(seed: Color, isDark: Boolean): ColorScheme {
  * and contrast whatever its hue: a soft tile with a deep glyph in light themes, a deep tile with
  * a light glyph in dark ones.
  */
+/**
+ * The pigment for thin chart marks: its full chroma at a middle tone, deep enough to read on a
+ * light card and light enough on a dark one. Badge tones are too soft for a 2 dp line.
+ */
+internal fun pigmentMark(pigment: Color, isDark: Boolean): Color {
+    val hct = Hct.fromInt(pigment.toArgb())
+    return Color(Hct.from(hct.hue, maxOf(hct.chroma, 36.0), if (isDark) 75.0 else 45.0).toInt())
+}
+
 internal fun pigmentTones(pigment: Color, isDark: Boolean): Pair<Color, Color> {
     val hct = Hct.fromInt(pigment.toArgb())
     val chroma = hct.chroma.coerceAtMost(48.0)

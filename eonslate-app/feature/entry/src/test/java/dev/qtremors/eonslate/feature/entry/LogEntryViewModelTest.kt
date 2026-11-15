@@ -197,6 +197,7 @@ class LogEntryViewModelTest {
         override fun observeRecentEntries(trackerId: String, limit: Int): Flow<List<Entry>> = emptyFlow()
         override fun observeEntryTimes(trackerId: String): Flow<List<EntryTime>> = emptyFlow()
         override suspend fun getEntry(id: String) = saved.lastOrNull { it.id == id }
+        override fun observeEntryTimesByTracker(): Flow<Map<String, List<EntryTime>>> = emptyFlow()
         override suspend fun getLatestEntry(trackerId: String) =
             saved.filter { it.trackerId == trackerId }.maxByOrNull { it.occurredAt }
         override suspend fun saveEntry(entry: Entry): ValidationResult {

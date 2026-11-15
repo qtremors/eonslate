@@ -3,9 +3,11 @@ package dev.qtremors.eonslate.feature.home
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerSummary
 import dev.qtremors.eonslate.core.tracker.ui.TrackerSlate
@@ -50,6 +53,7 @@ import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
 import dev.qtremors.eonslate.core.ui.components.MenuAction
+import dev.qtremors.eonslate.core.ui.components.Meter
 import dev.qtremors.eonslate.core.ui.components.LoadingState
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 
@@ -64,6 +68,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
+    val streaks by viewModel.streaks.collectAsStateWithLifecycle()
+    val today by viewModel.today.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -73,6 +79,8 @@ fun HomeScreen(
         onOpenTracker = onOpenTracker,
         onLog = { tracker -> if (HomeViewModel.isQuickLog(tracker)) viewModel.quickLog(tracker) else onLog(tracker.id) },
         onArchived = onArchived,
+        streaks = streaks,
+        today = today,
         snackbar = snackbar,
         actions = SlateActions(
             onMove = viewModel::move,
@@ -105,6 +113,8 @@ fun HomeContent(
     onLog: (Tracker) -> Unit,
     modifier: Modifier = Modifier,
     onArchived: (() -> Unit)? = null,
+    streaks: Map<String, Int> = emptyMap(),
+    today: TodayProgress? = null,
     snackbar: SnackbarHostState? = null,
     actions: SlateActions? = null,
     nowMillis: Long = System.currentTimeMillis(),
@@ -148,6 +158,9 @@ fun HomeContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (today != null && today.total > 0) {
+                    item(key = "today", span = { GridItemSpan(maxLineSpan) }) { TodayLine(today) }
+                }
                 itemsIndexed(trackers, key = { _, s -> s.tracker.id }) { index, summary ->
                     var menu by rememberSaveable { mutableStateOf(false) }
                     Box(Modifier.animateItem()) {
@@ -157,6 +170,7 @@ fun HomeContent(
                             colorIndex = summary.tracker.colorIndex,
                             key = summary.tracker.id,
                             supporting = summaryLine(summary, nowMillis),
+                            streak = streaks[summary.tracker.id] ?: 0,
                             onClick = { onOpenTracker(summary.tracker.id) },
                             onLongClick = if (actions != null) ({ menu = true }) else null,
                             action = {
@@ -201,6 +215,21 @@ fun HomeContent(
                 }
             }
         }
+    }
+}
+
+/** "2 of 3 logged today" with an ember meter, above the slates. */
+@Composable
+private fun TodayLine(progress: TodayProgress) {
+    val text = if (progress.logged == progress.total) stringResource(R.string.home_today_all, progress.total)
+    else stringResource(R.string.home_today, progress.logged, progress.total)
+    Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Meter(
+            fraction = progress.logged.toFloat() / progress.total,
+            color = MaterialTheme.colorScheme.tertiary,
+            contentDescription = text,
+        )
     }
 }
 

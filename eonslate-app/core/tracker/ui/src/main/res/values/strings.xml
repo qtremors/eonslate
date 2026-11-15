@@ -10,6 +10,12 @@
     <string name="field_type_text">Text</string>
     <string name="field_type_date">Date</string>
 
+    <!-- Spoken for the streak pill on a tracker slate. -->
+    <plurals name="slate_streak">
+        <item quantity="one">%d-day streak</item>
+        <item quantity="other">%d-day streak</item>
+    </plurals>
+
     <string name="value_yes">Yes</string>
     <string name="value_no">No</string>
     <!-- Hours and minutes of a duration, such as "6 h 30 m". -->
