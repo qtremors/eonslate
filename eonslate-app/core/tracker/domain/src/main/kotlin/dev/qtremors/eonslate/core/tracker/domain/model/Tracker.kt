@@ -28,6 +28,24 @@ data class Tracker(
     /** The field with [fieldId], or null when it is not part of this tracker. */
     fun field(fieldId: String): FieldDefinition? = fields.firstOrNull { it.id == fieldId }
 
+    /**
+     * A new tracker with the same look and fields but none of the entries: fresh ids for the
+     * tracker and every field (ids are database keys), the same choice options (their ids only
+     * need to be unique within a field), not archived, and placed at [position].
+     */
+    fun duplicate(newId: () -> String, name: String, now: Long, position: Int): Tracker {
+        val id = newId()
+        return copy(
+            id = id,
+            name = name.take(NAME_MAX_LENGTH),
+            fields = fields.map { it.copy(id = newId(), trackerId = id) },
+            archived = false,
+            position = position,
+            createdAt = now,
+            updatedAt = now,
+        )
+    }
+
     companion object {
         const val DEFAULT_ICON = "AutoAwesome"
         const val NAME_MAX_LENGTH = 60

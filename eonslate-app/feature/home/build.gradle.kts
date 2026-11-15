@@ -34,6 +34,7 @@ kotlin {
 
 dependencies {
     implementation(project(":core:tracker:ui"))
+    implementation(project(":core:settings"))
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.hilt.android)

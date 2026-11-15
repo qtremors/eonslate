@@ -25,6 +25,7 @@ Eonslate is in early development. The roadmap lives in [TASKS.md](TASKS.md) and 
 Available now:
 
 - **Your own trackers:** build trackers from typed fields: number, money, duration, rating, yes or no, one or several choices, text and date.
+- **Ready-made templates:** start from twenty templates such as expenses, habits, mood, workouts, reading, water and sleep, then make them your own.
 - **Quick logging:** log from Home in a tap, fill in "same as last time", or tick a daily habit without opening anything.
 - **Views that fit:** every tracker has a list by day, a month calendar and insights with streaks, totals, averages, records and charts.
 - **Exact numbers:** decimals, money and time are stored exactly, never as rounded floating point values.
@@ -32,7 +33,6 @@ Available now:
 
 Coming next:
 
-- **Ready-made templates:** start from expenses, habits, mood, workouts, reading, water, sleep and more.
 - **Finance built in:** accounts, budgets, recurring payments and an optional on-device SMS reader.
 - **Reminders:** local notifications that work without the internet.
 - **Safe backups:** password-protected archives that restore without mixing old and new data.

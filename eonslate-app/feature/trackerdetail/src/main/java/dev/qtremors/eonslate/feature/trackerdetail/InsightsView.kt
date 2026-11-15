@@ -58,7 +58,6 @@ import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
-import java.time.temporal.WeekFields
 import java.util.Locale
 
 /**
@@ -76,7 +75,7 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
     val days = remember(state.times) { state.times.map { it.day() } }
     val streak = remember(days, today) { Streaks.of(days, today) }
     var period by rememberSaveable { mutableStateOf(Period.DAYS) }
-    val buckets = remember(period, today, locale) { Periods.buckets(period, today, WeekFields.of(locale).firstDayOfWeek) }
+    val buckets = remember(period, today, state.firstDay) { Periods.buckets(period, today, state.firstDay) }
     val counts = remember(state.times, buckets) { Periods.counts(state.times, buckets) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {

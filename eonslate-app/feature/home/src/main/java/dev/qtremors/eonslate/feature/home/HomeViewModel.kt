@@ -12,12 +12,14 @@ import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
 import dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator
+import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.tracker.domain.insights.Streaks
 import dev.qtremors.eonslate.core.tracker.domain.insights.Today
 import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
 import dev.qtremors.eonslate.core.tracker.domain.insights.localDay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -32,6 +34,7 @@ class HomeViewModel @Inject constructor(
     private val entries: EntryRepository,
     private val clock: AppClock,
     private val ids: IdGenerator,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     /** Active trackers in home order; null until the first read, so loading never looks empty. */
     val trackers: StateFlow<List<TrackerSummary>?> = repository.observeSummaries()
@@ -74,6 +77,22 @@ class HomeViewModel @Inject constructor(
         val ids = trackers.value?.map { it.tracker.id } ?: return
         val order = moved(ids, tracker.id, by) ?: return
         viewModelScope.launch { repository.reorder(order) }
+    }
+
+    /** Saves a tracker built from a template after every other tracker. */
+    fun createFrom(build: (currency: String) -> Tracker) {
+        viewModelScope.launch {
+            val tracker = build(settings.tracking.first().currencyCode())
+            val now = clock.nowMillis()
+            repository.saveTracker(tracker.copy(position = repository.nextPosition(), createdAt = now, updatedAt = now))
+        }
+    }
+
+    /** Adds a copy of [tracker] named [name] after every other tracker, without its entries. */
+    fun duplicate(tracker: Tracker, name: String) {
+        viewModelScope.launch {
+            repository.saveTracker(tracker.duplicate(ids::newId, name, clock.nowMillis(), repository.nextPosition()))
+        }
     }
 
     fun setArchived(tracker: Tracker, archived: Boolean) {

@@ -1,6 +1,8 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
 import androidx.lifecycle.SavedStateHandle
+import dev.qtremors.eonslate.core.settings.InMemorySettingsRepository
+import dev.qtremors.eonslate.core.settings.Tracking
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
@@ -45,7 +47,9 @@ class TrackerEditorViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun newEditor(handle: SavedStateHandle = SavedStateHandle()) = TrackerEditorViewModel(handle, repo, clock, ids)
+    private val settings = InMemorySettingsRepository(tracking = Tracking(currency = "EUR"))
+
+    private fun newEditor(handle: SavedStateHandle = SavedStateHandle()) = TrackerEditorViewModel(handle, repo, clock, ids, settings)
 
     private fun TrackerEditorViewModel.addYesNo(name: String) {
         addField()
@@ -173,6 +177,47 @@ class TrackerEditorViewModelTest {
         assertEquals("Half done", restored.state.value.draft!!.name)
         assertEquals("Typing", restored.state.value.sheet!!.draft.name)
         assertTrue(restored.state.value.dirty)
+    }
+
+    @Test
+    fun aTemplateFillsANewTrackerOnce() = runTest {
+        val vm = newEditor(SavedStateHandle(mapOf(TrackerEditorViewModel.ARG_TEMPLATE_ID to "water")))
+        assertEquals("water", vm.templateId)
+        val template = Tracker(
+            id = "tpl",
+            name = "Water",
+            fields = listOf(FieldDefinition("g", "tpl", "Glasses", FieldConfig.Number(min = 0), required = true)),
+            templateId = "water",
+            createdAt = 0,
+        )
+        vm.applyTemplate { template }
+        vm.setName("My water")
+        vm.applyTemplate { template }
+        val draft = vm.state.value.draft!!
+        assertEquals("My water", draft.name)
+        assertTrue(draft.isNew)
+        assertEquals("water", draft.templateId)
+        vm.save()
+        assertEquals("water", repo.saved.single().templateId)
+    }
+
+    @Test
+    fun newMoneyFieldsAndTemplatesUseTheChosenCurrency() = runTest {
+        val vm = newEditor()
+        vm.addField()
+        assertEquals("EUR", vm.state.value.sheet!!.draft.currencyCode)
+        vm.closeSheet()
+        var seen = ""
+        vm.applyTemplate { currency -> seen = currency; Tracker(id = "t", name = "T", createdAt = 0) }
+        assertEquals("EUR", seen)
+    }
+
+    @Test
+    fun aTemplateNeverReplacesAnExistingTracker() = runTest {
+        repo.trackers["t"] = Tracker(id = "t", name = "Mine", fields = listOf(FieldDefinition("y", "t", "Y", FieldConfig.YesNo)), createdAt = 5)
+        val vm = newEditor(SavedStateHandle(mapOf(TrackerEditorViewModel.ARG_TRACKER_ID to "t")))
+        vm.applyTemplate { Tracker(id = "x", name = "Template", createdAt = 0) }
+        assertEquals("Mine", vm.state.value.draft!!.name)
     }
 
     @Test

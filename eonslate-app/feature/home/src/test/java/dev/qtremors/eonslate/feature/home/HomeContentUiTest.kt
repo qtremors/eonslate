@@ -45,9 +45,11 @@ class HomeContentUiTest {
     private val moves = mutableListOf<Pair<String, Int>>()
     private val archived = mutableListOf<String>()
     private val edited = mutableListOf<String>()
+    private val duplicated = mutableListOf<String>()
     private val opened = mutableListOf<String>()
     private val logged = mutableListOf<String>()
     private var created = 0
+    private val starters = mutableListOf<String>()
 
     private fun show(trackers: List<TrackerSummary>?) {
         compose.setContent {
@@ -63,7 +65,9 @@ class HomeContentUiTest {
                         onMove = { t, by -> moves += t.id to by },
                         onEdit = { edited += it.id },
                         onArchive = { archived += it.id },
+                        onDuplicate = { duplicated += it.id },
                     ),
+                    onStarter = { starters += it },
                     nowMillis = now,
                 )
             }
@@ -82,6 +86,20 @@ class HomeContentUiTest {
         compose.onNodeWithText("Nothing tracked yet").assertIsDisplayed()
         compose.onNodeWithText("Create a tracker").performClick()
         assertEquals(1, created)
+    }
+
+    @Test
+    fun anEmptyHomeOffersOneTapStarters() {
+        show(emptyList())
+        compose.onNodeWithText("Or start with one of these").assertIsDisplayed()
+        compose.onNodeWithText("Mood").performClick()
+        assertEquals(listOf("mood"), starters)
+    }
+
+    @Test
+    fun startersStepAsideOnceThereAreTrackers() {
+        show(listOf(TrackerSummary(stretch, 0, null)))
+        assertEquals(0, compose.onAllNodes(androidx.compose.ui.test.hasText("Or start with one of these")).fetchSemanticsNodes().size)
     }
 
     @Test
@@ -113,14 +131,14 @@ class HomeContentUiTest {
     fun todayLineSaysWhatIsLeft() {
         todayProgress = dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress(1, 2)
         show(listOf(TrackerSummary(stretch, 1, now), TrackerSummary(run, 0, null)))
-        compose.onNodeWithText("1 of 2 logged today").assertIsDisplayed()
+        compose.onNodeWithContentDescription("1 of 2 logged today").assertIsDisplayed()
     }
 
     @Test
     fun everythingLoggedTodaySaysSo() {
         todayProgress = dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress(2, 2)
         show(listOf(TrackerSummary(stretch, 1, now), TrackerSummary(run, 1, now)))
-        compose.onNodeWithText("All 2 logged today").assertIsDisplayed()
+        compose.onNodeWithContentDescription("All 2 logged today").assertIsDisplayed()
     }
 
     @Test
@@ -146,6 +164,10 @@ class HomeContentUiTest {
         compose.onNodeWithText("Run").performTouchInput { longClick() }
         compose.onNodeWithText("Edit").performClick()
         assertEquals(listOf("r"), edited)
+
+        compose.onNodeWithText("Stretch").performTouchInput { longClick() }
+        compose.onNodeWithText("Duplicate").performClick()
+        assertEquals(listOf("s"), duplicated)
     }
 
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTextCount(text: String): Int =

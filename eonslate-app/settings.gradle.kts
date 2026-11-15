@@ -26,6 +26,7 @@ dependencyResolutionManagement {
 rootProject.name = "Eonslate"
 include(":app")
 include(":core:navigation:api")
+include(":core:settings")
 include(":core:tracker:domain")
 include(":core:tracker:data")
 include(":core:tracker:ui")
@@ -34,3 +35,5 @@ include(":feature:home")
 include(":feature:entry")
 include(":feature:trackerdetail")
 include(":feature:trackereditor")
+include(":feature:settings")
+include(":feature:welcome")

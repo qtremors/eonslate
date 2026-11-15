@@ -223,6 +223,7 @@ private fun DetailContent(
                     colorIndex = tracker.colorIndex,
                     selected = state.selectedDay,
                     today = today,
+                    firstDay = state.firstDay,
                     onMonth = viewModel::showMonth,
                     onDay = viewModel::selectDay,
                     modifier = Modifier.padding(top = 12.dp),

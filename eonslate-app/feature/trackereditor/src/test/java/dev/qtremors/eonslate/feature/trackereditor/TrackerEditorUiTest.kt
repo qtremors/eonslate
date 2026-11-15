@@ -66,6 +66,7 @@ class TrackerEditorUiTest {
                 override fun zoneId() = "UTC"
             },
             IdGenerator { "id${++counter}" },
+            dev.qtremors.eonslate.core.settings.InMemorySettingsRepository(),
         )
         vm.addField()
         compose.setContent {

@@ -4,6 +4,9 @@ import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -18,7 +21,10 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
@@ -36,8 +42,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -47,7 +56,10 @@ import kotlinx.coroutines.launch
 import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerSummary
+import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
+import dev.qtremors.eonslate.core.tracker.ui.Templates
 import dev.qtremors.eonslate.core.tracker.ui.TrackerSlate
+import dev.qtremors.eonslate.core.ui.components.TrackerIcons
 import dev.qtremors.eonslate.core.ui.components.EmberActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
@@ -64,6 +76,7 @@ fun HomeScreen(
     onLog: (String) -> Unit,
     onArchived: () -> Unit,
     onEditTracker: (String) -> Unit,
+    onSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -79,12 +92,20 @@ fun HomeScreen(
         onOpenTracker = onOpenTracker,
         onLog = { tracker -> if (HomeViewModel.isQuickLog(tracker)) viewModel.quickLog(tracker) else onLog(tracker.id) },
         onArchived = onArchived,
+        onSettings = onSettings,
+        onStarter = { id ->
+            val spec = Templates.byId(id) ?: return@HomeContent
+            viewModel.createFrom { currency ->
+                Templates.instantiate(spec = spec, text = context::getString, ids = UuidIdGenerator, currency = currency, now = 0)
+            }
+        },
         streaks = streaks,
         today = today,
         snackbar = snackbar,
         actions = SlateActions(
             onMove = viewModel::move,
             onEdit = { onEditTracker(it.id) },
+            onDuplicate = { tracker -> viewModel.duplicate(tracker, context.getString(R.string.home_copy_name, tracker.name)) },
             onArchive = { tracker ->
                 viewModel.setArchived(tracker, true)
                 scope.launch {
@@ -113,10 +134,13 @@ fun HomeContent(
     onLog: (Tracker) -> Unit,
     modifier: Modifier = Modifier,
     onArchived: (() -> Unit)? = null,
+    onSettings: (() -> Unit)? = null,
     streaks: Map<String, Int> = emptyMap(),
     today: TodayProgress? = null,
     snackbar: SnackbarHostState? = null,
     actions: SlateActions? = null,
+    /** Creates a tracker from a template in one tap; offered while Home is empty. */
+    onStarter: ((String) -> Unit)? = null,
     nowMillis: Long = System.currentTimeMillis(),
 ) {
     val haptics = rememberAppHaptics()
@@ -128,6 +152,11 @@ fun HomeContent(
             if (onArchived != null) {
                 IconButton(shapes = IconButtonDefaults.shapes(), onClick = onArchived) {
                     Icon(Icons.Rounded.Inventory2, contentDescription = stringResource(R.string.home_archived))
+                }
+            }
+            if (onSettings != null) {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = onSettings) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.home_settings))
                 }
             }
         },
@@ -143,14 +172,19 @@ fun HomeContent(
     ) { padding ->
         when {
             trackers == null -> LoadingState(Modifier.fillMaxSize().padding(padding))
-            trackers.isEmpty() -> EmptyState(
-                icon = Icons.Rounded.AutoAwesome,
-                title = stringResource(R.string.home_empty_title),
-                message = stringResource(R.string.home_empty_message),
-                actionLabel = stringResource(R.string.home_empty_action),
-                onAction = onNewTracker,
-                modifier = Modifier.fillMaxSize().padding(padding),
-            )
+            trackers.isEmpty() -> Column(
+                modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                EmptyState(
+                    icon = Icons.Rounded.AutoAwesome,
+                    title = stringResource(R.string.home_empty_title),
+                    message = stringResource(R.string.home_empty_message),
+                    actionLabel = stringResource(R.string.home_empty_action),
+                    onAction = onNewTracker,
+                )
+                if (onStarter != null) Starters(onStarter)
+            }
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -206,7 +240,10 @@ fun HomeContent(
                                             actions.onMove(summary.tracker, 1)
                                         },
                                     ),
-                                    listOf(MenuAction(stringResource(R.string.home_edit), Icons.Rounded.Edit) { actions.onEdit(summary.tracker) }),
+                                    listOf(
+                                    MenuAction(stringResource(R.string.home_edit), Icons.Rounded.Edit) { actions.onEdit(summary.tracker) },
+                                    MenuAction(stringResource(R.string.home_duplicate), Icons.Rounded.ContentCopy) { actions.onDuplicate(summary.tracker) },
+                                ),
                                     listOf(MenuAction(stringResource(R.string.home_archive), Icons.Rounded.Archive) { actions.onArchive(summary.tracker) }),
                                 ),
                             )
@@ -223,7 +260,11 @@ fun HomeContent(
 private fun TodayLine(progress: TodayProgress) {
     val text = if (progress.logged == progress.total) stringResource(R.string.home_today_all, progress.total)
     else stringResource(R.string.home_today, progress.logged, progress.total)
-    Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // One announcement for the line and its meter, not two.
+    Column(
+        Modifier.padding(horizontal = 4.dp, vertical = 4.dp).clearAndSetSemantics { contentDescription = text },
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         Meter(
             fraction = progress.logged.toFloat() / progress.total,
@@ -233,11 +274,37 @@ private fun TodayLine(progress: TodayProgress) {
     }
 }
 
+/** One-tap starters under the empty state, for someone who skipped the welcome. */
+@Composable
+private fun Starters(onStarter: (String) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.home_starters),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HOME_STARTERS.mapNotNull(Templates::byId).forEach { spec ->
+                AssistChip(
+                    onClick = { onStarter(spec.id) },
+                    label = { Text(stringResource(spec.name)) },
+                    leadingIcon = { Icon(TrackerIcons.resolve(spec.iconName), contentDescription = null) },
+                    shape = MaterialTheme.shapes.medium,
+                )
+            }
+        }
+    }
+}
+
+/** The starters an empty Home offers: the quickest to begin with. */
+internal val HOME_STARTERS = listOf("habit", "mood", "water")
+
 /** What a long-press on a slate offers. */
 class SlateActions(
     val onMove: (Tracker, Int) -> Unit,
     val onEdit: (Tracker) -> Unit,
     val onArchive: (Tracker) -> Unit,
+    val onDuplicate: (Tracker) -> Unit = {},
 )
 
 @Composable

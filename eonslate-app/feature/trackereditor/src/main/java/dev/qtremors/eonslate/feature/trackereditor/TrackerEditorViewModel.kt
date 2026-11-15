@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.qtremors.eonslate.core.settings.SettingsRepository
+import dev.qtremors.eonslate.core.settings.Tracking
 import dev.qtremors.eonslate.core.tracker.domain.model.ChoiceOption
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
@@ -19,12 +21,12 @@ import dev.qtremors.eonslate.core.tracker.ui.fieldId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
-import java.util.Currency
 import java.util.Locale
 import javax.inject.Inject
 
@@ -62,14 +64,21 @@ class TrackerEditorViewModel @Inject constructor(
     private val repository: TrackerRepository,
     private val clock: AppClock,
     private val ids: IdGenerator,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     private val trackerId: String? = savedState[ARG_TRACKER_ID]
-    private val defaultCurrency: String = defaultCurrencyCode()
+
+    /** The template this new tracker starts from, if any; applied once by [applyTemplate]. */
+    val templateId: String? = savedState[ARG_TEMPLATE_ID]
+
+    /** The currency new money fields start with; follows the setting as it changes. */
+    private var defaultCurrency: String = defaultCurrencyCode()
 
     private val _state = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch { settings.tracking.collect { defaultCurrency = it.currencyCode() } }
         val restored = savedState.get<String>(KEY_DRAFT)?.let { runCatching { DraftJson.decodeFromString(TrackerDraft.serializer(), it) }.getOrNull() }
         if (restored != null) {
             _state.value = EditorState(
@@ -114,6 +123,22 @@ class TrackerEditorViewModel @Inject constructor(
     private fun editDraft(change: (TrackerDraft) -> TrackerDraft) {
         _state.update { s -> s.draft?.let { s.copy(draft = change(it), dirty = true) } ?: s }
         persist()
+    }
+
+    /**
+     * Fills a new, untouched tracker from a template the screen built in the device's words.
+     * Applied once: after that the person's own edits are kept, even across process death.
+     */
+    fun applyTemplate(build: (currency: String) -> Tracker) {
+        val draft = _state.value.draft ?: return
+        if (!draft.isNew || savedState.get<Boolean>(KEY_TEMPLATE_APPLIED) == true) return
+        savedState[KEY_TEMPLATE_APPLIED] = true
+        viewModelScope.launch {
+            // Read the setting itself, so a template never starts with a currency from before it loaded.
+            val currency = settings.tracking.first().currencyCode()
+            _state.update { it.copy(draft = build(currency).toDraft(currency).copy(createdAt = null, position = null)) }
+            persist()
+        }
     }
 
     fun setName(name: String) = editDraft { it.copy(name = name) }.also { clearTrackerError() }
@@ -263,6 +288,8 @@ class TrackerEditorViewModel @Inject constructor(
     companion object {
         /** The argument name type-safe navigation stores the route's tracker id under. */
         const val ARG_TRACKER_ID = "trackerId"
+        const val ARG_TEMPLATE_ID = "templateId"
+        private const val KEY_TEMPLATE_APPLIED = "editor.templateApplied"
         private const val KEY_DRAFT = "editor.draft"
         private const val KEY_SHEET = "editor.sheet"
         private const val KEY_DIRTY = "editor.dirty"
@@ -270,8 +297,7 @@ class TrackerEditorViewModel @Inject constructor(
         /** Types are kept by their stable storage keys. */
         private val typesSerializer = MapSerializer(String.serializer(), String.serializer())
 
-        fun defaultCurrencyCode(locale: Locale = Locale.getDefault()): String =
-            runCatching { Currency.getInstance(locale)?.currencyCode }.getOrNull() ?: "USD"
+        fun defaultCurrencyCode(locale: Locale = Locale.getDefault()): String = Tracking.deviceCurrency(locale)
     }
 }
 

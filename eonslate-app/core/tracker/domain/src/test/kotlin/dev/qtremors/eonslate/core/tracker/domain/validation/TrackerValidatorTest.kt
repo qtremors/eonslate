@@ -143,6 +143,20 @@ class TrackerValidatorTest {
     }
 
     @Test
+    fun aDuplicateIsValidAndSharesNoIds() {
+        var n = 0
+        val original = everyTypeTracker().copy(archived = true)
+        val copy = original.duplicate({ "new${++n}" }, name = "Copy of Everything", now = NOW + 5, position = 9)
+        assertEquals(ValidationResult.Valid, TrackerValidator.validate(copy))
+        assertTrue((original.fields.map { it.id } + original.id).none { it in copy.fields.map { f -> f.id } + copy.id })
+        assertEquals(original.fields.map { it.config }, copy.fields.map { it.config })
+        assertEquals(false, copy.archived)
+        assertEquals(9, copy.position)
+        assertTrue(copy.fields.all { it.trackerId == copy.id })
+        assertEquals(Tracker.NAME_MAX_LENGTH, original.duplicate({ "x${++n}" }, "y".repeat(100), NOW, 0).name.length)
+    }
+
+    @Test
     fun blankFieldNameIsRejected() {
         val found = TrackerValidator.validateField(field("f", FieldConfig.YesNo, name = "  ").copy(trackerId = TRACKER_ID))
         assertEquals(listOf(ValidationError.FieldNameBlank("f")), found)

@@ -33,6 +33,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
     private val summaries = MutableSharedFlow<List<TrackerSummary>>()
+    private val settings = dev.qtremors.eonslate.core.settings.InMemorySettingsRepository()
     private val times = kotlinx.coroutines.flow.MutableStateFlow<Map<String, List<EntryTime>>>(emptyMap())
     private val entries = FakeEntries(times)
     private val clock = object : AppClock {
@@ -48,7 +49,7 @@ class HomeViewModelTest {
 
     @Test
     fun loadingThenEmptyThenTrackers() = runTest {
-        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" })
+        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" }, settings)
         val water = TrackerSummary(Tracker(id = "w", name = "Water", createdAt = 0), entryCount = 2, lastEntryAt = 10)
 
         viewModel.trackers.test {
@@ -62,7 +63,7 @@ class HomeViewModelTest {
 
     @Test
     fun quickLogTicksASingleYesNoTracker() = runTest {
-        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" })
+        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" }, settings)
         val habit = Tracker(id = "h", name = "Stretch", fields = listOf(FieldDefinition("d", "h", "Done", FieldConfig.YesNo)), createdAt = 0)
         val weight = Tracker(id = "w", name = "Weight", fields = listOf(FieldDefinition("k", "w", "Kg", FieldConfig.Number())), createdAt = 0)
 
@@ -79,6 +80,33 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun duplicateAddsACopyAtTheEnd() = runTest {
+        val repo = FakeRepository(summaries)
+        repo.next = 4
+        var n = 0
+        val viewModel = HomeViewModel(repo, entries, clock, IdGenerator { "copy${++n}" }, settings)
+        val habit = Tracker(id = "h", name = "Stretch", fields = listOf(FieldDefinition("d", "h", "Done", FieldConfig.YesNo)), createdAt = 0)
+        viewModel.duplicate(habit, "Stretch copy")
+        val copy = repo.saved.single()
+        assertEquals("Stretch copy", copy.name)
+        assertEquals(4, copy.position)
+        assertEquals(5_000L, copy.createdAt)
+        assertEquals("copy1", copy.id)
+        assertEquals("copy2", copy.fields.single().id)
+    }
+
+    @Test
+    fun aStarterIsSavedAtTheEndWithTodaysTime() = runTest {
+        val repo = FakeRepository(summaries)
+        repo.next = 2
+        val viewModel = HomeViewModel(repo, entries, clock, IdGenerator { "x" }, settings)
+        viewModel.createFrom { Tracker(id = "w", name = "Water", fields = listOf(FieldDefinition("g", "w", "Glasses", FieldConfig.Number())), createdAt = 0) }
+        val saved = repo.saved.single()
+        assertEquals(2, saved.position)
+        assertEquals(5_000L, saved.createdAt)
+    }
+
+    @Test
     fun movingKeepsEveryoneElsesOrder() {
         val ids = listOf("a", "b", "c", "d")
         assertEquals(listOf("a", "c", "b", "d"), HomeViewModel.moved(ids, "c", -1))
@@ -91,7 +119,7 @@ class HomeViewModelTest {
     fun todayCountsTrackersLoggedToday() = runTest {
         val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"))
         val noon = today.atTime(12, 0).atZone(java.time.ZoneId.of("Asia/Kolkata")).toInstant().toEpochMilli()
-        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" })
+        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" }, settings)
         viewModel.today.test {
             assertNull(awaitItem())
             times.value = mapOf("a" to listOf(EntryTime(noon, "Asia/Kolkata")))
@@ -109,7 +137,7 @@ class HomeViewModelTest {
     fun streaksCountBackFromToday() = runTest {
         val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"))
         fun at(back: Long) = EntryTime(today.minusDays(back).atTime(12, 0).atZone(java.time.ZoneId.of("Asia/Kolkata")).toInstant().toEpochMilli(), "Asia/Kolkata")
-        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" })
+        val viewModel = HomeViewModel(FakeRepository(summaries), entries, clock, IdGenerator { "e1" }, settings)
         times.value = mapOf("run" to listOf(at(0), at(1), at(2)), "old" to listOf(at(5)))
         viewModel.streaks.test {
             var latest = awaitItem()
@@ -136,8 +164,10 @@ class HomeViewModelTest {
         override fun observeTrackers(includeArchived: Boolean): Flow<List<Tracker>> = emptyFlow()
         override fun observeTracker(id: String): Flow<Tracker?> = emptyFlow()
         override suspend fun getTracker(id: String): Tracker? = null
-        override suspend fun nextPosition() = 0
-        override suspend fun saveTracker(tracker: Tracker) = ValidationResult.Valid
+        var next = 0
+        val saved = mutableListOf<Tracker>()
+        override suspend fun nextPosition() = next
+        override suspend fun saveTracker(tracker: Tracker): ValidationResult = ValidationResult.Valid.also { saved += tracker }
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
         override suspend fun reorder(orderedIds: List<String>) = Unit
         override suspend fun deleteTracker(id: String) = Unit

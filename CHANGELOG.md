@@ -1,10 +1,32 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.6
+> **Version:** 2.0.7
 > **Last Updated:** 2026-11-15
 
 ---
+
+## [2.0.7] - 2026-11-15
+
+- **Templates**: Start a tracker from twenty ready-made templates: expenses, daily habit, mood, workout, reading, water, sleep, medication, weight, meditation, journal, blood pressure, caffeine, steps, study, savings, gratitude, symptoms, cycle and screen time. Each opens in the builder already filled in, so anything can be changed before saving.
+- **See Before You Use**: Tapping a template shows every field it holds before you use it.
+- **Find A Template**: Templates sit on shelves (health, mind and habits, activity, money and time) and a search finds them by name or description.
+- **Duplicate**: Long-press a tracker on Home to make a copy with the same fields and none of the entries.
+- **Starters On An Empty Home**: An empty Home offers a daily habit, mood and water to start with in one tap.
+- **New Tracker Gallery**: New tracker now opens a gallery with a blank tracker first and every template after it, each saying what it holds.
+- **Welcome**: The first launch shows what Eonslate is and offers a few trackers to start with. Both pages can be skipped, the welcome never shows again, and it never shows to someone who already has trackers.
+- **In Your Language and Currency**: Template names, fields and choices come from the app's text, and money uses the device's currency.
+- **Privacy Policy**: Now says exactly what is stored on the device and where, and that no permissions are asked for.
+- **Room To Read**: A tracker slate gives its description three lines, so a longer one never hides what follows.
+- **Clearer Today Line**: Screen readers hear Home's "logged today" line once instead of twice.
+- **Settings**: A settings page from the gear on Home. Choose the theme (system, light or dark), pure black for OLED screens, and Eonslate's own palettes or your wallpaper's colors (Android 12 and up). Every change applies at once.
+- **Palettes**: Pick Slate, Tide, Moss, Clay, Dusk or Graphite; each keeps the ember accent. Graphite now stays a true grey.
+- **Behavior**: Turn haptics off, or reduce motion for calmer transitions.
+- **First Day Of The Week**: Start weeks on Monday, Sunday or Saturday, or follow the device. Calendars and weekly insights follow the choice.
+- **Default Currency**: Choose the currency new money fields and templates start with, or follow the device. Fields you already made keep their own.
+- **About**: The version, the developer, the source code, releases and a way to report an issue, plus this device's details, copied with the app version in one tap for a bug report.
+- **Open Source Licenses**: Every open source part Eonslate is built with, by its authors, with the full license text to read in the app.
+- **Privacy In The App**: The privacy policy can be read inside the app, without the internet.
 
 ## [2.0.6] - 2026-11-15
 

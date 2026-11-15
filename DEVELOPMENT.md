@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.6
+> **Version:** 2.0.7
 > **Last Updated:** 2026-11-15
 
 ## Architecture
@@ -12,14 +12,17 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | :--- | :--- | :--- |
 | `:app` | Android application | Entry point, splash, navigation host, dependency injection root |
 | `:core:navigation:api` | Kotlin JVM | Type-safe `@Serializable` destinations shared by features |
+| `:core:settings` | Android library | App settings in DataStore (appearance, welcome seen), apart from tracker data |
 | `:core:tracker:domain` | Kotlin JVM | Tracker, field and entry models, exact value codecs, validators, insights (streaks, field stats, daily series), repository interfaces |
 | `:core:tracker:data` | Android library | Room database, DAOs, integrity triggers, repositories, Hilt bindings |
-| `:core:tracker:ui` | Android library | Tracker UI shared by features: the tracker slate, field type labels and icons, validation messages |
+| `:core:tracker:ui` | Android library | Tracker UI shared by features: the tracker slate, field type labels and icons, validation messages, value formatting, templates |
 | `:core:ui` | Android library | Material 3 Expressive theme, tokens and shared components |
 | `:feature:home` | Android library | Home: the grid of tracker slates, and the archived trackers page |
 | `:feature:entry` | Android library | Logging and editing an entry: typed inputs, date and time, note |
 | `:feature:trackerdetail` | Android library | A tracker's page: totals, entries by day, month calendar, delete with undo |
-| `:feature:trackereditor` | Android library | Tracker builder: details, icon, pigment, fields and the field sheet |
+| `:feature:trackereditor` | Android library | Tracker builder: the template gallery, details, icon, pigment, fields and the field sheet |
+| `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
+| `:feature:welcome` | Android library | The first run: what Eonslate is, then starter trackers |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
 
@@ -29,13 +32,33 @@ Destinations are `@Serializable` types in `:core:navigation:api`; `EonslateNavHo
 
 | Destination | Screen | Opened from |
 | :--- | :--- | :--- |
-| `Home` | Grid of tracker slates | Start |
+| `Welcome` | First-run pages | Start, until finished or skipped |
+| `Home` | Grid of tracker slates | Start after the welcome |
+| `Templates` | Blank tracker and every template | New tracker, the empty Home |
 | `Archived` | Archived trackers | Home top bar |
+| `Settings` | Appearance and behavior | Home's gear |
+| `About`, `Licenses`, `Privacy` | About Eonslate and its legal pages | Settings, then About |
 | `TrackerDetail(trackerId)` | A tracker's page | A slate on Home or Archived |
-| `TrackerEditor(trackerId?)` | Tracker builder; null creates | New tracker, the detail pencil, a slate's menu |
+| `TrackerEditor(trackerId?, templateId?)` | Tracker builder; null creates, a template fills it in | The gallery, the detail pencil, a slate's menu |
 | `LogEntry(trackerId, entryId?)` | Log or edit an entry | A slate's button, Log it, an entry's Edit |
 
 Deleting a tracker from its editor returns to Home, since its detail page no longer exists.
+
+## Settings
+
+`Appearance` in `:core:settings` stores the theme, pure black, the color source, the preset, haptics and reduce motion, each by name so a value from a newer version falls back to its default. `Appearance.toThemeOptions()` in `:app` maps it onto `:core:ui`'s `ThemeOptions`, and `MainActivity` feeds it to `EonslateTheme`, so a change recolors the whole app at once. A near-grey preset seed uses Material's neutral scheme so it stays grey.
+
+`Tracking` holds the week's first day and the currency new money fields start with; `firstDayOfWeek()` and `currencyCode()` fall back to the device. Screens that build trackers from templates pass a builder to their view model, which calls it with the currency read from settings, so a template never starts with a stale default. `InMemorySettingsRepository` stands in for DataStore in tests and previews.
+
+The Licenses page lists `OpenSource.parts`. Full license texts ship as raw resources: Apache 2.0 taken verbatim from the Android SDK's NOTICE file and the MIT body from a published MIT license. Roboto Flex shows the copyright and license notice embedded in the font itself.
+
+## First run
+
+`MainActivity` keeps the splash up until it knows where to start. `WelcomeGate.shouldShow` shows the welcome only to someone new: never once it was finished or skipped, and never when trackers already exist (after an update or a restore), in which case it is marked seen at once. The welcome's picks and page survive process death in `SavedStateHandle`. An empty Home also offers one-tap starters, for anyone who skipped it.
+
+## Templates
+
+`Templates.all` in `:core:tracker:ui` holds every ready-made tracker as a `TemplateSpec`: an id that never changes (it is stored as the tracker's `templateId`), string resources for every name and choice, an icon and a pigment. `Templates.instantiate` turns one into a `Tracker` in the device's words and currency, with fresh tracker and field ids; choice options keep the template's ids. A test checks that every template builds a valid tracker with a known icon and pigment.
 
 ## Tracker data
 
@@ -134,4 +157,6 @@ Release signing reads `signing.properties` (or `local.properties`) with `signing
 - Package root: `dev.qtremors.eonslate`, with modules under `core.*` and `feature.*`.
 - Release commits are titled `vX.Y.Z: Short Title Case Summary`.
 - User-facing text lives in each module's `strings.xml`.
+- A template's id and its choice option ids never change once shipped: trackers store them, and later imports and insights rely on them.
+- New templates go anywhere in `Templates.all`; each needs at least one required field, a known icon and a valid pigment, which `TemplatesTest` checks.
 - Compose stability for classes in pure Kotlin modules is declared in `eonslate-app/compose-stability.conf`.

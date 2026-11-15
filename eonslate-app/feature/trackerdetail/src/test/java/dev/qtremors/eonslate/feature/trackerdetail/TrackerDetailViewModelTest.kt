@@ -52,7 +52,9 @@ class TrackerDetailViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun vm() = TrackerDetailViewModel(SavedStateHandle(mapOf(TrackerDetailViewModel.ARG_TRACKER_ID to "t")), trackers, entries)
+    private val settings = dev.qtremors.eonslate.core.settings.InMemorySettingsRepository()
+
+    private fun vm() = TrackerDetailViewModel(SavedStateHandle(mapOf(TrackerDetailViewModel.ARG_TRACKER_ID to "t")), trackers, entries, settings)
 
     private fun entryOn(id: String, day: String) = Entry(
         id = id,
@@ -154,6 +156,14 @@ class TrackerDetailViewModelTest {
         assertEquals(listOf("a"), vm.state.value.allEntries!!.map { it.id })
         vm.setView(DetailView.LIST)
         assertNull(vm.state.value.allEntries)
+    }
+
+    @Test
+    fun theWeekStartsWhereSettingsSay() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        settings.trackingState.value = dev.qtremors.eonslate.core.settings.Tracking(dev.qtremors.eonslate.core.settings.WeekStart.SATURDAY)
+        assertEquals(java.time.DayOfWeek.SATURDAY, vm.state.value.firstDay)
     }
 
     @Test

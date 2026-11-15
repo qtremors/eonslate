@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
 import com.materialkolor.scheme.DynamicScheme
+import com.materialkolor.scheme.SchemeNeutral
 import com.materialkolor.scheme.SchemeTonalSpot
 
 /**
@@ -32,9 +33,19 @@ enum class ThemePreset(val seed: Color) {
     GRAPHITE(Color(0xFF4A4F55))
 }
 
-/** Builds a Material 3 scheme from one seed with Material Color Utilities' tonal spot style. */
-fun seedColorScheme(seed: Color, isDark: Boolean): ColorScheme =
-    SchemeTonalSpot(Hct.fromInt(seed.toArgb()), isDark, 0.0).toColorScheme(isDark)
+/**
+ * Builds a Material 3 scheme from one seed with Material Color Utilities' tonal spot style. A
+ * near-grey seed (Graphite) uses the neutral style instead, which keeps it grey; tonal spot would
+ * lift any seed to the same chroma and turn grey into blue.
+ */
+fun seedColorScheme(seed: Color, isDark: Boolean): ColorScheme {
+    val hct = Hct.fromInt(seed.toArgb())
+    return if (hct.chroma < NEUTRAL_CHROMA) SchemeNeutral(hct, isDark, 0.0).toColorScheme(isDark)
+    else SchemeTonalSpot(hct, isDark, 0.0).toColorScheme(isDark)
+}
+
+/** Seeds below this chroma read as grey and get the neutral scheme. */
+private const val NEUTRAL_CHROMA = 12.0
 
 /**
  * An Eonslate scheme: [seed] for primary, secondary and the tinted neutrals, and always ember for

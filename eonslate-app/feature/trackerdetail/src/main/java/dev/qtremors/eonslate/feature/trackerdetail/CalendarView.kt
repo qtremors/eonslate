@@ -44,7 +44,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
-import java.time.temporal.WeekFields
+import java.time.DayOfWeek
 import java.util.Locale
 
 /**
@@ -58,12 +58,12 @@ internal fun MonthCalendar(
     colorIndex: Int,
     selected: LocalDate?,
     today: LocalDate,
+    firstDay: DayOfWeek,
     onMonth: (YearMonth) -> Unit,
     onDay: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val locale = Locale.getDefault()
-    val firstDay = remember(locale) { WeekFields.of(locale).firstDayOfWeek }
     val grid = remember(month, firstDay) { DetailModels.monthGrid(month, firstDay) }
     val colors = MaterialTheme.colorScheme
     val dark = colors.surface.luminance() < 0.5f

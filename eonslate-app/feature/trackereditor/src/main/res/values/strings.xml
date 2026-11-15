@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="editor_title_new">New tracker</string>
+    <string name="gallery_title">New tracker</string>
+    <string name="gallery_blank">Blank</string>
+    <string name="gallery_blank_about">Start from nothing and add your own fields</string>
+    <string name="gallery_templates">Start from a template</string>
+    <string name="gallery_search">Search templates</string>
+    <string name="gallery_none_title">No template matches</string>
+    <string name="gallery_none_message">Start blank and make it your own.</string>
+    <plurals name="gallery_fields">
+        <item quantity="one">%d field</item>
+        <item quantity="other">%d fields</item>
+    </plurals>
+    <string name="gallery_use">Use this template</string>
+    <string name="gallery_note">Everything in a template can be changed before you save, and later too.</string>
     <string name="editor_title_edit">Edit tracker</string>
     <string name="editor_save">Save</string>
     <string name="editor_preview_name">Your tracker</string>

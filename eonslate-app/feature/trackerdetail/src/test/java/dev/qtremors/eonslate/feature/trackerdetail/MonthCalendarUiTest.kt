@@ -39,6 +39,7 @@ class MonthCalendarUiTest {
                     colorIndex = 3,
                     selected = selected,
                     today = today,
+                    firstDay = java.time.DayOfWeek.SUNDAY,
                     onMonth = { month = it },
                     onDay = { selected = if (selected == it) null else it },
                 )

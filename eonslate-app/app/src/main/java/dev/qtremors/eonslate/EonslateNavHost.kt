@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -8,22 +9,56 @@ import dev.qtremors.eonslate.core.navigation.api.Destination
 import dev.qtremors.eonslate.feature.entry.LogEntryScreen
 import dev.qtremors.eonslate.feature.home.ArchivedScreen
 import dev.qtremors.eonslate.feature.home.HomeScreen
+import dev.qtremors.eonslate.feature.settings.AboutScreen
+import dev.qtremors.eonslate.feature.settings.LicensesScreen
+import dev.qtremors.eonslate.feature.settings.PrivacyScreen
+import dev.qtremors.eonslate.feature.settings.SettingsScreen
 import dev.qtremors.eonslate.feature.trackerdetail.TrackerDetailScreen
+import dev.qtremors.eonslate.feature.trackereditor.TemplateGalleryScreen
 import dev.qtremors.eonslate.feature.trackereditor.TrackerEditorScreen
+import dev.qtremors.eonslate.feature.welcome.WelcomeScreen
 
+/**
+ * The app's screens. [startWithWelcome] is read once: finishing the welcome moves on to Home,
+ * and the welcome never shows again.
+ */
 @Composable
-fun EonslateNavHost() {
+fun EonslateNavHost(startWithWelcome: Boolean) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = Destination.Home) {
+    val start: Destination = remember { if (startWithWelcome) Destination.Welcome else Destination.Home }
+    NavHost(navController = navController, startDestination = start) {
+        composable<Destination.Welcome> {
+            WelcomeScreen(
+                onDone = {
+                    navController.navigate(Destination.Home) {
+                        popUpTo<Destination.Welcome> { inclusive = true }
+                    }
+                },
+            )
+        }
         composable<Destination.Home> {
             HomeScreen(
-                onNewTracker = { navController.navigate(Destination.TrackerEditor()) },
+                onNewTracker = { navController.navigate(Destination.Templates) },
                 onOpenTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onArchived = { navController.navigate(Destination.Archived) },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
+                onSettings = { navController.navigate(Destination.Settings) },
             )
         }
+        composable<Destination.Settings> {
+            SettingsScreen(onBack = { navController.popBackStack() }, onAbout = { navController.navigate(Destination.About) })
+        }
+        composable<Destination.About> {
+            AboutScreen(
+                versionName = BuildConfig.VERSION_NAME,
+                onBack = { navController.popBackStack() },
+                onLicenses = { navController.navigate(Destination.Licenses) },
+                onPrivacy = { navController.navigate(Destination.Privacy) },
+            )
+        }
+        composable<Destination.Licenses> { LicensesScreen(onBack = { navController.popBackStack() }) }
+        composable<Destination.Privacy> { PrivacyScreen(onBack = { navController.popBackStack() }) }
         composable<Destination.Archived> {
             ArchivedScreen(
                 onBack = { navController.popBackStack() },
@@ -40,6 +75,17 @@ fun EonslateNavHost() {
         }
         composable<Destination.LogEntry> {
             LogEntryScreen(onDone = { navController.popBackStack() })
+        }
+        composable<Destination.Templates> {
+            TemplateGalleryScreen(
+                onPick = { templateId ->
+                    // The gallery steps aside, so leaving the builder returns to where it began.
+                    navController.navigate(Destination.TrackerEditor(templateId = templateId)) {
+                        popUpTo<Destination.Templates> { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
         }
         composable<Destination.TrackerEditor> {
             TrackerEditorScreen(

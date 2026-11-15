@@ -24,7 +24,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dev.qtremors.eonslate.core.settings.SettingsRepository
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.WeekFields
+import java.util.Locale
 import java.time.YearMonth
 import javax.inject.Inject
 
@@ -43,6 +47,8 @@ data class DetailState(
     val dayEntries: List<Entry>? = null,
     /** Every entry with its values, read only while insights are shown; null until then. */
     val allEntries: List<Entry>? = null,
+    /** The day weeks start on, from settings or the device's locale. */
+    val firstDay: DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek,
     val view: DetailView = DetailView.LIST,
     val month: YearMonth = YearMonth.now(),
     /** A day picked on the calendar; the list below it shows only that day. */
@@ -67,6 +73,7 @@ class TrackerDetailViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val trackers: TrackerRepository,
     private val entries: EntryRepository,
+    settings: SettingsRepository,
 ) : ViewModel() {
     private val trackerId: String = checkNotNull(savedState[ARG_TRACKER_ID]) { "TrackerDetail needs a tracker" }
 
@@ -105,7 +112,8 @@ class TrackerDetailViewModel @Inject constructor(
         if (view == DetailView.INSIGHTS) entries.observeEntries(trackerId) else flowOf(null)
     }
 
-    private val extra: Flow<Pair<List<Entry>?, List<Entry>?>> = combine(dayEntries, insightEntries) { day, all -> day to all }
+    private val extra: Flow<Triple<List<Entry>?, List<Entry>?, DayOfWeek>> =
+        combine(dayEntries, insightEntries, settings.tracking) { day, all, tracking -> Triple(day, all, tracking.firstDayOfWeek()) }
 
     val state: StateFlow<DetailState> = combine(
         trackers.observeTracker(trackerId),
@@ -113,7 +121,7 @@ class TrackerDetailViewModel @Inject constructor(
         recent,
         extra,
         ui,
-    ) { tracker, times, list, (day, all), u ->
+    ) { tracker, times, list, (day, all, firstDay), u ->
         if (tracker == null) DetailState(loading = false, missing = true)
         else DetailState(
             loading = false,
@@ -122,6 +130,7 @@ class TrackerDetailViewModel @Inject constructor(
             times = times,
             dayEntries = day,
             allEntries = all,
+            firstDay = firstDay,
             view = u.view,
             month = u.month,
             selectedDay = u.day,
