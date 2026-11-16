@@ -16,19 +16,19 @@ import androidx.compose.ui.platform.LocalContext
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-/** Where accent colors come from. Eonslate's own preset is the default; wallpaper is opt-in (Android 12+). */
+/** Where accent colors come from. Eonslate's Mono preset is the default; wallpaper is opt-in (Android 12+). */
 enum class AccentSource { WALLPAPER, PRESET, CUSTOM }
 
 /**
  * Everything the theme needs, kept in the app's settings store. Defaults:
- * system light/dark, the Slate preset, haptics on, full motion.
+ * system light/dark, pure black in the dark, the Mono preset, haptics on, full motion.
  */
 @Immutable
 data class ThemeOptions(
     val mode: ThemeMode = ThemeMode.SYSTEM,
-    val oled: Boolean = false,
+    val oled: Boolean = true,
     val accentSource: AccentSource = AccentSource.PRESET,
-    val preset: ThemePreset = ThemePreset.SLATE,
+    val preset: ThemePreset = ThemePreset.MONO,
     val customAccent: Color = BrandSeed,
     val hapticsEnabled: Boolean = true,
     val reduceMotion: Boolean = false,
@@ -61,12 +61,15 @@ fun EonslateTheme(
             options.accentSource == AccentSource.WALLPAPER && wallpaperAvailable ->
                 if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             options.accentSource == AccentSource.CUSTOM -> eonslateColorScheme(options.customAccent, dark)
-            else -> eonslateColorScheme(options.preset.seed, dark)
+            else -> presetColorScheme(options.preset, dark)
         }
         if (dark && options.oled) base.toOled() else base
     }
 
+    val signals = remember(scheme.primary, dark) { signalsFor(scheme.primary, dark) }
+
     CompositionLocalProvider(
+        LocalSignals provides signals,
         LocalReduceMotion provides options.reduceMotion,
         LocalHapticsEnabled provides options.hapticsEnabled,
         LocalSpacing provides Spacing()

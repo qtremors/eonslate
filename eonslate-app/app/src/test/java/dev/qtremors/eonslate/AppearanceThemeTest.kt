@@ -15,7 +15,8 @@ class AppearanceThemeTest {
         val options = Appearance().toThemeOptions()
         assertEquals(ThemeMode.SYSTEM, options.mode)
         assertEquals(AccentSource.PRESET, options.accentSource)
-        assertEquals(ThemePreset.SLATE, options.preset)
+        assertEquals(ThemePreset.MONO, options.preset)
+        assertEquals(true, options.oled)
         assertEquals(true, options.hapticsEnabled)
     }
 
@@ -38,7 +39,7 @@ class AppearanceThemeTest {
     }
 
     @Test
-    fun anUnknownPresetFallsBackToSlate() {
-        assertEquals(ThemePreset.SLATE, Appearance(preset = "AURORA").toThemeOptions().preset)
+    fun anUnknownPresetFallsBackToMono() {
+        assertEquals(ThemePreset.MONO, Appearance(preset = "AURORA").toThemeOptions().preset)
     }
 }

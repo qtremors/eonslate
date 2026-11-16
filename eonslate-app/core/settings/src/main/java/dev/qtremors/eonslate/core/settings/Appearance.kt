@@ -10,18 +10,18 @@ enum class AccentChoice { PRESET, WALLPAPER }
  * How the app looks and feels. Stored by name, so reordering enums never changes a saved choice;
  * a name this version does not know falls back to the default.
  *
- * @property preset the name of a theme preset in `:core:ui`, such as "SLATE".
+ * @property preset the name of a theme preset in `:core:ui`, such as "MONO" (the default) or "SLATE".
  */
 data class Appearance(
     val theme: ThemeChoice = ThemeChoice.SYSTEM,
-    val pureBlack: Boolean = false,
+    val pureBlack: Boolean = true,
     val accent: AccentChoice = AccentChoice.PRESET,
     val preset: String = DEFAULT_PRESET,
     val haptics: Boolean = true,
     val reduceMotion: Boolean = false,
 ) {
     companion object {
-        const val DEFAULT_PRESET = "SLATE"
+        const val DEFAULT_PRESET = "MONO"
     }
 }
 

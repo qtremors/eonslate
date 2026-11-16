@@ -116,13 +116,6 @@ fun TemplateGalleryScreen(
                 )
                 }
             }
-            item(key = "note", span = { GridItemSpan(maxLineSpan) }) {
-                Text(
-                    text = stringResource(R.string.gallery_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }
@@ -158,10 +151,6 @@ private fun TemplatePreview(spec: TemplateSpec, onUse: () -> Unit, onDismiss: ()
             Button(
                 shapes = ButtonDefaults.shapes(),
                 onClick = onUse,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                ),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.gallery_use)) }
         }

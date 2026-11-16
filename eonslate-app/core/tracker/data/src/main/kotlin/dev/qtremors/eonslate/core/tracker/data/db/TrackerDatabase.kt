@@ -25,6 +25,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
 abstract class TrackerDatabase : RoomDatabase() {
     abstract fun trackerDao(): TrackerDao
     abstract fun entryDao(): EntryDao
+    abstract fun backupDao(): BackupDao
 
     companion object {
         const val VERSION = 1

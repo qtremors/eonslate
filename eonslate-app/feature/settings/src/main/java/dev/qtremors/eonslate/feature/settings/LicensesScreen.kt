@@ -41,14 +41,6 @@ fun LicensesScreen(onBack: () -> Unit, modifier: Modifier = Modifier, parts: Lis
     parts.firstOrNull { it.name == openName }?.let { part -> LicenseSheet(part, onDismiss = { openName = null }) }
     EonslateScaffold(title = stringResource(R.string.licenses_title), onBack = onBack, modifier = modifier) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            item(key = "intro") {
-                Text(
-                    stringResource(R.string.licenses_intro),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
             item(key = "header") { SectionHeader(stringResource(R.string.licenses_section)) }
             itemsIndexed(parts, key = { _, part -> part.name }) { index, part ->
                 ConnectedItem(index = index, count = parts.size) {

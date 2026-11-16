@@ -66,7 +66,7 @@ internal fun EntrySheet(
                     Text(
                         stringResource(R.string.detail_sheet_zone, zoneNote),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = colors.tertiary,
+                        color = colors.primary,
                     )
                 }
             }
@@ -109,7 +109,6 @@ internal fun EntrySheet(
                 )
                 ConnectedRow(
                     title = stringResource(R.string.detail_entry_delete),
-                    supporting = stringResource(R.string.detail_sheet_delete_hint),
                     leading = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = colors.error) },
                     onClick = onDelete,
                 )

@@ -62,7 +62,8 @@ class ArchivedTest {
         compose.setContent {
             EonslateTheme { ArchivedContent(trackers = listOf(old), onBack = { back++ }, onOpenTracker = { opened += it }) }
         }
-        compose.onNodeWithText("Archived. Open it to bring it back.").assertIsDisplayed()
+        // The page title and the row both say "Archived".
+        assertEquals(2, compose.onAllNodes(androidx.compose.ui.test.hasText("Archived")).fetchSemanticsNodes().size)
         compose.onNodeWithText("Old habit").performClick()
         compose.onNodeWithContentDescription("Back").performClick()
         assertEquals(listOf("o"), opened)

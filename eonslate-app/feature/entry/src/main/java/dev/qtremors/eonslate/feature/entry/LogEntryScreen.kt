@@ -48,7 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.ui.message
 import dev.qtremors.eonslate.core.ui.components.ConfirmDialog
-import dev.qtremors.eonslate.core.ui.components.EmberActionButton
+import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
 import dev.qtremors.eonslate.core.ui.components.FormField
@@ -94,7 +94,7 @@ fun LogEntryScreen(
         },
         floatingActionButton = {
             if (draft != null) {
-                EmberActionButton(
+                MainActionButton(
                     text = stringResource(if (draft.isNew) R.string.log_save else R.string.log_update),
                     icon = Icons.Rounded.Check,
                     onClick = viewModel::save,
@@ -134,10 +134,6 @@ fun LogEntryScreen(
                         FilledTonalButton(
                             shapes = ButtonDefaults.shapes(),
                             onClick = viewModel::useLastValues,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                            ),
                         ) {
                             Icon(Icons.Rounded.History, contentDescription = null)
                             Text(stringResource(R.string.log_same_as_last), modifier = Modifier.padding(start = 8.dp))

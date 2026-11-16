@@ -147,7 +147,7 @@ private fun IntroPage(onNext: () -> Unit, onSkip: () -> Unit) {
         Button(
             shapes = ButtonDefaults.shapes(),
             onClick = onNext,
-            colors = ButtonDefaults.buttonColors(containerColor = colors.tertiaryContainer, contentColor = colors.onTertiaryContainer),
+            colors = ButtonDefaults.buttonColors(),
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         ) { Text(stringResource(R.string.welcome_next)) }
         TextButton(shapes = ButtonDefaults.shapes(), onClick = onSkip) { Text(stringResource(R.string.welcome_skip)) }
@@ -217,7 +217,7 @@ private fun StartersPage(
                 val isPicked = spec.id in picked
                 Box(
                     Modifier
-                        .then(if (isPicked) Modifier.border(3.dp, colors.tertiary, SlateCardShape) else Modifier)
+                        .then(if (isPicked) Modifier.border(3.dp, colors.primary, SlateCardShape) else Modifier)
                         .semantics {
                             selected = isPicked
                             role = Role.Checkbox
@@ -233,10 +233,10 @@ private fun StartersPage(
                         action = {
                             if (isPicked) {
                                 Box(
-                                    Modifier.size(32.dp).clip(SlateTileShape).background(colors.tertiaryContainer),
+                                    Modifier.size(32.dp).clip(SlateTileShape).background(colors.primary),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onTertiaryContainer)
+                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onPrimary)
                                 }
                             }
                         },
@@ -249,7 +249,7 @@ private fun StartersPage(
                 shapes = ButtonDefaults.shapes(),
                 onClick = onStart,
                 enabled = !saving,
-                colors = ButtonDefaults.buttonColors(containerColor = colors.tertiaryContainer, contentColor = colors.onTertiaryContainer),
+                colors = ButtonDefaults.buttonColors(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(

@@ -56,12 +56,12 @@ class SettingsUiTest {
         show(Appearance())
         compose.onNodeWithText("Dark").performClick()
         compose.onNodeWithText("Pure black").performClick()
-        compose.onNodeWithText("Wallpaper").performClick()
+        compose.onNodeWithText("Wallpaper").performScrollTo().performClick()
         compose.onNodeWithText("Tide").performScrollTo().performClick()
         compose.onNodeWithText("Haptics").performScrollTo().performClick()
         compose.onNodeWithText("Reduce motion").performScrollTo().performClick()
         assertEquals(
-            listOf("theme:DARK", "black:true", "accent:WALLPAPER", "preset:TIDE", "haptics:false", "motion:true"),
+            listOf("theme:DARK", "black:false", "accent:WALLPAPER", "preset:TIDE", "haptics:false", "motion:true"),
             calls,
         )
     }
@@ -83,7 +83,7 @@ class SettingsUiTest {
     @Test
     fun pureBlackWaitsForADarkTheme() {
         show(Appearance(theme = ThemeChoice.LIGHT))
-        compose.onNodeWithText("Only for the dark theme").assertIsDisplayed()
+        compose.onNodeWithText("Dark theme only").assertIsDisplayed()
         compose.onNodeWithText("Pure black").assertIsNotEnabled()
     }
 
@@ -91,8 +91,10 @@ class SettingsUiTest {
     fun wallpaperColorsNeedAndroidTwelve() {
         show(Appearance(), wallpaper = false)
         assertEquals(0, compose.onAllNodes(androidx.compose.ui.test.hasText("Wallpaper")).fetchSemanticsNodes().size)
-        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Version, source code, licenses and privacy"))
-        compose.onNodeWithText("Version, source code, licenses and privacy").performClick()
+        // The section header says "About" too; the row is the one that can be pressed.
+        val aboutRow = androidx.compose.ui.test.hasText("About") and androidx.compose.ui.test.hasClickAction()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(aboutRow)
+        compose.onNode(aboutRow).performClick()
         assertEquals(1, about)
     }
 }

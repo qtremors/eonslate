@@ -72,7 +72,7 @@ internal fun FieldInputCard(
                     modifier = Modifier.padding(start = 12.dp).weight(1f),
                 )
                 if (field.required) {
-                    Text(stringResource(R.string.log_required), style = MaterialTheme.typography.labelMedium, color = colors.tertiary)
+                    Text(stringResource(R.string.log_required), style = MaterialTheme.typography.labelMedium, color = colors.primary)
                 }
                 val clearable = input != null && when (field.config) {
                     is FieldConfig.Rating, FieldConfig.YesNo, is FieldConfig.SingleChoice,

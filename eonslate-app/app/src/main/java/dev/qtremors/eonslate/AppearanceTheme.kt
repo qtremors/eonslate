@@ -10,7 +10,7 @@ import dev.qtremors.eonslate.core.ui.theme.ThemePreset
 
 /**
  * The stored appearance as the theme's options. The settings store knows nothing of the theme,
- * so this mapping lives where both meet; a preset name this version lacks falls back to Slate.
+ * so this mapping lives where both meet; a preset name this version lacks falls back to Mono.
  */
 fun Appearance.toThemeOptions(): ThemeOptions = ThemeOptions(
     mode = when (theme) {
@@ -23,7 +23,7 @@ fun Appearance.toThemeOptions(): ThemeOptions = ThemeOptions(
         AccentChoice.PRESET -> AccentSource.PRESET
         AccentChoice.WALLPAPER -> AccentSource.WALLPAPER
     },
-    preset = ThemePreset.entries.firstOrNull { it.name == preset } ?: ThemePreset.SLATE,
+    preset = ThemePreset.entries.firstOrNull { it.name == preset } ?: ThemePreset.MONO,
     hapticsEnabled = haptics,
     reduceMotion = reduceMotion,
 )

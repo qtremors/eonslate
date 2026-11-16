@@ -11,6 +11,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import dev.qtremors.eonslate.core.ui.R
 import dev.qtremors.eonslate.core.ui.theme.FieldShape
 
 /**
@@ -34,9 +47,11 @@ fun FormField(
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
     imeAction: ImeAction = if (singleLine) ImeAction.Next else ImeAction.Default,
     enabled: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: (@Composable () -> Unit)? = null
 ) {
     OutlinedTextField(
+        visualTransformation = visualTransformation,
         value = value,
         onValueChange = { next -> if (maxLength == null || next.length <= maxLength) onValueChange(next) },
         label = { Text(label) },
@@ -61,5 +76,42 @@ fun FormField(
             errorContainerColor = MaterialTheme.colorScheme.surfaceBright
         ),
         modifier = modifier.fillMaxWidth()
+    )
+}
+
+/**
+ * A [FormField] for a password: hidden as dots until the eye is tapped, with a password keyboard
+ * that does not capitalise or learn what is typed.
+ */
+@Composable
+fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    error: String? = null,
+    imeAction: ImeAction = ImeAction.Next,
+) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+    FormField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier,
+        supporting = supporting,
+        error = error,
+        keyboardType = KeyboardType.Password,
+        capitalization = KeyboardCapitalization.None,
+        imeAction = imeAction,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            IconButton(onClick = { visible = !visible }) {
+                Icon(
+                    if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                    contentDescription = stringResource(if (visible) R.string.action_hide_password else R.string.action_show_password),
+                )
+            }
+        },
     )
 }

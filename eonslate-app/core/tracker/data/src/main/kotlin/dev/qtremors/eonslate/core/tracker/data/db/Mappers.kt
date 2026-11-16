@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
+import dev.qtremors.eonslate.core.tracker.domain.backup.storedAsLong
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
@@ -15,11 +16,8 @@ import kotlinx.serialization.json.Json
 internal object ValueColumns {
     private val optionIds = ListSerializer(String.serializer())
 
-    fun usesLong(type: FieldType): Boolean = when (type) {
-        FieldType.NUMBER, FieldType.MONEY, FieldType.DURATION, FieldType.RATING,
-        FieldType.YES_NO, FieldType.DATE -> true
-        FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE, FieldType.TEXT -> false
-    }
+    /** One rule for the database, its triggers and backup checks: [storedAsLong]. */
+    fun usesLong(type: FieldType): Boolean = type.storedAsLong
 
     fun toEntity(entryId: String, fieldId: String, value: FieldValue): EntryValueEntity {
         val long: Long? = when (value) {

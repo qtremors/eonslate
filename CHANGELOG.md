@@ -1,10 +1,18 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.7
-> **Last Updated:** 2026-11-15
+> **Version:** 2.0.8
+> **Last Updated:** 2026-11-16
 
 ---
+
+## [2.0.8] - 2026-11-16
+
+- **Backup and restore**: Back up every tracker and entry to one file, optionally encrypted (AES-256-GCM). Restores replace everything in one step and can be undone.
+- **Mono**: Monochrome by default, white on true black.
+- **Accents**: Wallpaper, Mono and eight accents in one picker, adding Ochre and Rose.
+- **Color**: Color only where it means something: tracker pigments, ember streaks, warnings and errors.
+- **Copy**: Shorter text across the app.
 
 ## [2.0.7] - 2026-11-15
 

@@ -1,8 +1,8 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.7
-> **Last Updated:** 2026-11-15
+> **Version:** 2.0.8
+> **Last Updated:** 2026-11-16
 
 ## Architecture
 
@@ -22,6 +22,7 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:feature:trackerdetail` | Android library | A tracker's page: totals, entries by day, month calendar, delete with undo |
 | `:feature:trackereditor` | Android library | Tracker builder: the template gallery, details, icon, pigment, fields and the field sheet |
 | `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
+| `:feature:backup` | Android library | Creating, restoring and undoing backups |
 | `:feature:welcome` | Android library | The first run: what Eonslate is, then starter trackers |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
@@ -97,24 +98,33 @@ A tracker owns an ordered list of fields; each entry fills some of them. Values 
 
 Versions live in `eonslate-app/gradle/libs.versions.toml`.
 
+## Backups
+
+- `BackupSnapshot` (`:core:tracker:domain`) holds every table row as stored, so a restore is exact. Settings are not included.
+- `BackupArchive`: `EONSLATE` magic, format version, flags, then gzipped JSON. Encrypted files add salt, PBKDF2-HMAC-SHA256 iterations and a nonce, and seal the body with AES-256-GCM using the header as associated data. The iteration count is stored per file (default 210,000; Android's PBKDF2 is slow).
+- `BackupCheck` repeats the trigger rules before anything is touched. `RoomBackupRepository.replaceAll` clears and inserts in one transaction, with triggers on.
+- `BackupManager` keeps the current data as `files/backups/before-restore.eonslate` before each restore; it replaces the previous point only after a successful restore. Undo restores it and deletes it.
+- A schema change must also upgrade older snapshots before restoring them.
+
 ## Identity
 
-Eonslate has its own look, "Slate and Ember". It uses Material 3 Expressive for behavior and components, but never looks like a copy of another app.
+Monochrome first; color only where it means something. Material 3 Expressive, never a copy of another app.
 
 | Element | Rule |
 | :--- | :--- |
-| Color | `BrandSeed` (slate blue) drives primary, secondary and neutrals. `EmberSeed` (amber) always fills tertiary, through `eonslateColorScheme`. The Slate preset is the default; wallpaper colors are opt-in. |
+| Color | Default `ThemePreset.MONO` with pure black (`monoColorScheme`, hand-built neutrals). Alternatives: wallpaper (Android 12+) or a seeded preset via `eonslateColorScheme`. Presets are stored by name. |
+| Context | Pigments for trackers, ember (tertiary) for streaks and records, `LocalSignals` for positive and warning (harmonized unless Mono), error roles for errors. |
 | Pigments | `BadgePalette` holds seventeen mineral pigments (Slate, Ember, Moss, Tide...). Tiles and glyphs come from fixed HCT tones, so contrast is the same for every hue. A tracker stores its pigment by index, so new pigments go at the end. |
 | Type | `EonslateDisplay` is Roboto Flex at the narrow end of its width axis, set heavy, for titles, headlines and big values. Body text stays at normal width. |
 | Shape | Tracker icons sit on `SlateTileShape` (a square with 30% corners), never a circle. Tracker cards use `SlateCardShape`. Empty states use the slanted slate. |
-| Accent | Ember marks the main action (Save, New tracker) and what is alive, such as progress and streaks. |
+| Accent | Primary: `MainActionButton`, quick log, today's progress, selection. |
 | Signature | `TrackerSlate`: a pigment-tinted card with the icon tile, the name in the display face and one line about what was logged. |
 
 ## Charts
 
 `BarChart`, `LineChart`, `Meter`, `ChartAxis` and `ChartTicks` in `:core:ui` draw on a Compose `Canvas`, with no chart library. Every chart follows the same rules:
 
-- One series per chart in the tracker's pigment (`BadgePalette.mark`), so no legend; the card title names it. Today and records use ember.
+- One series per chart in the tracker's pigment (`BadgePalette.mark`), so no legend; the card title names it. The picked mark uses the accent; records use ember.
 - Thin marks: bars at most 28 dp wide with 2 dp gaps and 4 dp rounded data ends on a zero baseline; a 2 dp line with 8 dp markers ringed in the surface color. A hairline baseline, no grid.
 - Direct labels are selective: a bar chart names only its peak (`peakLabel`, with headroom reserved above the bar) and a line only its latest value (`endLabel`). Everything else is read by tapping or in the table.
 - A tap picks a mark and the card's caption reads it. Every chart card has a table view, and each chart has a spoken summary.
@@ -124,7 +134,7 @@ Insights are computed in `:core:tracker:domain` (`Streaks`, `FieldInsights`, and
 
 ## Design system
 
-All screens use `:core:ui`. It provides `EonslateTheme` (system, light, dark and pure black; wallpaper, preset or custom colors), shape, spacing and type tokens, `EonslateScaffold` with the large flexible top bar, connected rows and choices, `ExpressiveSwitch`, `EonslateMenu`, `EonslateBottomSheet`, `InlineSearchField`, `FormField` (always the 16 dp `FieldShape`), `ConfirmDialog`, `EmberActionButton` (the one main action per page, labelled for screen readers), `LoadingState`, `EmptyState` and `rememberAppHaptics()`. `EonslateScaffold` takes `onBack` for pages below the top level and a `floatingActionButton`. A screen that needs something new adds it to `:core:ui` first.
+All screens use `:core:ui`. It provides `EonslateTheme` (system, light, dark and pure black; wallpaper, preset or custom colors), shape, spacing and type tokens, `EonslateScaffold` with the large flexible top bar, connected rows and choices, `ExpressiveSwitch`, `EonslateMenu`, `EonslateBottomSheet`, `InlineSearchField`, `FormField` (always the 16 dp `FieldShape`), `ConfirmDialog`, `MainActionButton` (the one main action per page, in the accent, labelled for screen readers), `LoadingState`, `EmptyState` and `rememberAppHaptics()`. `EonslateScaffold` takes `onBack` for pages below the top level and a `floatingActionButton`. A screen that needs something new adds it to `:core:ui` first.
 
 Every module with Compose UI opts in to `ExperimentalMaterial3Api` and `ExperimentalMaterial3ExpressiveApi`.
 

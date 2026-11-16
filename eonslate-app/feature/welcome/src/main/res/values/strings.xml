@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="welcome_title">Eonslate</string>
-    <string name="welcome_subtitle">Track almost anything. It all stays on this phone.</string>
+    <string name="welcome_subtitle">Track almost anything, offline.</string>
     <string name="welcome_point_any_title">Your own trackers</string>
-    <string name="welcome_point_any">Money, habits, mood, workouts or anything else, with the fields you choose.</string>
+    <string name="welcome_point_any">Money, habits, mood, workouts, anything, with your own fields.</string>
     <string name="welcome_point_see_title">See your patterns</string>
-    <string name="welcome_point_see">Streaks, totals, averages and charts for every tracker.</string>
+    <string name="welcome_point_see">Streaks, totals, averages and charts.</string>
     <string name="welcome_point_private_title">Private by design</string>
-    <string name="welcome_point_private">No accounts, no ads, no internet access. Nothing leaves your device.</string>
+    <string name="welcome_point_private">No accounts, ads or internet.</string>
     <string name="welcome_next">Get started</string>
     <string name="welcome_skip">Skip</string>
     <string name="welcome_starters_title">Pick a few to start</string>
-    <string name="welcome_starters_subtitle">You can change them, or make your own, at any time.</string>
+    <string name="welcome_starters_subtitle">Change them anytime.</string>
     <string name="welcome_start_empty">Start with nothing</string>
     <plurals name="welcome_start_with">
         <item quantity="one">Start with %d tracker</item>

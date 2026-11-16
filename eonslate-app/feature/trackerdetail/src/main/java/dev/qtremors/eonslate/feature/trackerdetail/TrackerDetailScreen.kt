@@ -51,7 +51,7 @@ import dev.qtremors.eonslate.core.tracker.ui.rememberValueWords
 import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
 import dev.qtremors.eonslate.core.ui.components.ConnectedItem
 import dev.qtremors.eonslate.core.ui.components.ConnectedRow
-import dev.qtremors.eonslate.core.ui.components.EmberActionButton
+import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
@@ -106,7 +106,7 @@ fun TrackerDetailScreen(
         },
         floatingActionButton = {
             if (tracker != null && !tracker.archived) {
-                EmberActionButton(text = stringResource(R.string.detail_log), icon = Icons.Rounded.Add, onClick = { onLog(tracker.id) })
+                MainActionButton(text = stringResource(R.string.detail_log), icon = Icons.Rounded.Add, onClick = { onLog(tracker.id) })
             }
         },
     ) { padding ->
@@ -164,13 +164,13 @@ private fun DetailContent(
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = padding) {
         if (tracker.archived) {
             item(key = "archived") {
-                Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Icon(Icons.Rounded.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Text(
                             stringResource(R.string.detail_archived),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                         )
                         FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { viewModel.setArchived(false) }) {

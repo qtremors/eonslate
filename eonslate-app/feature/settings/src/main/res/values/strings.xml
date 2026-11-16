@@ -7,43 +7,39 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_pure_black">Pure black</string>
-    <string name="settings_pure_black_hint">True black backgrounds in the dark theme, for OLED screens</string>
-    <string name="settings_pure_black_off">Only for the dark theme</string>
-    <string name="settings_colors">Colors</string>
-    <string name="settings_colors_eonslate">Eonslate</string>
+    <string name="settings_pure_black_off">Dark theme only</string>
     <string name="settings_colors_wallpaper">Wallpaper</string>
-    <string name="settings_colors_preset_hint">One of Eonslate\'s own palettes, below</string>
-    <string name="settings_colors_wallpaper_hint">Taken from your wallpaper; the palette below applies when you switch back</string>
-    <string name="settings_section_palette">Palette</string>
+    <string name="settings_section_accent">Accent</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_backup">Backup and restore</string>
+    <string name="preset_mono">Mono</string>
     <string name="preset_slate">Slate</string>
     <string name="preset_tide">Tide</string>
     <string name="preset_moss">Moss</string>
+    <string name="preset_ochre">Ochre</string>
     <string name="preset_clay">Clay</string>
+    <string name="preset_rose">Rose</string>
     <string name="preset_dusk">Dusk</string>
     <string name="preset_graphite">Graphite</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_haptics">Haptics</string>
-    <string name="settings_haptics_hint">Small vibrations when you tap, log and switch</string>
     <string name="settings_reduce_motion">Reduce motion</string>
-    <string name="settings_reduce_motion_hint">Calmer transitions with less movement</string>
     <string name="settings_section_tracking">Tracking</string>
     <string name="settings_week_start">First day of the week</string>
-    <string name="settings_week_start_hint">For calendars and weekly insights</string>
     <string name="settings_week_auto">Auto</string>
     <string name="settings_week_monday">Mon</string>
     <string name="settings_week_sunday">Sun</string>
     <string name="settings_week_saturday">Sat</string>
     <string name="settings_currency">Currency</string>
     <!-- %1$s is a currency code such as EUR. -->
-    <string name="settings_currency_chosen">%1$s for new money fields</string>
-    <string name="settings_currency_device">%1$s, the device\'s currency, for new money fields</string>
-    <string name="settings_currency_sheet_hint">New money fields and templates start with this currency. Fields you already made keep theirs.</string>
+    <string name="settings_currency_chosen">%1$s</string>
+    <string name="settings_currency_device">%1$s (device)</string>
+    <string name="settings_currency_sheet_hint">For new money fields. Existing fields keep theirs.</string>
     <string name="settings_currency_code">Currency code</string>
     <string name="settings_currency_unknown">Not a currency this device knows</string>
     <string name="settings_currency_use_device">Use the device\'s</string>
     <string name="settings_currency_save">Save</string>
     <string name="settings_section_about">About</string>
-    <string name="settings_about_hint">Version, source code, licenses and privacy</string>
 
     <string name="about_title">About</string>
     <string name="about_app_name">Eonslate</string>
@@ -54,22 +50,19 @@
     <string name="about_developer">Developer</string>
     <string name="about_developer_name">Tremors</string>
     <string name="about_source">Source code</string>
-    <string name="about_source_hint">On GitHub</string>
     <string name="about_releases">Releases</string>
     <string name="about_issues">Report an issue</string>
     <string name="about_section_legal">Legal</string>
     <string name="about_privacy_hint">Nothing leaves your device</string>
     <string name="about_license">License</string>
     <string name="about_license_name">Tremors Source License 2.0</string>
-    <string name="about_licenses_hint">The open source parts Eonslate is built with</string>
     <string name="about_section_device">This device</string>
     <!-- Maker, model, Android version and API level. -->
     <string name="about_device">%1$s %2$s · Android %3$s (API %4$d)</string>
-    <string name="about_device_hint">Tap to copy it with the app version, for a bug report</string>
+    <string name="about_device_hint">Tap to copy</string>
     <string name="about_copied">Copied</string>
 
     <string name="licenses_title">Open source licenses</string>
-    <string name="licenses_intro">Eonslate is built with these open source projects. Thank you to everyone who makes them.</string>
     <string name="licenses_section">Built with</string>
     <string name="licenses_project">Open the project</string>
 

@@ -11,24 +11,27 @@ import com.materialkolor.scheme.SchemeNeutral
 import com.materialkolor.scheme.SchemeTonalSpot
 
 /**
- * Eonslate's own colors, "Slate and Ember": a deep slate blue carries the app, and a warm ember
- * amber marks what is alive (today's progress, a streak, the main action's accent). These are the
- * default; wallpaper colors are a choice in Settings, never the out-of-the-box look.
+ * The seed of the Slate palette, one of the accents a person can pick instead of the default
+ * monochrome look (see [monoColorScheme]).
  */
 val BrandSeed = Color(0xFF34557A)
 
-/** The warm accent every Eonslate scheme uses for its tertiary roles. */
+/** Ember: the contextual warm color every scheme uses for its tertiary roles (streaks, records). */
 val EmberSeed = Color(0xFFE8873A)
 
 /**
- * Named seed colors, each a mineral or natural material, so every preset stays in the same family
- * as the brand. Each produces a full tonal scheme in light, dark and OLED.
+ * The accents a person can pick. Mono, the default, is black and white; the rest are named seed
+ * colors, each a mineral or natural material, producing a full tonal scheme in light, dark and
+ * OLED. The order is shown in Settings; presets are stored by name, never by position.
  */
 enum class ThemePreset(val seed: Color) {
+    MONO(Color.White),
     SLATE(BrandSeed),
     TIDE(Color(0xFF1F7A8C)),
     MOSS(Color(0xFF5B7F3A)),
+    OCHRE(Color(0xFFB08A2E)),
     CLAY(Color(0xFFA0583A)),
+    ROSE(Color(0xFFB04A6A)),
     DUSK(Color(0xFF5E4B8B)),
     GRAPHITE(Color(0xFF4A4F55))
 }
@@ -45,7 +48,7 @@ fun seedColorScheme(seed: Color, isDark: Boolean): ColorScheme {
 }
 
 /** Seeds below this chroma read as grey and get the neutral scheme. */
-private const val NEUTRAL_CHROMA = 12.0
+internal const val NEUTRAL_CHROMA = 12.0
 
 /**
  * An Eonslate scheme: [seed] for primary, secondary and the tinted neutrals, and always ember for

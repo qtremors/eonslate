@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.0.7
-> **Last Updated:** 2026-11-15
+> **Version:** 2.0.8
+> **Last Updated:** 2026-11-16
 
 ## Roadmap
 
@@ -18,16 +18,15 @@ Each step is planned as one release commit.
 | 6 | 2.0.6 | Insights: charts, streaks, totals and averages | Done |
 | 7 | 2.0.7 | Templates gallery, welcome flow, and the brand: logo (`Eonslate.png`, `Eonslate.svg`) and themed adaptive icons | Done, except the brand |
 | 8 | 2.0.7 | Settings, About and Licenses screens | Done |
-| 9 | 2.0.8 | Backup and restore: encrypted archives, recoverable restores | Planned |
-| 10 | 2.0.9 | App lock, screenshot blocking, private previews | Planned |
-| 11 | 2.0.9 | Local reminders that reschedule after each alert and after reboot | Planned |
-| 12 | 2.1.0 | Search, tags, filters and saved views | Planned |
-| 13 | 2.1.0 | Finance: accounts, exact money, transfers | Planned |
-| 14 | 2.1.1 | Finance: budgets and recurring payments | Planned |
-| 15 | 2.1.2 | Finance: optional on-device SMS reader | Planned |
-| 16 | 2.1.2 | CSV import and export | Planned |
-| 17 | 2.1.3 | Home screen widgets and quick tiles | Planned |
-| 18 | 2.1.3 | Accessibility, localization, architecture tests, release readiness | Planned |
+| 9 | 2.0.8 | Backup and restore: encrypted archives, recoverable restores | Done |
+| 10 | 2.0.9 | Local reminders that reschedule after each alert and after reboot | Planned |
+| 11 | 2.0.9 | Search, tags, filters and saved views | Planned |
+| 12 | 2.1.0 | Finance: accounts, exact money, transfers | Planned |
+| 13 | 2.1.0 | Finance: budgets and recurring payments | Planned |
+| 14 | 2.1.1 | Finance: optional on-device SMS reader | Planned |
+| 15 | 2.1.2 | CSV import and export | Planned |
+| 16 | 2.1.2 | Home screen widgets and quick tiles | Planned |
+| 17 | 2.1.3 | Accessibility, localization, screenshot blocking, architecture tests, release readiness | Planned |
 
 ## Waiting on a decision
 

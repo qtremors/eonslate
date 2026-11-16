@@ -104,13 +104,12 @@
     <!-- %1$s is a time zone id such as Europe/Paris. -->
     <string name="detail_sheet_zone">Logged in %1$s</string>
     <string name="detail_sheet_note">Note</string>
-    <string name="detail_sheet_delete_hint">You can undo this right after</string>
     <string name="detail_undo">Undo</string>
     <string name="detail_show_older">Show older</string>
     <string name="detail_empty_title">Nothing logged yet</string>
-    <string name="detail_empty_message">Entries you log show up here, newest first.</string>
+    <string name="detail_empty_message">Logged entries show up here.</string>
     <string name="detail_empty_day_title">Nothing on this day</string>
-    <string name="detail_empty_day_message">Pick another day, or tap it again to see every entry.</string>
+    <string name="detail_empty_day_message">Nothing logged on this day.</string>
     <string name="detail_archived">Archived. It stays off Home until you bring it back.</string>
     <string name="detail_unarchive">Unarchive</string>
     <string name="detail_missing_title">Tracker not found</string>

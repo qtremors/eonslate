@@ -53,7 +53,7 @@ import dev.qtremors.eonslate.core.ui.components.ConfirmDialog
 import dev.qtremors.eonslate.core.ui.components.ConnectedGroup
 import dev.qtremors.eonslate.core.ui.components.ConnectedItem
 import dev.qtremors.eonslate.core.ui.components.ConnectedRow
-import dev.qtremors.eonslate.core.ui.components.EmberActionButton
+import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
@@ -94,7 +94,7 @@ fun TrackerEditorScreen(
         modifier = modifier,
         floatingActionButton = {
             if (draft != null) {
-                EmberActionButton(
+                MainActionButton(
                     text = stringResource(R.string.editor_save),
                     icon = Icons.Rounded.Check,
                     onClick = viewModel::save,
@@ -269,14 +269,12 @@ private fun EditorContent(
                 ConnectedGroup {
                     ToggleRow(
                         title = stringResource(R.string.editor_archive),
-                        supporting = stringResource(R.string.editor_archive_hint),
                         checked = draft.archived,
                         onCheckedChange = viewModel::setArchived,
                         icon = Icons.Rounded.Archive,
                     )
                     ConnectedRow(
                         title = stringResource(R.string.editor_delete),
-                        supporting = stringResource(R.string.editor_delete_hint),
                         leading = {
                             Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         },

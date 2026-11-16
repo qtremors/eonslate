@@ -1,0 +1,89 @@
+package dev.qtremors.eonslate.core.tracker.domain.backup
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * Everything a backup holds: every tracker (archived ones too), field, entry and value, as the
+ * rows the database stores. Rows rather than the domain model, so a restore puts back exactly
+ * what was there, ids, positions and exact values included, with nothing re-derived.
+ *
+ * Settings are not part of a backup: they belong to the phone, and a restore never changes them.
+ *
+ * @property schema the database version the rows were read from. A restore refuses a newer one.
+ *   Only schema 1 exists so far; a database migration must also upgrade older snapshots here.
+ */
+@Serializable
+data class BackupSnapshot(
+    val schema: Int,
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("app_version") val appVersion: String,
+    val trackers: List<TrackerRow> = emptyList(),
+    val fields: List<FieldRow> = emptyList(),
+    val entries: List<EntryRow> = emptyList(),
+    val values: List<ValueRow> = emptyList(),
+) {
+    /** What a person is shown before they choose to restore it. */
+    val summary: BackupSummary
+        get() = BackupSummary(
+            createdAt = createdAt,
+            appVersion = appVersion,
+            trackers = trackers.size,
+            archived = trackers.count { it.archived },
+            entries = entries.size,
+        )
+}
+
+/** A short description of a backup, or of what is on the phone now. */
+data class BackupSummary(
+    val createdAt: Long,
+    val appVersion: String,
+    val trackers: Int,
+    val archived: Int,
+    val entries: Int,
+)
+
+@Serializable
+data class TrackerRow(
+    val id: String,
+    val name: String,
+    val description: String = "",
+    @SerialName("icon_name") val iconName: String,
+    @SerialName("color_index") val colorIndex: Int,
+    val archived: Boolean = false,
+    val position: Int,
+    @SerialName("template_id") val templateId: String? = null,
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("updated_at") val updatedAt: Long,
+)
+
+@Serializable
+data class FieldRow(
+    val id: String,
+    @SerialName("tracker_id") val trackerId: String,
+    val name: String,
+    val type: String,
+    @SerialName("config_json") val configJson: String,
+    val required: Boolean = false,
+    val position: Int,
+)
+
+@Serializable
+data class EntryRow(
+    val id: String,
+    @SerialName("tracker_id") val trackerId: String,
+    @SerialName("occurred_at") val occurredAt: Long,
+    @SerialName("zone_id") val zoneId: String,
+    val note: String = "",
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("updated_at") val updatedAt: Long,
+)
+
+@Serializable
+data class ValueRow(
+    @SerialName("entry_id") val entryId: String,
+    @SerialName("field_id") val fieldId: String,
+    val type: String,
+    @SerialName("long_value") val longValue: Long? = null,
+    @SerialName("text_value") val textValue: String? = null,
+)

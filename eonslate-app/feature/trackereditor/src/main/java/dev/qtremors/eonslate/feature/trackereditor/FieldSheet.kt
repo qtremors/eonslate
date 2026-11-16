@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import dev.qtremors.eonslate.core.ui.theme.LocalSignals
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -88,7 +89,7 @@ internal fun FieldSheetContent(
                 Text(
                     text = stringResource(R.string.sheet_type_change_warning),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = LocalSignals.current.warning,
                 )
             }
 
@@ -97,7 +98,6 @@ internal fun FieldSheetContent(
             ConnectedGroup {
                 ToggleRow(
                     title = stringResource(R.string.sheet_required),
-                    supporting = stringResource(R.string.sheet_required_hint),
                     checked = draft.required,
                     onCheckedChange = { on -> viewModel.updateSheet { it.copy(required = on) } },
                     icon = Icons.Rounded.PriorityHigh,
@@ -149,7 +149,6 @@ private fun TypeSettings(
         FieldType.TEXT -> ConnectedGroup {
             ToggleRow(
                 title = stringResource(R.string.sheet_text_multiline),
-                supporting = stringResource(R.string.sheet_text_multiline_hint),
                 checked = draft.multiline,
                 onCheckedChange = { on -> viewModel.updateSheet { it.copy(multiline = on) } },
                 icon = Icons.AutoMirrored.Rounded.Notes,

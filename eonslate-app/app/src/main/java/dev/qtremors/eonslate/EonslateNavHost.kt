@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.qtremors.eonslate.core.navigation.api.Destination
+import dev.qtremors.eonslate.feature.backup.BackupScreen
 import dev.qtremors.eonslate.feature.entry.LogEntryScreen
 import dev.qtremors.eonslate.feature.home.ArchivedScreen
 import dev.qtremors.eonslate.feature.home.HomeScreen
@@ -47,7 +48,14 @@ fun EonslateNavHost(startWithWelcome: Boolean) {
             )
         }
         composable<Destination.Settings> {
-            SettingsScreen(onBack = { navController.popBackStack() }, onAbout = { navController.navigate(Destination.About) })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onAbout = { navController.navigate(Destination.About) },
+                onBackup = { navController.navigate(Destination.Backup) },
+            )
+        }
+        composable<Destination.Backup> {
+            BackupScreen(versionName = BuildConfig.VERSION_NAME, onBack = { navController.popBackStack() })
         }
         composable<Destination.About> {
             AboutScreen(

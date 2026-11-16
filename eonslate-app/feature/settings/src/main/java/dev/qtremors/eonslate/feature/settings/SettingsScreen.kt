@@ -24,12 +24,15 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.SettingsBackupRestore
 import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,7 +45,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -67,7 +73,7 @@ import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
 import dev.qtremors.eonslate.core.ui.theme.SlateTileShape
 import dev.qtremors.eonslate.core.ui.theme.ThemePreset
-import dev.qtremors.eonslate.core.ui.theme.eonslateColorScheme
+import dev.qtremors.eonslate.core.ui.theme.presetColorScheme
 
 /** What the settings page changes, so it can be shown without a view model in previews and tests. */
 interface SettingsActions {
@@ -85,6 +91,7 @@ interface SettingsActions {
 fun SettingsScreen(
     onBack: () -> Unit,
     onAbout: () -> Unit,
+    onBackup: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -102,11 +109,12 @@ fun SettingsScreen(
             override fun setCurrency(code: String?) = viewModel.setCurrency(code)
         }
     }
-    SettingsContent(appearance, actions, onBack, onAbout, modifier, tracking = tracking)
+    SettingsContent(appearance, actions, onBack, onAbout, modifier, tracking = tracking, onBackup = onBackup)
 }
 
 /**
- * The settings page in the order the design system sets: appearance, palette, behavior, about.
+ * The settings page in the order the design system sets: appearance, accent, behavior, tracking,
+ * data, about.
  * Every row shows its current value, and every change applies at once.
  */
 @Composable
@@ -118,6 +126,7 @@ fun SettingsContent(
     modifier: Modifier = Modifier,
     wallpaperAvailable: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     tracking: Tracking? = Tracking(),
+    onBackup: () -> Unit = {},
 ) {
     var editCurrency by rememberSaveable { mutableStateOf(false) }
     if (editCurrency && tracking != null) {
@@ -157,37 +166,22 @@ fun SettingsContent(
                     )
                     ToggleRow(
                         title = stringResource(R.string.settings_pure_black),
-                        supporting = stringResource(
-                            if (appearance.theme == ThemeChoice.LIGHT) R.string.settings_pure_black_off else R.string.settings_pure_black_hint
-                        ),
+                        supporting = if (appearance.theme == ThemeChoice.LIGHT) stringResource(R.string.settings_pure_black_off) else null,
                         checked = appearance.pureBlack,
                         onCheckedChange = actions::setPureBlack,
                         icon = Icons.Rounded.Contrast,
                         enabled = appearance.theme != ThemeChoice.LIGHT,
                     )
-                    if (wallpaperAvailable) {
-                        ChoiceRow(
-                            title = stringResource(R.string.settings_colors),
-                            supporting = stringResource(
-                                if (appearance.accent == AccentChoice.WALLPAPER) R.string.settings_colors_wallpaper_hint
-                                else R.string.settings_colors_preset_hint
-                            ),
-                            icon = Icons.Rounded.Palette,
-                            options = AccentChoice.entries,
-                            selected = appearance.accent,
-                            label = {
-                                stringResource(if (it == AccentChoice.PRESET) R.string.settings_colors_eonslate else R.string.settings_colors_wallpaper)
-                            },
-                            onSelect = actions::setAccent,
-                        )
-                    }
                 }
             }
             item(key = "presets") {
-                SectionHeader(stringResource(R.string.settings_section_palette))
-                PresetPicker(
-                    selected = appearance.preset.takeIf { appearance.accent == AccentChoice.PRESET },
-                    onSelect = actions::setPreset,
+                SectionHeader(stringResource(R.string.settings_section_accent))
+                AccentPicker(
+                    wallpaper = appearance.accent == AccentChoice.WALLPAPER,
+                    preset = appearance.preset,
+                    wallpaperAvailable = wallpaperAvailable,
+                    onWallpaper = { actions.setAccent(AccentChoice.WALLPAPER) },
+                    onPreset = actions::setPreset,
                 )
             }
             item(key = "behavior") {
@@ -195,14 +189,12 @@ fun SettingsContent(
                 ConnectedGroup {
                     ToggleRow(
                         title = stringResource(R.string.settings_haptics),
-                        supporting = stringResource(R.string.settings_haptics_hint),
                         checked = appearance.haptics,
                         onCheckedChange = actions::setHaptics,
                         icon = Icons.Rounded.Vibration,
                     )
                     ToggleRow(
                         title = stringResource(R.string.settings_reduce_motion),
-                        supporting = stringResource(R.string.settings_reduce_motion_hint),
                         checked = appearance.reduceMotion,
                         onCheckedChange = actions::setReduceMotion,
                         icon = Icons.Rounded.Animation,
@@ -215,7 +207,6 @@ fun SettingsContent(
                     ConnectedGroup {
                         ChoiceRow(
                             title = stringResource(R.string.settings_week_start),
-                            supporting = stringResource(R.string.settings_week_start_hint),
                             icon = Icons.Rounded.CalendarMonth,
                             options = WeekStart.entries,
                             selected = tracking.weekStart,
@@ -242,12 +233,22 @@ fun SettingsContent(
                     }
                 }
             }
+            item(key = "data") {
+                SectionHeader(stringResource(R.string.settings_section_data))
+                ConnectedGroup {
+                    NavigationRow(
+                        title = stringResource(R.string.settings_backup),
+                        icon = Icons.Rounded.SettingsBackupRestore,
+                        badgeKey = "backup",
+                        onClick = onBackup,
+                    )
+                }
+            }
             item(key = "about") {
                 SectionHeader(stringResource(R.string.settings_section_about))
                 ConnectedGroup {
                     NavigationRow(
                         title = stringResource(R.string.about_title),
-                        supporting = stringResource(R.string.settings_about_hint),
                         icon = Icons.Rounded.Info,
                         badgeKey = "about",
                         onClick = onAbout,
@@ -292,48 +293,55 @@ private fun CurrencySheet(current: String?, onSave: (String?) -> Unit, onDismiss
     }
 }
 
-/** Eonslate's palettes as slate tiles, each showing its primary container with its ember accent. */
+/**
+ * Every accent as a slate tile showing the color itself on its container: the wallpaper's (on
+ * Android 12 and up), then Mono and Eonslate's presets. Exactly one is chosen at a time.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PresetPicker(selected: String?, onSelect: (String) -> Unit) {
+private fun AccentPicker(
+    wallpaper: Boolean,
+    preset: String,
+    wallpaperAvailable: Boolean,
+    onWallpaper: () -> Unit,
+    onPreset: (String) -> Unit,
+) {
     val haptics = rememberAppHaptics()
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val dark = colors.surface.luminance() < 0.5f
     Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth()) {
-        FlowRow(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ThemePreset.entries.forEach { preset ->
-                val scheme = remember(preset, dark) { eonslateColorScheme(preset.seed, dark) }
-                val isSelected = preset.name == selected
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.selectable(selected = isSelected, role = Role.RadioButton) {
-                        haptics.tick()
-                        onSelect(preset.name)
-                    },
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(SlateTileShape)
-                            .background(scheme.primaryContainer)
-                            .then(if (isSelected) Modifier.border(3.dp, scheme.primary, SlateTileShape) else Modifier),
-                        contentAlignment = Alignment.Center,
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (wallpaperAvailable && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val scheme = remember(dark) { if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context) }
+                    AccentTile(
+                        name = stringResource(R.string.settings_colors_wallpaper),
+                        container = scheme.primaryContainer,
+                        accent = scheme.primary,
+                        mark = scheme.onPrimaryContainer,
+                        selected = wallpaper,
+                        icon = Icons.Rounded.Wallpaper,
                     ) {
-                        Box(Modifier.size(18.dp).clip(SlateTileShape).background(scheme.tertiary))
-                        if (isSelected) {
-                            Icon(
-                                Icons.Rounded.Check,
-                                contentDescription = null,
-                                tint = scheme.onPrimaryContainer,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(16.dp),
-                            )
-                        }
+                        haptics.tick()
+                        onWallpaper()
                     }
-                    Text(presetName(preset), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                }
+                ThemePreset.entries.forEach { option ->
+                    val scheme = remember(option, dark) { presetColorScheme(option, dark) }
+                    AccentTile(
+                        name = presetName(option),
+                        container = if (option == ThemePreset.MONO) scheme.surfaceContainerHighest else scheme.primaryContainer,
+                        accent = scheme.primary,
+                        mark = if (option == ThemePreset.MONO) scheme.onSurface else scheme.onPrimaryContainer,
+                        selected = !wallpaper && option.name == preset,
+                    ) {
+                        haptics.tick()
+                        onPreset(option.name)
+                    }
                 }
             }
         }
@@ -341,12 +349,55 @@ private fun PresetPicker(selected: String?, onSelect: (String) -> Unit) {
 }
 
 @Composable
+private fun AccentTile(
+    name: String,
+    container: Color,
+    accent: Color,
+    mark: Color,
+    selected: Boolean,
+    icon: ImageVector? = null,
+    onClick: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(SlateTileShape)
+                .background(container)
+                .then(if (selected) Modifier.border(3.dp, accent, SlateTileShape) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            } else {
+                Box(Modifier.size(18.dp).clip(SlateTileShape).background(accent))
+            }
+            if (selected) {
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = mark,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(16.dp),
+                )
+            }
+        }
+        Text(name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
 private fun presetName(preset: ThemePreset): String = stringResource(
     when (preset) {
+        ThemePreset.MONO -> R.string.preset_mono
         ThemePreset.SLATE -> R.string.preset_slate
         ThemePreset.TIDE -> R.string.preset_tide
         ThemePreset.MOSS -> R.string.preset_moss
+        ThemePreset.OCHRE -> R.string.preset_ochre
         ThemePreset.CLAY -> R.string.preset_clay
+        ThemePreset.ROSE -> R.string.preset_rose
         ThemePreset.DUSK -> R.string.preset_dusk
         ThemePreset.GRAPHITE -> R.string.preset_graphite
     }

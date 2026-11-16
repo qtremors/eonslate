@@ -13,13 +13,14 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 
 /**
- * The page's main action, in ember: Save, Log it, New tracker. One per page, floating bottom end.
+ * The page's main action: Save, Log it, New tracker. One per page, floating bottom end, in the
+ * accent color (white on black in the default Mono look).
  *
  * The extended button does not merge its label into its own semantics, so screen readers would
  * meet a nameless button. The label is set on the button itself here, once for every screen.
  */
 @Composable
-fun EmberActionButton(
+fun MainActionButton(
     text: String,
     icon: ImageVector,
     onClick: () -> Unit,
@@ -31,8 +32,8 @@ fun EmberActionButton(
         expanded = expanded,
         icon = { Icon(icon, contentDescription = null) },
         text = { Text(text) },
-        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         modifier = modifier.semantics {
             contentDescription = text
             role = Role.Button

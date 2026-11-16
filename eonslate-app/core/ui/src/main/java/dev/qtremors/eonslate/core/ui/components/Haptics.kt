@@ -20,6 +20,9 @@ class AppHaptics internal constructor(
     fun tick() = perform(HapticFeedbackType.SegmentTick)
     fun confirm() = perform(HapticFeedbackType.Confirm)
 
+    /** Something was refused, such as a form that still has a problem. */
+    fun reject() = perform(HapticFeedbackType.Reject)
+
     private fun perform(type: HapticFeedbackType) {
         if (enabled) feedback.performHapticFeedback(type)
     }

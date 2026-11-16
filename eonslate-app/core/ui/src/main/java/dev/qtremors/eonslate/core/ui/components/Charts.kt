@@ -78,7 +78,7 @@ fun BarChart(
     selected: Int? = null,
     onSelect: (Int?) -> Unit = {},
     highlight: Int? = null,
-    highlightColor: Color = MaterialTheme.colorScheme.tertiary,
+    highlightColor: Color = MaterialTheme.colorScheme.primary,
     height: Dp = 140.dp,
     /** Written over the tallest bar, such as "3"; the one direct label a bar chart carries. */
     peakLabel: String? = null,

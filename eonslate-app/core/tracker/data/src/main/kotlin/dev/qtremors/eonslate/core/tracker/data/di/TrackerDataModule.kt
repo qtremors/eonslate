@@ -10,14 +10,19 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase.Companion.configure
+import dev.qtremors.eonslate.core.tracker.data.repository.BackupManager
+import dev.qtremors.eonslate.core.tracker.data.repository.RoomBackupRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomEntryRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerRepository
+import dev.qtremors.eonslate.core.tracker.domain.backup.Backups
 import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
 import dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator
 import dev.qtremors.eonslate.core.tracker.domain.time.SystemAppClock
 import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
+import kotlinx.coroutines.Dispatchers
+import java.io.File
 import javax.inject.Singleton
 
 @Module
@@ -32,6 +37,11 @@ object TrackerDatabaseModule {
 
     @Provides
     fun provideClock(): AppClock = SystemAppClock
+
+    @Provides
+    @Singleton
+    fun provideBackups(@ApplicationContext context: Context, repository: RoomBackupRepository): Backups =
+        BackupManager(repository, File(context.filesDir, "backups"), Dispatchers.Default)
 
     @Provides
     fun provideIdGenerator(): IdGenerator = UuidIdGenerator

@@ -16,8 +16,8 @@ android {
         applicationId = "dev.qtremors.eonslate"
         minSdk = 26
         targetSdk = 37
-        versionCode = 207
-        versionName = "2.0.7"
+        versionCode = 208
+        versionName = "2.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -116,6 +116,7 @@ dependencies {
     implementation(project(":feature:trackerdetail"))
     implementation(project(":feature:trackereditor"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:backup"))
     implementation(project(":feature:welcome"))
     implementation(project(":core:settings"))
 

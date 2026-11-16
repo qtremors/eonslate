@@ -1,0 +1,77 @@
+package dev.qtremors.eonslate.core.tracker.data.repository
+
+import androidx.room.withTransaction
+import dev.qtremors.eonslate.core.tracker.data.db.EntryEntity
+import dev.qtremors.eonslate.core.tracker.data.db.EntryValueEntity
+import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
+import dev.qtremors.eonslate.core.tracker.data.db.TrackerEntity
+import dev.qtremors.eonslate.core.tracker.data.db.TrackerFieldEntity
+import dev.qtremors.eonslate.core.tracker.domain.backup.BackupRepository
+import dev.qtremors.eonslate.core.tracker.domain.backup.BackupSnapshot
+import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
+import dev.qtremors.eonslate.core.tracker.domain.backup.EntryRow
+import dev.qtremors.eonslate.core.tracker.domain.backup.FieldRow
+import dev.qtremors.eonslate.core.tracker.domain.backup.TrackerRow
+import dev.qtremors.eonslate.core.tracker.domain.backup.ValueRow
+import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
+import javax.inject.Inject
+
+/**
+ * Backups straight from and into the tables. The integrity triggers stay on during a restore,
+ * so even a snapshot that slipped past the check cannot store a row the app would misread; the
+ * transaction then rolls back and the phone keeps what it had.
+ */
+class RoomBackupRepository @Inject constructor(
+    private val database: TrackerDatabase,
+    private val clock: AppClock,
+) : BackupRepository {
+    private val dao = database.backupDao()
+
+    override val schema: Int = TrackerDatabase.VERSION
+
+    override suspend fun snapshot(appVersion: String): BackupSnapshot = database.withTransaction {
+        BackupSnapshot(
+            schema = schema,
+            createdAt = clock.nowMillis(),
+            appVersion = appVersion,
+            trackers = dao.allTrackers().map { it.toRow() },
+            fields = dao.allFields().map { it.toRow() },
+            entries = dao.allEntries().map { it.toRow() },
+            values = dao.allValues().map { it.toRow() },
+        )
+    }
+
+    override suspend fun replaceAll(snapshot: BackupSnapshot) {
+        database.withTransaction {
+            dao.clearValues()
+            dao.clearEntries()
+            dao.clearFields()
+            dao.clearTrackers()
+            // Parents first: each trigger looks up the rows its new row points at.
+            dao.insertTrackers(snapshot.trackers.map { it.toEntity() })
+            dao.insertFields(snapshot.fields.map { it.toEntity() })
+            dao.insertEntries(snapshot.entries.map { it.toEntity() })
+            dao.insertValues(snapshot.values.map { it.toEntity() })
+        }
+    }
+
+    override suspend fun counts(): DataCounts = database.withTransaction { DataCounts(dao.trackerCount(), dao.entryCount()) }
+}
+
+private fun TrackerEntity.toRow() =
+    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt)
+
+private fun TrackerRow.toEntity() =
+    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt)
+
+private fun TrackerFieldEntity.toRow() = FieldRow(id, trackerId, name, type, configJson, required, position)
+
+private fun FieldRow.toEntity() = TrackerFieldEntity(id, trackerId, name, type, configJson, required, position)
+
+private fun EntryEntity.toRow() = EntryRow(id, trackerId, occurredAt, zoneId, note, createdAt, updatedAt)
+
+private fun EntryRow.toEntity() = EntryEntity(id, trackerId, occurredAt, zoneId, note, createdAt, updatedAt)
+
+private fun EntryValueEntity.toRow() = ValueRow(entryId, fieldId, type, longValue, textValue)
+
+private fun ValueRow.toEntity() = EntryValueEntity(entryId, fieldId, type, longValue, textValue)

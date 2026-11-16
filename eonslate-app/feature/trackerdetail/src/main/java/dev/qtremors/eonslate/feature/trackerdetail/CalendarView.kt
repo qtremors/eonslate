@@ -137,7 +137,7 @@ internal fun MonthCalendar(
                                         .aspectRatio(1f)
                                         .clip(SlateTileShape)
                                         .background(background)
-                                        .then(if (day == today && !isSelected) Modifier.border(2.dp, colors.tertiary, SlateTileShape) else Modifier)
+                                        .then(if (day == today && !isSelected) Modifier.border(2.dp, colors.primary, SlateTileShape) else Modifier)
                                         .selectable(selected = isSelected, enabled = day <= today, role = Role.Button) {
                                             haptics.tick()
                                             onDay(day)

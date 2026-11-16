@@ -86,7 +86,7 @@ fun AboutScreen(
                 SectionHeader(stringResource(R.string.about_section_project))
                 ConnectedGroup {
                     NavigationRow(stringResource(R.string.about_developer), Icons.Rounded.Person, "developer", onClick = { open(context, Links.DEVELOPER) }, supporting = stringResource(R.string.about_developer_name))
-                    NavigationRow(stringResource(R.string.about_source), Icons.Rounded.Code, "source", onClick = { open(context, Links.SOURCE) }, supporting = stringResource(R.string.about_source_hint))
+                    NavigationRow(stringResource(R.string.about_source), Icons.Rounded.Code, "source", onClick = { open(context, Links.SOURCE) })
                     NavigationRow(stringResource(R.string.about_releases), Icons.Rounded.NewReleases, "releases", onClick = { open(context, Links.RELEASES) })
                     NavigationRow(stringResource(R.string.about_issues), Icons.Rounded.BugReport, "issues", onClick = { open(context, Links.ISSUES) })
                 }
@@ -100,7 +100,7 @@ fun AboutScreen(
                         supporting = stringResource(R.string.about_license_name),
                         leading = { IconBadge(icon = Icons.Rounded.Gavel, key = "license") },
                     )
-                    NavigationRow(stringResource(R.string.licenses_title), Icons.AutoMirrored.Rounded.Article, "licenses", onClick = onLicenses, supporting = stringResource(R.string.about_licenses_hint))
+                    NavigationRow(stringResource(R.string.licenses_title), Icons.AutoMirrored.Rounded.Article, "licenses", onClick = onLicenses)
                 }
             }
             item(key = "device") {

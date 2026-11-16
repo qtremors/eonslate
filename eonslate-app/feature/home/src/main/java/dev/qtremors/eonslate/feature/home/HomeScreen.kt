@@ -60,7 +60,7 @@ import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
 import dev.qtremors.eonslate.core.tracker.ui.Templates
 import dev.qtremors.eonslate.core.tracker.ui.TrackerSlate
 import dev.qtremors.eonslate.core.ui.components.TrackerIcons
-import dev.qtremors.eonslate.core.ui.components.EmberActionButton
+import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
@@ -162,7 +162,7 @@ fun HomeContent(
         },
         floatingActionButton = {
             if (!trackers.isNullOrEmpty()) {
-                EmberActionButton(
+                MainActionButton(
                     text = stringResource(R.string.home_new_tracker),
                     icon = Icons.Rounded.Add,
                     onClick = onNewTracker,
@@ -216,8 +216,8 @@ fun HomeContent(
                                         onLog(summary.tracker)
                                     },
                                     colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary,
                                     ),
                                 ) {
                                     Icon(
@@ -268,7 +268,7 @@ private fun TodayLine(progress: TodayProgress) {
         Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         Meter(
             fraction = progress.logged.toFloat() / progress.total,
-            color = MaterialTheme.colorScheme.tertiary,
+            color = MaterialTheme.colorScheme.primary,
             contentDescription = text,
         )
     }

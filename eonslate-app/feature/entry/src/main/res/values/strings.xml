@@ -7,7 +7,7 @@
     <string name="log_clear">Clear</string>
     <string name="log_value">Value</string>
     <string name="log_amount">Amount</string>
-    <string name="log_amount_hint">Use a minus sign for money going out</string>
+    <string name="log_amount_hint">Minus for money out</string>
     <string name="log_hours">Hours</string>
     <string name="log_minutes">Minutes</string>
     <string name="log_yes">Yes</string>
@@ -25,7 +25,7 @@
     <string name="log_unreadable">This does not fit the field. Check the number and its decimals.</string>
 
     <string name="log_discard_title">Leave without logging?</string>
-    <string name="log_discard_message">What you entered here will be lost.</string>
+    <string name="log_discard_message">Your changes will be lost.</string>
     <string name="log_discard_confirm">Leave</string>
     <string name="log_delete">Delete entry</string>
     <string name="log_delete_title">Delete this entry?</string>

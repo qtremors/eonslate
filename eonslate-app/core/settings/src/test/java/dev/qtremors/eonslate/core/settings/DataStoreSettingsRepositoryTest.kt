@@ -43,17 +43,18 @@ class DataStoreSettingsRepositoryTest {
         val settings = DataStoreSettingsRepository(store(this, newFile()))
         assertEquals(Appearance(), settings.appearance.first())
         assertEquals(AccentChoice.PRESET, settings.appearance.first().accent)
-        assertEquals("SLATE", settings.appearance.first().preset)
+        assertEquals("MONO", settings.appearance.first().preset)
+        assertEquals(true, settings.appearance.first().pureBlack)
     }
 
     @Test
     fun changesAreKeptTogether() = runTest(UnconfinedTestDispatcher()) {
         val settings = DataStoreSettingsRepository(store(this, newFile()))
         settings.updateAppearance { it.copy(theme = ThemeChoice.DARK) }
-        settings.updateAppearance { it.copy(pureBlack = true, preset = "TIDE") }
+        settings.updateAppearance { it.copy(pureBlack = false, preset = "TIDE") }
         settings.updateAppearance { it.copy(haptics = false, reduceMotion = true) }
         assertEquals(
-            Appearance(theme = ThemeChoice.DARK, pureBlack = true, preset = "TIDE", haptics = false, reduceMotion = true),
+            Appearance(theme = ThemeChoice.DARK, pureBlack = false, preset = "TIDE", haptics = false, reduceMotion = true),
             settings.appearance.first(),
         )
     }
