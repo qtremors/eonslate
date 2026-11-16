@@ -5,6 +5,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
+import dev.qtremors.eonslate.core.tracker.domain.model.Tags
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerSummary
 import dev.qtremors.eonslate.core.tracker.domain.value.FieldConfigJson
@@ -77,7 +78,17 @@ internal fun Tracker.toEntity(): TrackerEntity = TrackerEntity(
     templateId = templateId,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    tags = TagColumn.encode(Tags.normalize(tags)),
 )
+
+/** Tags are kept as a JSON array of strings in one column. */
+internal object TagColumn {
+    private val list = ListSerializer(String.serializer())
+
+    fun encode(tags: List<String>): String = Json.encodeToString(list, tags)
+
+    fun decode(text: String): List<String> = runCatching { Json.decodeFromString(list, text) }.getOrDefault(emptyList())
+}
 
 /** Fields are stored in list order, so [FieldDefinition.position] is always the index. */
 internal fun Tracker.fieldEntities(): List<TrackerFieldEntity> = fields.mapIndexed { index, field ->
@@ -122,6 +133,7 @@ internal fun TrackerEntity.toDomain(fields: List<TrackerFieldEntity>): Tracker =
     templateId = templateId,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    tags = TagColumn.decode(tags),
 )
 
 internal fun TrackerWithFields.toDomain(): Tracker = tracker.toDomain(fields)

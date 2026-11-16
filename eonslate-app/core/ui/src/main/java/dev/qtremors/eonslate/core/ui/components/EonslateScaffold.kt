@@ -88,9 +88,10 @@ fun EonslateScaffold(
         filter?.onQueryChange?.invoke("")
         filter?.onOpenChange?.invoke(false)
     }
-    BackHandler(enabled = filtering, onBack = closeFilter)
+    val filterVisible = filtering && filter != null
+    BackHandler(enabled = filterVisible, onBack = closeFilter)
     Scaffold(
-        modifier = if (filtering) modifier else modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = if (filterVisible) modifier else modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = colors.surfaceContainer,
         snackbarHost = snackbarHost,
         floatingActionButton = floatingActionButton,

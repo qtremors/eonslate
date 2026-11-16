@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminders_title">Reminders</string>
+    <string name="reminders_add">Add reminder</string>
+    <string name="reminders_empty_title">No reminders</string>
+    <string name="reminders_empty_message">Get a notification to log %1$s.</string>
+    <string name="reminders_every_day">Every day</string>
+    <string name="reminders_off">Notifications are off</string>
+    <string name="reminders_turn_on">Turn on</string>
+    <string name="reminders_exact_off">Exact timing is off</string>
+    <string name="reminders_exact_off_hint">Reminders may be up to 10 minutes late</string>
+    <string name="reminders_allow">Allow</string>
+    <string name="reminders_sheet_new">New reminder</string>
+    <string name="reminders_sheet_edit">Edit reminder</string>
+    <string name="reminders_skip">Skip if logged that day</string>
+    <string name="reminders_no_days">Pick at least one day</string>
+    <string name="reminders_save">Save</string>
+    <string name="reminders_delete">Delete</string>
+    <string name="reminders_cancel">Cancel</string>
+</resources>

@@ -3,6 +3,8 @@ package dev.qtremors.eonslate.core.tracker.data.repository
 import androidx.room.withTransaction
 import dev.qtremors.eonslate.core.tracker.data.db.EntryEntity
 import dev.qtremors.eonslate.core.tracker.data.db.EntryValueEntity
+import dev.qtremors.eonslate.core.tracker.data.db.ReminderEntity
+import dev.qtremors.eonslate.core.tracker.data.db.TagColumn
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerEntity
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerFieldEntity
@@ -11,6 +13,7 @@ import dev.qtremors.eonslate.core.tracker.domain.backup.BackupSnapshot
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
 import dev.qtremors.eonslate.core.tracker.domain.backup.EntryRow
 import dev.qtremors.eonslate.core.tracker.domain.backup.FieldRow
+import dev.qtremors.eonslate.core.tracker.domain.backup.ReminderRow
 import dev.qtremors.eonslate.core.tracker.domain.backup.TrackerRow
 import dev.qtremors.eonslate.core.tracker.domain.backup.ValueRow
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
@@ -38,11 +41,13 @@ class RoomBackupRepository @Inject constructor(
             fields = dao.allFields().map { it.toRow() },
             entries = dao.allEntries().map { it.toRow() },
             values = dao.allValues().map { it.toRow() },
+            reminders = dao.allReminders().map { it.toRow() },
         )
     }
 
     override suspend fun replaceAll(snapshot: BackupSnapshot) {
         database.withTransaction {
+            dao.clearReminders()
             dao.clearValues()
             dao.clearEntries()
             dao.clearFields()
@@ -52,6 +57,7 @@ class RoomBackupRepository @Inject constructor(
             dao.insertFields(snapshot.fields.map { it.toEntity() })
             dao.insertEntries(snapshot.entries.map { it.toEntity() })
             dao.insertValues(snapshot.values.map { it.toEntity() })
+            dao.insertReminders(snapshot.reminders.map { it.toEntity() })
         }
     }
 
@@ -59,10 +65,10 @@ class RoomBackupRepository @Inject constructor(
 }
 
 private fun TrackerEntity.toRow() =
-    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt)
+    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.decode(tags))
 
 private fun TrackerRow.toEntity() =
-    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt)
+    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.encode(tags))
 
 private fun TrackerFieldEntity.toRow() = FieldRow(id, trackerId, name, type, configJson, required, position)
 
@@ -73,5 +79,9 @@ private fun EntryEntity.toRow() = EntryRow(id, trackerId, occurredAt, zoneId, no
 private fun EntryRow.toEntity() = EntryEntity(id, trackerId, occurredAt, zoneId, note, createdAt, updatedAt)
 
 private fun EntryValueEntity.toRow() = ValueRow(entryId, fieldId, type, longValue, textValue)
+
+private fun ReminderEntity.toRow() = ReminderRow(id, trackerId, minuteOfDay, daysMask, enabled, skipIfLogged, createdAt)
+
+private fun ReminderRow.toEntity() = ReminderEntity(id, trackerId, minuteOfDay, daysMask, enabled, skipIfLogged, createdAt)
 
 private fun ValueRow.toEntity() = EntryValueEntity(entryId, fieldId, type, longValue, textValue)

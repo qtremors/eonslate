@@ -67,6 +67,20 @@ class BackupCheckTest {
     }
 
     @Test
+    fun remindersMustFitTheirRules() {
+        val s = sampleSnapshot()
+        assertTrue(problems(s.copy(reminders = listOf(ReminderRow("r", "gone", 60, 1)))).any { "belongs to no tracker" in it })
+        assertTrue(problems(s.copy(reminders = listOf(ReminderRow("r", "t1", 1440, 1)))).any { "minute" in it })
+        assertTrue(problems(s.copy(reminders = listOf(ReminderRow("r", "t1", 60, 0)))).any { "days" in it })
+    }
+
+    @Test
+    fun aSchemaOneFileWithoutRemindersStillReads() {
+        val old = sampleSnapshot().copy(schema = 1, reminders = emptyList())
+        assertEquals(emptyList<String>(), BackupCheck.problems(old, currentSchema = 2))
+    }
+
+    @Test
     fun requireSoundNamesTheProblem() {
         val s = sampleSnapshot()
         val e = runCatching { BackupCheck.requireSound(s.copy(entries = emptyList()), 1) }.exceptionOrNull() as BackupException

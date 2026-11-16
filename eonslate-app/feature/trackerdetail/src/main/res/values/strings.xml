@@ -115,4 +115,7 @@
     <string name="detail_missing_title">Tracker not found</string>
     <string name="detail_missing_message">It may have been deleted.</string>
     <string name="detail_missing_action">Go back</string>
+    <string name="detail_reminders">Reminders</string>
+    <string name="detail_search">Search entries</string>
+    <string name="detail_no_matches">No matches</string>
 </resources>

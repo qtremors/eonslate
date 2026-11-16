@@ -147,7 +147,7 @@ class TrackerDetailViewModelTest {
     }
 
     @Test
-    fun theWholeHistoryIsReadOnlyForInsights() = runTest {
+    fun insightsReadTheWholeHistory() = runTest {
         entries.list.value = listOf(entryOn("a", "2026-11-10"))
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
@@ -156,6 +156,32 @@ class TrackerDetailViewModelTest {
         assertEquals(listOf("a"), vm.state.value.allEntries!!.map { it.id })
         vm.setView(DetailView.LIST)
         assertNull(vm.state.value.allEntries)
+    }
+
+    @Test
+    fun listSearchFindsOlderNotesAndTextValues() = runTest {
+        val start = LocalDate.parse("2026-01-01")
+        val recent = (1..TrackerDetailViewModel.PAGE).map { entryOn("e$it", start.plusDays(it.toLong()).toString()) }
+        val note = entryOn("note", "2026-01-01").copy(note = "A quiet morning")
+        val text = entryOn("text", "2026-01-01").copy(values = mapOf("text" to FieldValue.Text("Quiet evening")))
+        entries.list.value = recent + listOf(note, text)
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        assertTrue(vm.state.value.hasMore)
+
+        vm.setQuery(" QUIET ")
+        val state = vm.state.first { it.searchResults != null }
+        assertEquals(setOf(note, text), state.groups.flatMap { it.entries }.toSet())
+        assertEquals(note, state.find("note"))
+        assertFalse(state.hasMore)
+        assertEquals(recent.size + 2, state.times.size)
+
+        vm.setView(DetailView.CALENDAR)
+        assertFalse(vm.state.value.searching)
+        assertTrue(vm.state.value.hasMore)
+        vm.setView(DetailView.LIST)
+        vm.setQuery("")
+        assertTrue(vm.state.value.hasMore)
     }
 
     @Test

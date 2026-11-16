@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
+import dev.qtremors.eonslate.core.reminders.EXTRA_LOG_TRACKER
 import dev.qtremors.eonslate.core.settings.Appearance
 import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.settings.WelcomeGate
@@ -31,10 +33,14 @@ class MainActivity : ComponentActivity() {
     /** Null until the start is decided; the splash stays up until then, so nothing flashes. */
     private var showWelcome by mutableStateOf<Boolean?>(null)
 
+    /** A tracker whose log screen a reminder asked to open. */
+    private var openLog by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setKeepOnScreenCondition { showWelcome == null }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) openLog = intent.getStringExtra(EXTRA_LOG_TRACKER)
         lifecycleScope.launch {
             val seen = settings.welcomeSeen.first()
             val hasTrackers = !seen && trackers.nextPosition() > 0
@@ -45,8 +51,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appearance by settings.appearance.collectAsState(initial = Appearance())
             EonslateTheme(options = appearance.toThemeOptions()) {
-                showWelcome?.let { EonslateNavHost(startWithWelcome = it) }
+                showWelcome?.let { EonslateNavHost(startWithWelcome = it, openLog = openLog, onLogOpened = { openLog = null }) }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_LOG_TRACKER)?.let { openLog = it }
     }
 }

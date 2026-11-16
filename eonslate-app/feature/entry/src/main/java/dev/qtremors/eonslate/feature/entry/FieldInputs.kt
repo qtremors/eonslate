@@ -162,7 +162,9 @@ private fun FieldInputBody(field: FieldDefinition, input: FieldInput, onChange: 
                     } else null,
                     shape = MaterialTheme.shapes.medium,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
                     ),
                 )
             }

@@ -1,10 +1,25 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.8
+> **Version:** 2.0.9
 > **Last Updated:** 2026-11-16
 
 ---
+
+## [2.0.9] - 2026-11-16
+
+- **Reminders**: Per-tracker reminders at a time on chosen days, from the bell on a tracker's page.
+- **Reliable**: Each alert schedules the next; restarts, time and zone changes reschedule. Exact when allowed.
+- **Skip if logged**: Optionally no reminder when the tracker already has an entry that day.
+- **Open to log**: Tapping a reminder opens that tracker's log screen.
+- **Backups**: Include reminders.
+- **Chips**: Picked chips use the accent, so they stand out in Mono.
+- Search Home by tracker name, description, field name or tag.
+- Add tags in the tracker editor.
+- Filter Home by tag.
+- Home remembers the selected tag across launches.
+- Search entry notes and text fields in List.
+- Backups include tracker tags.
 
 ## [2.0.8] - 2026-11-16
 

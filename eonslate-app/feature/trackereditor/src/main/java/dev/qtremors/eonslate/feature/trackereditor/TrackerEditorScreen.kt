@@ -42,6 +42,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
+import dev.qtremors.eonslate.core.tracker.domain.model.Tags
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.validation.ValidationError
 import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
@@ -205,6 +206,13 @@ private fun EditorContent(
                     singleLine = false,
                     minLines = 2,
                     maxLength = Tracker.DESCRIPTION_MAX_LENGTH,
+                )
+                FormField(
+                    value = draft.tags,
+                    onValueChange = viewModel::setTags,
+                    label = stringResource(R.string.editor_tags),
+                    supporting = stringResource(R.string.editor_tags_hint),
+                    maxLength = (Tags.MAX_LENGTH + 2) * Tags.MAX_COUNT,
                 )
             }
         }

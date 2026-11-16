@@ -74,7 +74,7 @@
     <string name="privacy_where_title">Where your data lives</string>
     <string name="privacy_where">Your trackers and entries live in the app\'s private database on this device, and your settings in its private settings file. Other apps cannot read them, and uninstalling Eonslate deletes both.</string>
     <string name="privacy_permissions_title">Permissions</string>
-    <string name="privacy_permissions">Eonslate asks for no permissions. If a future feature needs one, it will ask only when you turn that feature on, and say why first.</string>
+    <string name="privacy_permissions">Eonslate asks for notifications, and can use exact alarms, only when you add a reminder. Nothing else.</string>
     <string name="privacy_source_title">Source code</string>
     <string name="privacy_source">Eonslate\'s source code is public, so anyone can check how it handles your data.</string>
 </resources>

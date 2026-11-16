@@ -132,4 +132,6 @@
         <item>Ochre</item>
         <item>Stone</item>
     </string-array>
+    <string name="editor_tags">Tags</string>
+    <string name="editor_tags_hint">Comma separated</string>
 </resources>

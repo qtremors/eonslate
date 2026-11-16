@@ -13,6 +13,7 @@ class InMemorySettingsRepository(
     val appearanceState = MutableStateFlow(appearance)
     val trackingState = MutableStateFlow(tracking)
     val welcomeState = MutableStateFlow(welcomeSeen)
+    private val homeTagState = MutableStateFlow<String?>(null)
 
     override val welcomeSeen: Flow<Boolean> = welcomeState
     override suspend fun setWelcomeSeen(seen: Boolean) {
@@ -21,6 +22,11 @@ class InMemorySettingsRepository(
 
     override val appearance: Flow<Appearance> = appearanceState
     override suspend fun updateAppearance(change: (Appearance) -> Appearance) = appearanceState.update(change)
+
+    override val homeTag: Flow<String?> = homeTagState
+    override suspend fun setHomeTag(tag: String?) {
+        homeTagState.value = tag
+    }
 
     override val tracking: Flow<Tracking> = trackingState
     override suspend fun updateTracking(change: (Tracking) -> Tracking) = trackingState.update(change)

@@ -143,6 +143,8 @@ class TrackerEditorViewModel @Inject constructor(
 
     fun setName(name: String) = editDraft { it.copy(name = name) }.also { clearTrackerError() }
     fun setDescription(text: String) = editDraft { it.copy(description = text) }
+
+    fun setTags(text: String) = editDraft { it.copy(tags = text) }
     fun setIcon(name: String) = editDraft { it.copy(iconName = name) }
     fun setColor(index: Int) = editDraft { it.copy(colorIndex = index) }
     fun setArchived(archived: Boolean) = editDraft { it.copy(archived = archived) }

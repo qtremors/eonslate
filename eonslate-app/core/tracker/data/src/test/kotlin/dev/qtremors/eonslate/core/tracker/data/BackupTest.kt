@@ -62,6 +62,21 @@ class BackupTest {
         BackupManager(RoomBackupRepository(database, clock), folder.root, Dispatchers.Unconfined, iterations = 10_000)
 
     @Test
+    fun tagsSurviveSavingAndRestoringABackup() = runTest {
+        val tags = listOf("Health", "Après work")
+        val trackers = RoomTrackerRepository(db, clock)
+        assertTrue(trackers.saveTracker(everyTypeTracker().copy(tags = tags)).isValid)
+        assertEquals(tags, trackers.getTracker("t1")!!.tags)
+
+        val bytes = manager(db).create(null, "2.1.1")
+        val backups = manager(other)
+        val snapshot = backups.open(bytes, null)
+        assertEquals(tags, snapshot.trackers.single().tags)
+        backups.restore(snapshot, "2.1.1")
+        assertEquals(tags, RoomTrackerRepository(other, clock).getTracker("t1")!!.tags)
+    }
+
+    @Test
     fun aSnapshotRestoresIntoAnotherDatabaseExactly() = runTest {
         fill(db)
         val snapshot = RoomBackupRepository(db, clock).snapshot("2.0.9")

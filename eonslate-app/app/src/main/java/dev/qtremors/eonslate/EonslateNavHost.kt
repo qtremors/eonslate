@@ -1,12 +1,14 @@
 package dev.qtremors.eonslate
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.qtremors.eonslate.core.navigation.api.Destination
 import dev.qtremors.eonslate.feature.backup.BackupScreen
+import dev.qtremors.eonslate.feature.reminders.RemindersScreen
 import dev.qtremors.eonslate.feature.entry.LogEntryScreen
 import dev.qtremors.eonslate.feature.home.ArchivedScreen
 import dev.qtremors.eonslate.feature.home.HomeScreen
@@ -24,8 +26,13 @@ import dev.qtremors.eonslate.feature.welcome.WelcomeScreen
  * and the welcome never shows again.
  */
 @Composable
-fun EonslateNavHost(startWithWelcome: Boolean) {
+fun EonslateNavHost(startWithWelcome: Boolean, openLog: String? = null, onLogOpened: () -> Unit = {}) {
     val navController = rememberNavController()
+    LaunchedEffect(openLog) {
+        openLog ?: return@LaunchedEffect
+        navController.navigate(Destination.LogEntry(openLog))
+        onLogOpened()
+    }
     val start: Destination = remember { if (startWithWelcome) Destination.Welcome else Destination.Home }
     NavHost(navController = navController, startDestination = start) {
         composable<Destination.Welcome> {
@@ -79,8 +86,10 @@ fun EonslateNavHost(startWithWelcome: Boolean) {
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onEditEntry = { trackerId, entryId -> navController.navigate(Destination.LogEntry(trackerId, entryId)) },
+                onReminders = { id -> navController.navigate(Destination.Reminders(id)) },
             )
         }
+        composable<Destination.Reminders> { RemindersScreen(onBack = { navController.popBackStack() }) }
         composable<Destination.LogEntry> {
             LogEntryScreen(onDone = { navController.popBackStack() })
         }

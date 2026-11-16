@@ -1,6 +1,6 @@
 # Privacy Policy for Eonslate
 
-**Last Updated:** 2026-11-15
+**Last Updated:** 2026-11-16
 
 Eonslate is a personal project built with a privacy-first mindset. This policy explains how the app handles your information.
 
@@ -25,7 +25,11 @@ Uninstalling the app or clearing its storage deletes both. Backups and exports, 
 
 ## Permissions
 
-Eonslate currently asks for no permissions. It will ask for one only when you turn on a feature that needs it, and explain why first. Each optional permission will be listed here when its feature ships.
+Eonslate asks for permissions only for features you turn on:
+
+- **Notifications**, asked when you add a reminder.
+- **Alarms and reminders** (exact alarms), so reminders arrive on time. You can turn it off in system settings; reminders then arrive within 10 minutes.
+- **Run at startup**, to set reminders again after a restart.
 
 ## Source code
 

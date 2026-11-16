@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Unarchive
@@ -55,6 +56,7 @@ import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
+import dev.qtremors.eonslate.core.ui.components.FilterTop
 import dev.qtremors.eonslate.core.ui.components.LoadingState
 import dev.qtremors.eonslate.core.ui.components.MenuAction
 import dev.qtremors.eonslate.core.ui.components.SectionHeader
@@ -71,6 +73,7 @@ fun TrackerDetailScreen(
     onLog: (String) -> Unit,
     onEditEntry: (trackerId: String, entryId: String) -> Unit,
     modifier: Modifier = Modifier,
+    onReminders: (String) -> Unit = {},
     viewModel: TrackerDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -97,8 +100,14 @@ fun TrackerDetailScreen(
         onBack = onBack,
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbar) },
+        filter = if (tracker != null && state.view == DetailView.LIST) {
+            FilterTop(state.query, viewModel::setQuery, stringResource(R.string.detail_search))
+        } else null,
         actions = {
             if (tracker != null) {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onReminders(tracker.id) }) {
+                    Icon(Icons.Rounded.NotificationsNone, contentDescription = stringResource(R.string.detail_reminders))
+                }
                 IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onEditTracker(tracker.id) }) {
                     Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.detail_edit_tracker))
                 }
@@ -238,7 +247,12 @@ private fun DetailContent(
             return@LazyColumn
         }
 
-        if (groups.isEmpty()) {
+        if (state.searching && groups.isEmpty()) {
+            item(key = "empty") {
+                if (state.searchResults == null) LoadingState()
+                else EmptyState(icon = Icons.Rounded.SearchOff, title = stringResource(R.string.detail_no_matches), message = "")
+            }
+        } else if (groups.isEmpty()) {
             item(key = "empty") {
                 EmptyState(
                     icon = Icons.Rounded.EditNote,

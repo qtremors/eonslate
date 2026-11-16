@@ -28,14 +28,15 @@ Available now:
 - **Ready-made templates:** start from twenty templates such as expenses, habits, mood, workouts, reading, water and sleep, then make them your own.
 - **Quick logging:** log from Home in a tap, fill in "same as last time", or tick a daily habit without opening anything.
 - **Views that fit:** every tracker has a list by day, a month calendar and insights with streaks, totals, averages, records and charts.
+- **Search and tags:** search trackers and entries, with a saved tag filter on Home.
 - **Exact numbers:** decimals, money and time are stored exactly, never as rounded floating point values.
 - **Backups:** one file, optionally encrypted, with undoable restores.
+- **Reminders:** per tracker, on chosen days, skipped when already logged.
 - **Its own look:** monochrome by default, or your wallpaper's colors or one of eight accents. Material 3 Expressive.
 
 Coming next:
 
 - **Finance built in:** accounts, budgets, recurring payments and an optional on-device SMS reader.
-- **Reminders:** local notifications that work without the internet.
 - **Private by design:** optional screenshot blocking. No ads, accounts or telemetry.
 
 ## Development

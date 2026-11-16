@@ -30,6 +30,7 @@ object BackupCheck {
         duplicates(snapshot.fields.map { it.id }).forEach { add("field $it appears twice") }
         duplicates(snapshot.entries.map { it.id }).forEach { add("entry $it appears twice") }
         duplicates(snapshot.values.map { it.entryId to it.fieldId }).forEach { add("value $it appears twice") }
+        duplicates(snapshot.reminders.map { it.id }).forEach { add("reminder $it appears twice") }
 
         snapshot.trackers.forEach { t ->
             if (t.name.isBlank() || t.iconName.isBlank()) add("tracker ${t.id} has no name or icon")
@@ -38,6 +39,12 @@ object BackupCheck {
         }
 
         val trackerIds = snapshot.trackers.mapTo(HashSet()) { it.id }
+        snapshot.reminders.forEach { r ->
+            if (r.trackerId !in trackerIds) add("reminder ${r.id} belongs to no tracker")
+            if (r.minuteOfDay !in 0 until 1440) add("reminder ${r.id} has minute ${r.minuteOfDay}")
+            if (r.daysMask !in 1..127) add("reminder ${r.id} has days ${r.daysMask}")
+        }
+
         val fields = snapshot.fields.associateBy { it.id }
         snapshot.fields.forEach { f ->
             if (f.trackerId !in trackerIds) add("field ${f.id} belongs to no tracker")

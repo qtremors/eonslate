@@ -39,6 +39,28 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version2TrackersOpenWithoutTags() = runTest {
+        ExportedSchema.create(context, name, 2).use {
+            it.execSQL(
+                "INSERT INTO trackers (id, name, description, icon_name, color_index, archived, position, template_id, created_at, updated_at) " +
+                    "VALUES ('t2', 'Water', '', 'LocalDrink', 4, 0, 0, NULL, 100, 100)"
+            )
+        }
+
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name)
+            .configure()
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val tracker = RoomTrackerRepository(db, FakeClock()).getTracker("t2")!!
+            assertEquals("Water", tracker.name)
+            assertEquals(emptyList<String>(), tracker.tags)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version1DataOpensWithTheCurrentApp() = runTest {
         ExportedSchema.create(context, name, 1).apply {
             execSQL(

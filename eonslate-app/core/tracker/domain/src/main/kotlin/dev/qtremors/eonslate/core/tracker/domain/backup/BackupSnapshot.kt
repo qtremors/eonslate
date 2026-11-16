@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
  * Settings are not part of a backup: they belong to the phone, and a restore never changes them.
  *
  * @property schema the database version the rows were read from. A restore refuses a newer one.
- *   Only schema 1 exists so far; a database migration must also upgrade older snapshots here.
+ *   Schema 2 added [reminders] and schema 3 tracker tags; older files lack them and read as empty.
  */
 @Serializable
 data class BackupSnapshot(
@@ -22,6 +22,8 @@ data class BackupSnapshot(
     val fields: List<FieldRow> = emptyList(),
     val entries: List<EntryRow> = emptyList(),
     val values: List<ValueRow> = emptyList(),
+    /** Added in schema 2; a schema 1 file simply has none. */
+    val reminders: List<ReminderRow> = emptyList(),
 ) {
     /** What a person is shown before they choose to restore it. */
     val summary: BackupSummary
@@ -55,6 +57,8 @@ data class TrackerRow(
     @SerialName("template_id") val templateId: String? = null,
     @SerialName("created_at") val createdAt: Long,
     @SerialName("updated_at") val updatedAt: Long,
+    /** Added in schema 3. */
+    val tags: List<String> = emptyList(),
 )
 
 @Serializable
@@ -77,6 +81,17 @@ data class EntryRow(
     val note: String = "",
     @SerialName("created_at") val createdAt: Long,
     @SerialName("updated_at") val updatedAt: Long,
+)
+
+@Serializable
+data class ReminderRow(
+    val id: String,
+    @SerialName("tracker_id") val trackerId: String,
+    @SerialName("minute_of_day") val minuteOfDay: Int,
+    @SerialName("days_mask") val daysMask: Int,
+    val enabled: Boolean = true,
+    @SerialName("skip_if_logged") val skipIfLogged: Boolean = true,
+    @SerialName("created_at") val createdAt: Long = 0,
 )
 
 @Serializable

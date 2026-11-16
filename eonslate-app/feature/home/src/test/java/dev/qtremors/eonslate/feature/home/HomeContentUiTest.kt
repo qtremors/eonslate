@@ -1,5 +1,11 @@
 package dev.qtremors.eonslate.feature.home
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -7,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
@@ -54,6 +61,7 @@ class HomeContentUiTest {
     private fun show(trackers: List<TrackerSummary>?) {
         compose.setContent {
             EonslateTheme {
+                var selectedTag by remember { mutableStateOf<String?>(null) }
                 HomeContent(
                     trackers = trackers,
                     onNewTracker = { created++ },
@@ -69,6 +77,8 @@ class HomeContentUiTest {
                     ),
                     onStarter = { starters += it },
                     nowMillis = now,
+                    selectedTag = selectedTag,
+                    onTagChange = { selectedTag = it },
                 )
             }
         }
@@ -114,6 +124,22 @@ class HomeContentUiTest {
         compose.onNodeWithText("3 entries, latest just now").assertIsDisplayed()
         compose.onNodeWithText("Run").performClick()
         assertEquals(listOf("r"), opened)
+    }
+
+    @Test
+    fun tagChipsAndSearchFilterTheGrid() {
+        show(listOf(TrackerSummary(stretch.copy(tags = listOf("Mobility")), 0, null), TrackerSummary(run, 0, null)))
+        compose.onNodeWithText("Run").assertIsDisplayed()
+        compose.onNodeWithText("Mobility").performClick().assertIsSelected()
+        compose.onNodeWithText("Stretch").assertIsDisplayed()
+        compose.onNodeWithText("Run").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("Search").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("missing")
+        compose.onNodeWithText("No matches").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Close search").performClick()
+        compose.onNodeWithText("Mobility").performClick()
+        compose.onNodeWithText("Run").assertIsDisplayed()
     }
 
     @Test

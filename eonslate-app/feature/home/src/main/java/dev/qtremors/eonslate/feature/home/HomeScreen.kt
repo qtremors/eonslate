@@ -12,7 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledIconButton
@@ -36,6 +38,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +57,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
+import dev.qtremors.eonslate.core.tracker.domain.model.Tags
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerSummary
 import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
@@ -64,6 +68,7 @@ import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
+import dev.qtremors.eonslate.core.ui.components.FilterTop
 import dev.qtremors.eonslate.core.ui.components.MenuAction
 import dev.qtremors.eonslate.core.ui.components.Meter
 import dev.qtremors.eonslate.core.ui.components.LoadingState
@@ -83,6 +88,7 @@ fun HomeScreen(
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
     val streaks by viewModel.streaks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+    val selectedTag by viewModel.homeTag.collectAsStateWithLifecycle(initialValue = null)
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -101,6 +107,8 @@ fun HomeScreen(
         },
         streaks = streaks,
         today = today,
+        selectedTag = selectedTag,
+        onTagChange = viewModel::setHomeTag,
         snackbar = snackbar,
         actions = SlateActions(
             onMove = viewModel::move,
@@ -142,11 +150,30 @@ fun HomeContent(
     /** Creates a tracker from a template in one tap; offered while Home is empty. */
     onStarter: ((String) -> Unit)? = null,
     nowMillis: Long = System.currentTimeMillis(),
+    selectedTag: String? = null,
+    onTagChange: (String?) -> Unit = {},
 ) {
     val haptics = rememberAppHaptics()
+    var query by rememberSaveable { mutableStateOf("") }
+    val tags = remember(trackers) { Tags.all(trackers.orEmpty().map { it.tracker }) }
+    val gridState = rememberLazyGridState()
+    var hadTags by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val hasTags = tags.isNotEmpty()
+    LaunchedEffect(trackers != null, hasTags) {
+        if (trackers != null) {
+            // The grid keeps its first visible key when the chip row is inserted above it.
+            if (hadTags == false && hasTags) gridState.requestScrollToItem(0)
+            hadTags = hasTags
+        }
+    }
+    val tag = tags.firstOrNull { it.equals(selectedTag, ignoreCase = true) }
+    val shown = remember(trackers, query, tag) {
+        trackers?.filter { TrackerSearch.matches(it.tracker, query) && TrackerSearch.hasTag(it.tracker, tag) }
+    }
     EonslateScaffold(
         title = stringResource(R.string.home_title),
         modifier = modifier,
+        filter = if (trackers.isNullOrEmpty()) null else FilterTop(query, { query = it }, stringResource(R.string.home_search)),
         snackbarHost = { if (snackbar != null) SnackbarHost(snackbar) },
         actions = {
             if (onArchived != null) {
@@ -185,17 +212,36 @@ fun HomeContent(
                 )
                 if (onStarter != null) Starters(onStarter)
             }
+            shown.isNullOrEmpty() && tags.isEmpty() -> EmptyState(
+                icon = Icons.Rounded.SearchOff,
+                title = stringResource(R.string.home_no_matches),
+                message = query,
+                modifier = Modifier.padding(padding),
+            )
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
+                state = gridState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = padding,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (today != null && today.total > 0) {
+                if (tags.isNotEmpty()) {
+                    item(key = "tags", span = { GridItemSpan(maxLineSpan) }) {
+                        TagChips(tags, tag, onPick = { picked -> onTagChange(picked.takeUnless { it == tag }) })
+                    }
+                }
+                if (today != null && today.total > 0 && query.isBlank() && tag == null) {
                     item(key = "today", span = { GridItemSpan(maxLineSpan) }) { TodayLine(today) }
                 }
-                itemsIndexed(trackers, key = { _, s -> s.tracker.id }) { index, summary ->
+                if (shown.isNullOrEmpty()) {
+                    item(key = "none", span = { GridItemSpan(maxLineSpan) }) {
+                        EmptyState(icon = Icons.Rounded.SearchOff, title = stringResource(R.string.home_no_matches), message = query)
+                    }
+                }
+                items(shown.orEmpty(), key = { s -> s.tracker.id }) { summary ->
+                    // The position in the full list, so moving still works while searching.
+                    val index = trackers.indexOf(summary)
                     var menu by rememberSaveable { mutableStateOf(false) }
                     Box(Modifier.animateItem()) {
                         TrackerSlate(

@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.8
+> **Version:** 2.0.9
 > **Last Updated:** 2026-11-16
 
 ## Architecture
@@ -23,6 +23,8 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:feature:trackereditor` | Android library | Tracker builder: the template gallery, details, icon, pigment, fields and the field sheet |
 | `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
 | `:feature:backup` | Android library | Creating, restoring and undoing backups |
+| `:feature:reminders` | Android library | A tracker's reminders: time, days, skip if logged |
+| `:core:reminders` | Android library | Alarm sync, receivers and reminder notifications |
 | `:feature:welcome` | Android library | The first run: what Eonslate is, then starter trackers |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
@@ -78,10 +80,13 @@ A tracker owns an ordered list of fields; each entry fills some of them. Values 
 | Text | The text | `text_value` |
 
 - Field rules live in `FieldConfig`, stored as JSON keyed by `kind`. Unknown properties are ignored, so new optional settings need no migration.
+- Tracker tags are stored as a JSON string array in `trackers.tags` (schema 3, `MIGRATION_2_3`) and included in backups.
+- Home search matches tracker names, descriptions, field names and tags. The selected tag filter is saved in DataStore.
 - `saveTracker` validates, then writes the tracker and exactly its fields in one transaction. `FieldValueAdapter` rescales values when decimals or currency digits change, and drops values whose type or option is gone. Limits (min, max, scale, length) apply to new input only.
 - SQLite triggers in `TrackerIntegrity` refuse rows that break the rules. Room does not track triggers, so they are reinstalled on every open and no migration has to remember them.
 - The log screen keeps what a person types as `FieldInput` text and selections. `EntryInputs.read` turns each into an exact `FieldValue` or reports it unreadable; it never rounds. `ValueFormat` (in `:core:tracker:ui`) turns values back into locale-aware text.
 - Long histories are paged: lists read `observeRecentEntries(trackerId, limit)`, while totals and calendars read `observeEntryTimes`, which selects only `occurred_at` and `zone_id`. A picked day is read with `dayWindow(day)`, its UTC day widened by 14 hours each way to cover every zone, then filtered by each entry's own day.
+- List search checks notes and text values across the tracker's full history.
 - Entries store `occurredAt` (epoch milliseconds) and the IANA `zoneId` they were logged in; the day an entry belongs to is always computed in that zone.
 - Schemas are exported to `eonslate-app/core/tracker/data/schemas/` and committed. A schema change bumps `TrackerDatabase.VERSION`, adds a `Migration` to `TrackerMigrations.ALL`, and adds a test to `TrackerMigrationTest` that writes data with `ExportedSchema.create` under the old version and reads it back with the current app.
 
@@ -105,6 +110,13 @@ Versions live in `eonslate-app/gradle/libs.versions.toml`.
 - `BackupCheck` repeats the trigger rules before anything is touched. `RoomBackupRepository.replaceAll` clears and inserts in one transaction, with triggers on.
 - `BackupManager` keeps the current data as `files/backups/before-restore.eonslate` before each restore; it replaces the previous point only after a successful restore. Undo restores it and deletes it.
 - A schema change must also upgrade older snapshots before restoring them.
+
+## Reminders
+
+- `Reminder` (domain) is a wall-clock time and days; `ReminderTimes.next` finds the first due time strictly after now in the current zone (DST gaps shift forward). Stored in `reminders` (schema 2, `MIGRATION_1_2`), deleted with their tracker, included in backups.
+- `ReminderSync` keeps one alarm per active reminder (enabled, tracker not archived) and cancels the rest. It follows `observeActive()` from `EonslateApplication`, so any change reschedules. Exact (`setExactAndAllowWhileIdle`) when allowed, else a 10 minute `setWindow`.
+- `ReminderReceiver` posts unless skipped, then always syncs, which schedules the next alert. `RescheduleReceiver` syncs on boot, app update, time, zone and exact-alarm permission changes.
+- A tap opens `MainActivity` with `log_tracker`, which navigates to `LogEntry`.
 
 ## Identity
 

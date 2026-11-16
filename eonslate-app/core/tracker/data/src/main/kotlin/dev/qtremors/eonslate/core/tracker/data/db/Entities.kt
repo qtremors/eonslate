@@ -24,6 +24,8 @@ data class TrackerEntity(
     @ColumnInfo(name = "template_id") val templateId: String?,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    /** A JSON array of tag strings; added in schema 3. */
+    @ColumnInfo(name = "tags", defaultValue = "[]") val tags: String = "[]",
 )
 
 /**
@@ -106,6 +108,29 @@ data class EntryValueEntity(
     val type: String,
     @ColumnInfo(name = "long_value") val longValue: Long?,
     @ColumnInfo(name = "text_value") val textValue: String?,
+)
+
+/** A reminder to log [trackerId]; [daysMask] has Monday at bit 0. Deleted with its tracker. */
+@Entity(
+    tableName = "reminders",
+    foreignKeys = [
+        ForeignKey(
+            entity = TrackerEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tracker_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["tracker_id"])],
+)
+data class ReminderEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "tracker_id") val trackerId: String,
+    @ColumnInfo(name = "minute_of_day") val minuteOfDay: Int,
+    @ColumnInfo(name = "days_mask") val daysMask: Int,
+    val enabled: Boolean,
+    @ColumnInfo(name = "skip_if_logged") val skipIfLogged: Boolean,
+    @ColumnInfo(name = "created_at") val createdAt: Long,
 )
 
 /** A tracker read together with its fields. */

@@ -34,6 +34,10 @@ sealed interface Destination {
     @Serializable
     data object Settings : Destination
 
+    /** The reminders of one tracker. */
+    @Serializable
+    data class Reminders(val trackerId: String) : Destination
+
     /** Making a backup file, restoring one, and undoing the last restore. */
     @Serializable
     data object Backup : Destination

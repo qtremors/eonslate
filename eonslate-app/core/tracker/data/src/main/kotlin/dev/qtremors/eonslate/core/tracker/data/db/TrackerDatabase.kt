@@ -18,6 +18,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
         TrackerFieldEntity::class,
         EntryEntity::class,
         EntryValueEntity::class,
+        ReminderEntity::class,
     ],
     version = TrackerDatabase.VERSION,
     exportSchema = true,
@@ -26,9 +27,10 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun trackerDao(): TrackerDao
     abstract fun entryDao(): EntryDao
     abstract fun backupDao(): BackupDao
+    abstract fun reminderDao(): ReminderDao
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 3
         const val NAME = "eonslate.db"
 
         /**
@@ -60,7 +62,27 @@ internal object IntegrityCallback : RoomDatabase.Callback() {
 
 /** Every migration, oldest first. Triggers are reinstalled after them by [IntegrityCallback]. */
 object TrackerMigrations {
-    val ALL: Array<Migration> = emptyArray()
+    /** 2.0.9: reminders. */
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `reminders` (`id` TEXT NOT NULL, `tracker_id` TEXT NOT NULL,
+                   `minute_of_day` INTEGER NOT NULL, `days_mask` INTEGER NOT NULL, `enabled` INTEGER NOT NULL,
+                   `skip_if_logged` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, PRIMARY KEY(`id`),
+                   FOREIGN KEY(`tracker_id`) REFERENCES `trackers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"""
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_reminders_tracker_id` ON `reminders` (`tracker_id`)")
+        }
+    }
+
+    /** 2.0.9: tracker tags. */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `trackers` ADD COLUMN `tags` TEXT NOT NULL DEFAULT '[]'")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 }
 
 /**
@@ -91,6 +113,12 @@ object TrackerIntegrity {
             OR NEW.type NOT IN ($TYPES)
             OR length(NEW.config_json) = 0
             OR NEW.required NOT IN (0, 1)
+        """,
+        "reminders" to """
+            NEW.minute_of_day < 0 OR NEW.minute_of_day >= 1440
+            OR NEW.days_mask < 1 OR NEW.days_mask > 127
+            OR NEW.enabled NOT IN (0, 1)
+            OR NEW.skip_if_logged NOT IN (0, 1)
         """,
         "entries" to """
             length(trim(NEW.zone_id)) = 0

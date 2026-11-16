@@ -150,6 +150,9 @@ class WelcomeTest {
     }
 
     private class Settings : SettingsRepository {
+        override val homeTag: Flow<String?> = MutableStateFlow(null)
+        override suspend fun setHomeTag(tag: String?) = Unit
+
         val seen = MutableStateFlow(false)
         override val welcomeSeen: Flow<Boolean> = seen
         override suspend fun setWelcomeSeen(seen: Boolean) {

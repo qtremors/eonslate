@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.0.8
+> **Version:** 2.0.9
 > **Last Updated:** 2026-11-16
 
 ## Roadmap
@@ -19,8 +19,8 @@ Each step is planned as one release commit.
 | 7 | 2.0.7 | Templates gallery, welcome flow, and the brand: logo (`Eonslate.png`, `Eonslate.svg`) and themed adaptive icons | Done, except the brand |
 | 8 | 2.0.7 | Settings, About and Licenses screens | Done |
 | 9 | 2.0.8 | Backup and restore: encrypted archives, recoverable restores | Done |
-| 10 | 2.0.9 | Local reminders that reschedule after each alert and after reboot | Planned |
-| 11 | 2.0.9 | Search, tags, filters and saved views | Planned |
+| 10 | 2.0.9 | Local reminders that reschedule after each alert and after reboot | Done |
+| 11 | 2.0.9 | Search, tags, filters and saved views | Done |
 | 12 | 2.1.0 | Finance: accounts, exact money, transfers | Planned |
 | 13 | 2.1.0 | Finance: budgets and recurring payments | Planned |
 | 14 | 2.1.1 | Finance: optional on-device SMS reader | Planned |

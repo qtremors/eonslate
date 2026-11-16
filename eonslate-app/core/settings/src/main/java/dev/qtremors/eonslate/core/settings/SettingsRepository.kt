@@ -36,6 +36,10 @@ interface SettingsRepository {
     val tracking: Flow<Tracking>
 
     suspend fun updateTracking(change: (Tracking) -> Tracking)
+
+    val homeTag: Flow<String?>
+
+    suspend fun setHomeTag(tag: String?)
 }
 
 /** Whether the welcome pages show at start. */
@@ -84,6 +88,14 @@ class DataStoreSettingsRepository @Inject constructor(
         }
     }
 
+    override val homeTag: Flow<String?> = store.data.map { it[HOME_TAG] }.distinctUntilChanged()
+
+    override suspend fun setHomeTag(tag: String?) {
+        store.edit { prefs ->
+            if (tag == null) prefs.remove(HOME_TAG) else prefs[HOME_TAG] = tag
+        }
+    }
+
     private fun readTracking(prefs: Preferences): Tracking = Tracking(
         weekStart = enumOrDefault(prefs[WEEK_START], WeekStart.LOCALE),
         currency = prefs[CURRENCY]?.takeIf { it.isNotEmpty() },
@@ -112,6 +124,7 @@ class DataStoreSettingsRepository @Inject constructor(
         private val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
         private val WEEK_START = stringPreferencesKey("week_start")
         private val CURRENCY = stringPreferencesKey("currency")
+        private val HOME_TAG = stringPreferencesKey("home_tag")
     }
 }
 

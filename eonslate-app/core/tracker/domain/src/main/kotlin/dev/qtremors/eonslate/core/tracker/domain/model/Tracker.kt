@@ -9,6 +9,7 @@ package dev.qtremors.eonslate.core.tracker.domain.model
  * @property colorIndex an index into the badge palette in `:core:ui`, below [TrackerColors.COUNT].
  * @property position the order on the home list, smallest first.
  * @property templateId the template the tracker was created from, if any.
+ * @property tags short labels for filtering Home, already normalized by [Tags.normalize].
  * @property createdAt epoch milliseconds when the tracker was created.
  * @property updatedAt epoch milliseconds of the last change to the tracker or its fields.
  */
@@ -24,6 +25,7 @@ data class Tracker(
     val templateId: String? = null,
     val createdAt: Long,
     val updatedAt: Long = createdAt,
+    val tags: List<String> = emptyList(),
 ) {
     /** The field with [fieldId], or null when it is not part of this tracker. */
     fun field(fieldId: String): FieldDefinition? = fields.firstOrNull { it.id == fieldId }

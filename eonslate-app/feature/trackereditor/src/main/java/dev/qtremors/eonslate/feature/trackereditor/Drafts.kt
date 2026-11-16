@@ -4,6 +4,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.ChoiceOption
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
+import dev.qtremors.eonslate.core.tracker.domain.model.Tags
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.value.ScaledDecimal
 import kotlinx.serialization.Serializable
@@ -115,6 +116,8 @@ data class TrackerDraft(
     val position: Int? = null,
     val templateId: String? = null,
     val createdAt: Long? = null,
+    /** Tags as typed, comma separated; normalized when built. */
+    val tags: String = "",
 ) {
     val isNew: Boolean get() = createdAt == null
 }
@@ -130,6 +133,7 @@ fun Tracker.toDraft(defaultCurrency: String): TrackerDraft = TrackerDraft(
     position = position,
     templateId = templateId,
     createdAt = createdAt,
+    tags = tags.joinToString(", "),
 )
 
 /** The tracker to save, or the ids of fields whose limits could not be read. */
@@ -153,6 +157,7 @@ fun TrackerDraft.build(now: Long, position: Int): TrackerBuild {
             templateId = templateId,
             createdAt = created,
             updatedAt = maxOf(now, created),
+            tags = Tags.normalize(tags.split(',')),
         ),
         emptyMap(),
     )

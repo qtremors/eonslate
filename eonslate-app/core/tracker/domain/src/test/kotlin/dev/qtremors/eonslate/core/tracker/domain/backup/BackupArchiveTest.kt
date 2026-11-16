@@ -24,6 +24,7 @@ fun sampleSnapshot(note: String = "Felt good 🌙") = BackupSnapshot(
         ValueRow("e1", "f1", "duration", longValue = 27_000),
         ValueRow("e1", "f2", "text", textValue = "Calm"),
     ),
+    reminders = listOf(ReminderRow("r1", "t1", 21 * 60, 127)),
 )
 
 class BackupArchiveTest {

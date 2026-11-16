@@ -22,6 +22,9 @@ interface BackupDao {
     @Query("SELECT * FROM entry_values ORDER BY entry_id, field_id")
     suspend fun allValues(): List<EntryValueEntity>
 
+    @Query("SELECT * FROM reminders ORDER BY tracker_id, minute_of_day, id")
+    suspend fun allReminders(): List<ReminderEntity>
+
     @Query("SELECT COUNT(*) FROM trackers")
     suspend fun trackerCount(): Int
 
@@ -29,6 +32,9 @@ interface BackupDao {
     suspend fun entryCount(): Int
 
     // Children first, so no step relies on cascades.
+    @Query("DELETE FROM reminders")
+    suspend fun clearReminders()
+
     @Query("DELETE FROM entry_values")
     suspend fun clearValues()
 
@@ -52,4 +58,7 @@ interface BackupDao {
 
     @Insert
     suspend fun insertValues(rows: List<EntryValueEntity>)
+
+    @Insert
+    suspend fun insertReminders(rows: List<ReminderEntity>)
 }

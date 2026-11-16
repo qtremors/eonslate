@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.EntryTime
+import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
@@ -53,14 +54,25 @@ data class DetailState(
     val month: YearMonth = YearMonth.now(),
     /** A day picked on the calendar; the list below it shows only that day. */
     val selectedDay: LocalDate? = null,
+    val query: String = "",
+    val searchResults: List<Entry>? = null,
 ) {
-    val hasMore: Boolean get() = selectedDay == null && times.size > entries.size
+    val searching: Boolean get() = view == DetailView.LIST && query.isNotBlank()
+    val hasMore: Boolean get() = !searching && selectedDay == null && times.size > entries.size
 
     val groups: List<DayGroup>
-        get() = DetailModels.groupByDay(if (selectedDay == null) entries else dayEntries.orEmpty())
+        get() = DetailModels.groupByDay(
+            when {
+                searching -> searchResults.orEmpty()
+                selectedDay != null -> dayEntries.orEmpty()
+                else -> entries
+            }
+        )
 
     /** The entry with [id] among those shown, for its detail sheet. */
-    fun find(id: String): Entry? = entries.firstOrNull { it.id == id } ?: dayEntries?.firstOrNull { it.id == id }
+    fun find(id: String): Entry? =
+        if (searching) searchResults?.firstOrNull { it.id == id }
+        else entries.firstOrNull { it.id == id } ?: dayEntries?.firstOrNull { it.id == id }
 }
 
 /** Something to say once, such as "Entry deleted" with a way to take it back. */
@@ -77,13 +89,16 @@ class TrackerDetailViewModel @Inject constructor(
 ) : ViewModel() {
     private val trackerId: String = checkNotNull(savedState[ARG_TRACKER_ID]) { "TrackerDetail needs a tracker" }
 
-    private data class Ui(val view: DetailView, val month: YearMonth, val day: LocalDate?)
+    private data class Ui(val view: DetailView, val month: YearMonth, val day: LocalDate?, val query: String) {
+        val searching: Boolean get() = view == DetailView.LIST && query.isNotBlank()
+    }
 
     private val ui = MutableStateFlow(
         Ui(
             view = savedState.get<String>(KEY_VIEW)?.let { runCatching { DetailView.valueOf(it) }.getOrNull() } ?: DetailView.LIST,
             month = YearMonth.now(),
             day = null,
+            query = savedState[KEY_QUERY] ?: "",
         )
     )
     private val handle = savedState
@@ -106,14 +121,15 @@ class TrackerDetailViewModel @Inject constructor(
         }
     }
 
-    /** The whole history, only while insights need it, so the list and calendar stay light. */
+    /** Search and insights use the whole history. The unfiltered list stays paged. */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val insightEntries: Flow<List<Entry>?> = ui.map { it.view }.distinctUntilChanged().flatMapLatest { view ->
-        if (view == DetailView.INSIGHTS) entries.observeEntries(trackerId) else flowOf(null)
-    }
+    private val history: Flow<List<Entry>?> =
+        ui.map { it.searching || it.view == DetailView.INSIGHTS }.distinctUntilChanged().flatMapLatest { needed ->
+            if (needed) entries.observeEntries(trackerId) else flowOf(null)
+        }
 
     private val extra: Flow<Triple<List<Entry>?, List<Entry>?, DayOfWeek>> =
-        combine(dayEntries, insightEntries, settings.tracking) { day, all, tracking -> Triple(day, all, tracking.firstDayOfWeek()) }
+        combine(dayEntries, history, settings.tracking) { day, all, tracking -> Triple(day, all, tracking.firstDayOfWeek()) }
 
     val state: StateFlow<DetailState> = combine(
         trackers.observeTracker(trackerId),
@@ -129,13 +145,23 @@ class TrackerDetailViewModel @Inject constructor(
             entries = list,
             times = times,
             dayEntries = day,
-            allEntries = all,
+            allEntries = all.takeIf { u.view == DetailView.INSIGHTS },
             firstDay = firstDay,
             view = u.view,
             month = u.month,
             selectedDay = u.day,
+            query = u.query,
+            searchResults = if (u.searching) {
+                val term = u.query.trim()
+                all?.filter { it.matches(term) }
+            } else null,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailState())
+
+    fun setQuery(query: String) {
+        ui.update { it.copy(query = query) }
+        handle[KEY_QUERY] = query
+    }
 
     /** Loads one more page of older entries. */
     fun showOlder() = limit.update { it + PAGE }
@@ -173,5 +199,10 @@ class TrackerDetailViewModel @Inject constructor(
         /** Entries per page: a few weeks of daily logging, enough to fill the screen many times over. */
         const val PAGE = 60
         private const val KEY_VIEW = "detail.view"
+        private const val KEY_QUERY = "detail.query"
     }
 }
+
+private fun Entry.matches(query: String): Boolean =
+    note.contains(query, ignoreCase = true) ||
+        values.values.any { it is FieldValue.Text && it.text.contains(query, ignoreCase = true) }

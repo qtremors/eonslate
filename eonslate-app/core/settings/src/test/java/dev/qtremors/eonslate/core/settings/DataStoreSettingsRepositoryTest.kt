@@ -70,6 +70,22 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun theHomeTagSurvivesReopeningTheStore() {
+        val file = newFile()
+        runTest(UnconfinedTestDispatcher()) {
+            val settings = DataStoreSettingsRepository(store(this, file))
+            assertEquals(null, settings.homeTag.first())
+            settings.setHomeTag("Health")
+        }
+        runTest(UnconfinedTestDispatcher()) {
+            val settings = DataStoreSettingsRepository(store(this, file))
+            assertEquals("Health", settings.homeTag.first())
+            settings.setHomeTag(null)
+            assertEquals(null, settings.homeTag.first())
+        }
+    }
+
+    @Test
     fun theWeekStartsWhereTheLocaleOrTheChoiceSays() {
         assertEquals(java.time.DayOfWeek.SUNDAY, Tracking().firstDayOfWeek(java.util.Locale.US))
         assertEquals(java.time.DayOfWeek.MONDAY, Tracking().firstDayOfWeek(java.util.Locale.GERMANY))

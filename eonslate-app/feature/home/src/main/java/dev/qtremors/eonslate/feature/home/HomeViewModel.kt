@@ -40,6 +40,12 @@ class HomeViewModel @Inject constructor(
     val trackers: StateFlow<List<TrackerSummary>?> = repository.observeSummaries()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
+    val homeTag = settings.homeTag
+
+    fun setHomeTag(tag: String?) {
+        viewModelScope.launch { settings.setHomeTag(tag) }
+    }
+
     /** Each tracker's current streak in days, by id; trackers without one are left out. */
     val streaks: StateFlow<Map<String, Int>> = entries.observeEntryTimesByTracker()
         .map { byTracker ->
