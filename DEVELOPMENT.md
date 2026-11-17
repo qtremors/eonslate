@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.1.0
+> **Version:** 2.1.1
 > **Last Updated:** 2026-11-17
 
 ## Architecture
@@ -24,6 +24,7 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
 | `:feature:backup` | Android library | Creating, restoring and undoing backups |
 | `:feature:finance` | Android library | Accounts, income, expenses and transfers |
+| `:feature:smsinbox` | Android library | Optional SMS permission manifest for inbox-enabled builds |
 | `:feature:reminders` | Android library | A tracker's reminders: time, days, skip if logged |
 | `:core:reminders` | Android library | Alarm sync, receivers and reminder notifications |
 | `:feature:welcome` | Android library | The first run: what Eonslate is, then starter trackers |
@@ -97,6 +98,10 @@ A tracker owns an ordered list of fields; each entry fills some of them. Values 
 Room schema 4 adds finance accounts and transactions. Accounts hold a fixed currency and an opening balance in minor units. Each transfer is one same-currency transaction with a source and destination. A backup includes the entire ledger and restores it with tracker data in one transaction.
 
 Schema 5 adds monthly budgets and recurring payments. Expenses count toward a budget in the month of their saved date. The app posts due payments on open and advances each schedule in the same transaction as its entries. A monthly payment keeps its original due day after shorter months.
+
+Schema 6 adds transaction categories, category budgets, and custom recurring intervals with pause and amount confirmation. Category budgets use an anchored cycle. Variable payments advance only after confirmation.
+
+Finance reviews payment SMS from pasted or shared text and can also scan the inbox in builds that include the SMS permission. Build an inbox-enabled APK with `./gradlew :app:assembleDebug -Peonslate.smsInbox=true`. The standard build reads pasted or shared text. The parser suggests a category, identifies the account ending and reference when present, and keeps a fingerprint for duplicate detection. Raw SMS stays in memory during import.
 
 ## Technology stack
 

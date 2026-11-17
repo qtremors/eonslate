@@ -41,6 +41,30 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version5SchedulesKeepTheirExpenseDefaults() = runTest {
+        ExportedSchema.create(context, name, 5).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 100)")
+            it.execSQL(
+                """INSERT INTO finance_recurring (id, account_id, minor, note, interval, anchor_day, next_epoch_day)
+                   VALUES ('rent', 'cash', 200, 'Rent', 'MONTHLY', 1, 20000)"""
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name)
+            .configure()
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val ledger = RoomFinanceRepository(db).observeLedger().first()
+            val payment = ledger.recurring.single()
+            assertEquals("EXPENSE", payment.kind.name)
+            assertEquals(1, payment.every)
+            assertTrue(!payment.variable && !payment.paused && ledger.budgets.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version4AccountsOpenWithoutBudgetsOrSchedules() = runTest {
         ExportedSchema.create(context, name, 4).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 100)")

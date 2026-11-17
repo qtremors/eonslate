@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.domain.backup
 
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import kotlinx.serialization.SerialName
@@ -30,6 +31,7 @@ data class BackupSnapshot(
     val accounts: List<Account> = emptyList(),
     val transactions: List<Transaction> = emptyList(),
     @SerialName("recurring_payments") val recurring: List<RecurringPayment> = emptyList(),
+    @SerialName("category_budgets") val budgets: List<CategoryBudget> = emptyList(),
 ) {
     /** What a person is shown before they choose to restore it. */
     val summary: BackupSummary

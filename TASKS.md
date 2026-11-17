@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.0
+> **Version:** 2.1.1
 > **Last Updated:** 2026-11-17
 
 ## Roadmap
@@ -23,7 +23,7 @@ Each step is planned as one release commit.
 | 11 | 2.0.9 | Search, tags, filters and saved views | Done |
 | 12 | 2.1.0 | Finance: accounts, exact money, transfers | Done |
 | 13 | 2.1.0 | Finance: budgets and recurring payments | Done |
-| 14 | 2.1.1 | Finance: optional on-device SMS reader | Planned |
+| 14 | 2.1.1 | Finance: optional on-device SMS reader | Done |
 | 15 | 2.1.2 | CSV import and export | Planned |
 | 16 | 2.1.2 | Home screen widgets and quick tiles | Planned |
 | 17 | 2.1.3 | Accessibility, localization, screenshot blocking, architecture tests, release readiness | Planned |

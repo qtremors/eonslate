@@ -31,13 +31,13 @@ Available now:
 - **Search and tags:** search trackers and entries, with a saved tag filter on Home.
 - **Exact numbers:** decimals, money and time are stored exactly, never as rounded floating point values.
 - **Finance:** track accounts, transfers, monthly budgets and recurring payments.
+- **Payment SMS:** review payment alerts offline, with inbox scanning in enabled builds.
 - **Backups:** one file, optionally encrypted, with undoable restores.
 - **Reminders:** per tracker, on chosen days, skipped when already logged.
 - **Its own look:** monochrome by default, or your wallpaper's colors or one of eight accents. Material 3 Expressive.
 
 Coming next:
 
-- **Finance:** optional on-device SMS reader.
 - **Private by design:** optional screenshot blocking. No ads, accounts or telemetry.
 
 ## Development

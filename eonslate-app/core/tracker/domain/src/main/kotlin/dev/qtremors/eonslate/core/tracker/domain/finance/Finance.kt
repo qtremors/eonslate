@@ -42,10 +42,14 @@ data class Transaction(
     @SerialName("epoch_day") val epochDay: Long,
     val note: String = "",
     @SerialName("destination_id") val destinationId: String? = null,
+    val category: String = "",
+    @SerialName("sms_key") val smsKey: String? = null,
 ) {
     fun isValid(accounts: Map<String, Account>): Boolean {
         val account = accounts[accountId] ?: return false
-        if (id.isBlank() || minor <= 0 || note.length > NOTE_LIMIT || epochDay !in DATES) return false
+        if (id.isBlank() || minor <= 0 || note.length > NOTE_LIMIT || epochDay !in DATES ||
+            category.length > CATEGORY_LIMIT || (smsKey != null && !SMS_KEY.matches(smsKey))
+        ) return false
         return if (kind == TransactionKind.TRANSFER) {
             destinationId != accountId && accounts[destinationId]?.currency == account.currency
         } else destinationId == null
@@ -53,6 +57,8 @@ data class Transaction(
 
     companion object {
         const val NOTE_LIMIT = 200
+        const val CATEGORY_LIMIT = 60
+        private val SMS_KEY = Regex("[0-9a-f]{64}")
         val DATES = LocalDate.of(1, 1, 1).toEpochDay()..LocalDate.of(9999, 12, 31).toEpochDay()
     }
 }
@@ -61,6 +67,7 @@ data class Ledger(
     val accounts: List<Account> = emptyList(),
     val transactions: List<Transaction> = emptyList(),
     val recurring: List<RecurringPayment> = emptyList(),
+    val budgets: List<CategoryBudget> = emptyList(),
 ) {
     /** Balances may exceed the range of a single transaction. Each account retains its own currency. */
     fun balances(): Map<String, BigInteger> {
@@ -85,6 +92,16 @@ data class Ledger(
         }
         return spent
     }
+
+    fun spendingFor(budget: CategoryBudget, day: LocalDate): BigInteger {
+        val period = budget.periodOn(day) ?: return BigInteger.ZERO
+        return transactions.asSequence()
+            .filter {
+                it.kind == TransactionKind.EXPENSE && it.accountId == budget.accountId &&
+                    it.category.equals(budget.category, ignoreCase = true) && it.epochDay in period
+            }
+            .fold(BigInteger.ZERO) { sum, entry -> sum + BigInteger.valueOf(entry.minor) }
+    }
 }
 
 interface FinanceRepository {
@@ -94,6 +111,10 @@ interface FinanceRepository {
     suspend fun saveTransaction(transaction: Transaction): Boolean
     suspend fun deleteTransaction(id: String)
     suspend fun addRecurring(payment: RecurringPayment, throughDay: Long): Boolean
+    suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long): Boolean
     suspend fun deleteRecurring(id: String)
+    suspend fun recordRecurring(expected: RecurringPayment, minor: Long, day: Long): Boolean
     suspend fun postDue(throughDay: Long)
+    suspend fun saveBudget(budget: CategoryBudget): Boolean
+    suspend fun deleteBudget(id: String)
 }

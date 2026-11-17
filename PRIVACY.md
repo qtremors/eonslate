@@ -23,6 +23,8 @@ Everything you create is stored in the app's private storage on your device, whi
 
 Uninstalling the app or clearing its storage deletes both. Backup files are written to the location you choose.
 
+Payment SMS import reads text you paste or share. Inbox-enabled builds can scan the selected period after you grant SMS access. Eonslate processes messages locally and stores the transactions you approve and fingerprints used to avoid importing them twice.
+
 ## Permissions
 
 Eonslate asks for permissions only for features you turn on:
@@ -30,6 +32,7 @@ Eonslate asks for permissions only for features you turn on:
 - **Notifications**, asked when you add a reminder.
 - **Alarms and reminders** (exact alarms), so reminders arrive on time. You can turn it off in system settings; reminders then arrive within 10 minutes.
 - **Run at startup**, to set reminders again after a restart.
+- **Read SMS** in inbox-enabled builds, when you choose to scan payment messages.
 
 ## Source code
 

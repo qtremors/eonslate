@@ -72,9 +72,9 @@
     <string name="privacy_offline_title">Offline by design</string>
     <string name="privacy_offline">Eonslate does not have the internet permission, so it cannot send anything you track over the network.</string>
     <string name="privacy_where_title">Where your data lives</string>
-    <string name="privacy_where">Your trackers and entries live in the app\'s private database on this device, and your settings in its private settings file. Other apps cannot read them, and uninstalling Eonslate deletes both.</string>
+    <string name="privacy_where">Your tracker and finance records live in the app\'s private database. Settings live in its private settings file.</string>
     <string name="privacy_permissions_title">Permissions</string>
-    <string name="privacy_permissions">Eonslate asks for notifications, and can use exact alarms, only when you add a reminder. Nothing else.</string>
+    <string name="privacy_permissions">Reminders can ask for notifications and exact alarms. Inbox scanning asks for SMS access in builds that include it.</string>
     <string name="privacy_source_title">Source code</string>
     <string name="privacy_source">Eonslate\'s source code is public, so anyone can check how it handles your data.</string>
 </resources>

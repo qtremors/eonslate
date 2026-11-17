@@ -16,8 +16,8 @@ android {
         applicationId = "dev.qtremors.eonslate"
         minSdk = 26
         targetSdk = 37
-        versionCode = 210
-        versionName = "2.1.0"
+        versionCode = 211
+        versionName = "2.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -118,6 +118,9 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:backup"))
     implementation(project(":feature:finance"))
+    if (providers.gradleProperty("eonslate.smsInbox").orNull == "true") {
+        implementation(project(":feature:smsinbox"))
+    }
     implementation(project(":feature:reminders"))
     implementation(project(":core:reminders"))
     implementation(project(":feature:welcome"))

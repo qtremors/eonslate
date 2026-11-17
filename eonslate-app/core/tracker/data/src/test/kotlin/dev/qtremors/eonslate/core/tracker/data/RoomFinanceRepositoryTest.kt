@@ -5,6 +5,7 @@ import dev.qtremors.eonslate.core.tracker.data.repository.RoomBackupRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
@@ -110,6 +111,51 @@ class RoomFinanceRepositoryTest {
             assertEquals(BigInteger.valueOf(100), ledger.monthlySpending(YearMonth.of(2026, 3))[bank.id])
             finance.deleteRecurring("p")
             assertEquals(4, finance.observeLedger().first().transactions.size)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun variablePaymentsWaitAndCategoryBudgetsUseTheirOwnCycle() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val january = LocalDate.of(2026, 1, 31)
+            val march = LocalDate.of(2026, 3, 31)
+            val payment = RecurringPayment(
+                "variable", bank.id, 100, "Utility", PaymentInterval.MONTHLY, 31, january.toEpochDay(),
+                every = 2, variable = true, category = "Utilities",
+            )
+            val budget = CategoryBudget("budget", bank.id, "Utilities", 500, PaymentInterval.MONTHLY, 2, january.toEpochDay())
+            assertTrue(finance.saveBudget(budget))
+            assertTrue(finance.addRecurring(payment, march.toEpochDay()))
+            finance.postDue(march.toEpochDay())
+            assertTrue(finance.observeLedger().first().transactions.isEmpty())
+
+            assertTrue(finance.recordRecurring(payment, 425, january.plusDays(1).toEpochDay()))
+            assertFalse(finance.recordRecurring(payment, 425, january.plusDays(1).toEpochDay()))
+            val ledger = finance.observeLedger().first()
+            assertEquals(march.toEpochDay(), ledger.recurring.single().nextEpochDay)
+            assertEquals(BigInteger.valueOf(425), ledger.spendingFor(budget, march.minusDays(1)))
+            assertEquals(BigInteger.ZERO, ledger.spendingFor(budget, march))
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun aPaymentMessageCanOnlyBeSavedOnce() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val transaction = Transaction("sms", bank.id, TransactionKind.EXPENSE, 100, 20_000, smsKey = "a".repeat(64))
+            assertTrue(finance.saveTransaction(transaction))
+            assertFalse(finance.saveTransaction(transaction.copy(id = "duplicate")))
+            assertTrue(finance.saveTransaction(transaction.copy(note = "Corrected")))
+            assertEquals("Corrected", finance.observeLedger().first().transactions.single().note)
         } finally {
             db.close()
         }

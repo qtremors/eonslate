@@ -27,7 +27,13 @@ import dev.qtremors.eonslate.feature.welcome.WelcomeScreen
  * and the welcome never shows again.
  */
 @Composable
-fun EonslateNavHost(startWithWelcome: Boolean, openLog: String? = null, onLogOpened: () -> Unit = {}) {
+fun EonslateNavHost(
+    startWithWelcome: Boolean,
+    openLog: String? = null,
+    onLogOpened: () -> Unit = {},
+    sharedMessage: String? = null,
+    onMessageOpened: () -> Unit = {},
+) {
     val navController = rememberNavController()
     LaunchedEffect(openLog) {
         openLog ?: return@LaunchedEffect
@@ -35,6 +41,9 @@ fun EonslateNavHost(startWithWelcome: Boolean, openLog: String? = null, onLogOpe
         onLogOpened()
     }
     val start: Destination = remember { if (startWithWelcome) Destination.Welcome else Destination.Home }
+    LaunchedEffect(sharedMessage) {
+        if (sharedMessage != null) navController.navigate(Destination.Finance) { launchSingleTop = true }
+    }
     NavHost(navController = navController, startDestination = start) {
         composable<Destination.Welcome> {
             WelcomeScreen(
@@ -56,7 +65,13 @@ fun EonslateNavHost(startWithWelcome: Boolean, openLog: String? = null, onLogOpe
                 onFinance = { navController.navigate(Destination.Finance) },
             )
         }
-        composable<Destination.Finance> { FinanceScreen(onBack = { navController.popBackStack() }) }
+        composable<Destination.Finance> {
+            FinanceScreen(
+                onBack = { navController.popBackStack() },
+                sharedMessage = sharedMessage,
+                onMessageOpened = onMessageOpened,
+            )
+        }
         composable<Destination.Settings> {
             SettingsScreen(
                 onBack = { navController.popBackStack() },

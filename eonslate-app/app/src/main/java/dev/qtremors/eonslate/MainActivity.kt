@@ -18,6 +18,7 @@ import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.settings.WelcomeGate
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
+import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessages
 import dev.qtremors.eonslate.core.ui.theme.EonslateTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -40,12 +41,16 @@ class MainActivity : ComponentActivity() {
 
     /** A tracker whose log screen a reminder asked to open. */
     private var openLog by mutableStateOf<String?>(null)
+    private var sharedMessage by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setKeepOnScreenCondition { showWelcome == null }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) openLog = intent.getStringExtra(EXTRA_LOG_TRACKER)
+        if (savedInstanceState == null) {
+            openLog = intent.getStringExtra(EXTRA_LOG_TRACKER)
+            sharedMessage = takePaymentMessage(intent)
+        }
         lifecycleScope.launch {
             val seen = settings.welcomeSeen.first()
             val hasTrackers = !seen && trackers.nextPosition() > 0
@@ -56,7 +61,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appearance by settings.appearance.collectAsState(initial = Appearance())
             EonslateTheme(options = appearance.toThemeOptions()) {
-                showWelcome?.let { EonslateNavHost(startWithWelcome = it, openLog = openLog, onLogOpened = { openLog = null }) }
+                showWelcome?.let {
+                    EonslateNavHost(
+                        startWithWelcome = it,
+                        openLog = openLog,
+                        onLogOpened = { openLog = null },
+                        sharedMessage = sharedMessage,
+                        onMessageOpened = { sharedMessage = null },
+                    )
+                }
             }
         }
     }
@@ -69,5 +82,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(EXTRA_LOG_TRACKER)?.let { openLog = it }
+        takePaymentMessage(intent)?.let { sharedMessage = it }
+    }
+
+    private fun takePaymentMessage(intent: Intent): String? {
+        if (intent.action != Intent.ACTION_SEND || intent.type != "text/plain") return null
+        val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)
+        intent.removeExtra(Intent.EXTRA_TEXT)
+        return text?.takeIf { it.length <= PaymentMessages.MAX_LENGTH && it.isNotBlank() }?.toString()
     }
 }

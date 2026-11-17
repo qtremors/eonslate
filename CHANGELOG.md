@@ -1,10 +1,19 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.0
+> **Version:** 2.1.1
 > **Last Updated:** 2026-11-17
 
 ---
+
+## [2.1.1] - 2026-11-17
+
+- Review payment details from pasted, shared or scanned SMS.
+- Skip payment alerts already recorded.
+- Search and filter transactions with per-currency totals.
+- Set category budgets with custom cycles.
+- Schedule income and bills with custom intervals.
+- Pause schedules or confirm variable payments.
 
 ## [2.1.0] - 2026-11-17
 

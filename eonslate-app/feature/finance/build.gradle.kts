@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:tracker:ui"))
     implementation(project(":core:settings"))
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.hilt.android)
     implementation(libs.hilt.lifecycle.viewmodel.compose)
     ksp(libs.hilt.compiler)

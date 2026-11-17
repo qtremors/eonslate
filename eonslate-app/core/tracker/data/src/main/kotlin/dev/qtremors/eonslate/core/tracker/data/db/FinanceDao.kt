@@ -14,6 +14,7 @@ import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Upsert
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction as LedgerTransaction
@@ -37,7 +38,7 @@ data class AccountEntity(
         ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["account_id"], onDelete = ForeignKey.RESTRICT),
         ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["destination_id"], onDelete = ForeignKey.RESTRICT),
     ],
-    indices = [Index("account_id"), Index("destination_id")],
+    indices = [Index("account_id"), Index("destination_id"), Index(value = ["sms_key"], unique = true)],
 )
 data class TransactionEntity(
     @PrimaryKey val id: String,
@@ -47,8 +48,10 @@ data class TransactionEntity(
     @ColumnInfo(name = "epoch_day") val epochDay: Long,
     val note: String,
     @ColumnInfo(name = "destination_id") val destinationId: String?,
+    @ColumnInfo(defaultValue = "''") val category: String,
+    @ColumnInfo(name = "sms_key") val smsKey: String?,
 ) {
-    fun toDomain() = LedgerTransaction(id, accountId, TransactionKind.valueOf(kind), minor, epochDay, note, destinationId)
+    fun toDomain() = LedgerTransaction(id, accountId, TransactionKind.valueOf(kind), minor, epochDay, note, destinationId, category, smsKey)
 }
 
 @Entity(
@@ -66,22 +69,52 @@ data class RecurringEntity(
     val interval: String,
     @ColumnInfo(name = "anchor_day") val anchorDay: Int,
     @ColumnInfo(name = "next_epoch_day") val nextEpochDay: Long?,
+    @ColumnInfo(defaultValue = "'EXPENSE'") val kind: String,
+    @ColumnInfo(defaultValue = "1") val every: Int,
+    @ColumnInfo(defaultValue = "0") val paused: Boolean,
+    @ColumnInfo(defaultValue = "0") val variable: Boolean,
+    @ColumnInfo(defaultValue = "''") val category: String,
 ) {
-    fun toDomain() = RecurringPayment(id, accountId, minor, note, PaymentInterval.valueOf(interval), anchorDay, nextEpochDay)
+    fun toDomain() = RecurringPayment(
+        id, accountId, minor, note, PaymentInterval.valueOf(interval), anchorDay, nextEpochDay,
+        TransactionKind.valueOf(kind), every, paused, variable, category,
+    )
+}
+
+@Entity(
+    tableName = "finance_budgets",
+    foreignKeys = [
+        ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["account_id"], onDelete = ForeignKey.RESTRICT),
+    ],
+    indices = [Index("account_id")],
+)
+data class CategoryBudgetEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "account_id") val accountId: String,
+    val category: String,
+    val minor: Long,
+    val interval: String,
+    val every: Int,
+    @ColumnInfo(name = "start_epoch_day") val startEpochDay: Long,
+) {
+    fun toDomain() = CategoryBudget(id, accountId, category, minor, PaymentInterval.valueOf(interval), every, startEpochDay)
 }
 
 internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor)
 
 internal fun RecurringPayment.toEntity() =
-    RecurringEntity(id, accountId, minor, note, interval.name, anchorDay, nextEpochDay)
+    RecurringEntity(id, accountId, minor, note, interval.name, anchorDay, nextEpochDay, kind.name, every, paused, variable, category)
+
+internal fun CategoryBudget.toEntity() = CategoryBudgetEntity(id, accountId, category, minor, interval.name, every, startEpochDay)
 
 internal fun LedgerTransaction.toEntity() =
-    TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId)
+    TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey)
 
 data class AccountWithTransactions(
     @Embedded val account: AccountEntity,
     @Relation(parentColumn = "id", entityColumn = "account_id") val transactions: List<TransactionEntity>,
     @Relation(parentColumn = "id", entityColumn = "account_id") val recurring: List<RecurringEntity>,
+    @Relation(parentColumn = "id", entityColumn = "account_id") val budgets: List<CategoryBudgetEntity>,
 )
 
 @Dao
@@ -115,6 +148,7 @@ interface FinanceDao {
         DELETE FROM finance_accounts WHERE id = :id
         AND NOT EXISTS (SELECT 1 FROM finance_transactions WHERE account_id = :id OR destination_id = :id)
         AND NOT EXISTS (SELECT 1 FROM finance_recurring WHERE account_id = :id)
+        AND NOT EXISTS (SELECT 1 FROM finance_budgets WHERE account_id = :id)
     """)
     suspend fun deleteAccount(id: String): Int
 
@@ -142,7 +176,7 @@ interface FinanceDao {
     @Query("SELECT * FROM finance_recurring ORDER BY id")
     suspend fun recurring(): List<RecurringEntity>
 
-    @Query("SELECT * FROM finance_recurring WHERE next_epoch_day <= :throughDay ORDER BY next_epoch_day, id")
+    @Query("SELECT * FROM finance_recurring WHERE paused = 0 AND variable = 0 AND next_epoch_day <= :throughDay ORDER BY next_epoch_day, id")
     suspend fun due(throughDay: Long): List<RecurringEntity>
 
     @Query("UPDATE finance_recurring SET next_epoch_day = :nextDay WHERE id = :id")
@@ -153,4 +187,28 @@ interface FinanceDao {
 
     @Query("DELETE FROM finance_recurring")
     suspend fun clearRecurring()
+
+    @Query("SELECT * FROM finance_recurring WHERE id = :id")
+    suspend fun recurring(id: String): RecurringEntity?
+
+    @Upsert
+    suspend fun upsert(payment: RecurringEntity)
+
+    @Query("SELECT id FROM finance_transactions WHERE sms_key = :key")
+    suspend fun importedSms(key: String): String?
+
+    @Query("SELECT * FROM finance_budgets ORDER BY id")
+    suspend fun budgets(): List<CategoryBudgetEntity>
+
+    @Upsert
+    suspend fun upsert(budget: CategoryBudgetEntity)
+
+    @Query("DELETE FROM finance_budgets WHERE id = :id")
+    suspend fun deleteBudget(id: String)
+
+    @Query("DELETE FROM finance_budgets")
+    suspend fun clearBudgets()
+
+    @Insert
+    suspend fun insertBudgets(budgets: List<CategoryBudgetEntity>)
 }

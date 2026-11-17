@@ -22,6 +22,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
         AccountEntity::class,
         TransactionEntity::class,
         RecurringEntity::class,
+        CategoryBudgetEntity::class,
     ],
     version = TrackerDatabase.VERSION,
     exportSchema = true,
@@ -34,7 +35,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 5
+        const val VERSION = 6
         const val NAME = "eonslate.db"
 
         /**
@@ -121,7 +122,28 @@ object TrackerMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_transactions ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE finance_transactions ADD COLUMN sms_key TEXT")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_finance_transactions_sms_key ON finance_transactions (sms_key)")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN kind TEXT NOT NULL DEFAULT 'EXPENSE'")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN every INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN paused INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN variable INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS finance_budgets (
+                    id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, category TEXT NOT NULL, minor INTEGER NOT NULL,
+                    interval TEXT NOT NULL, every INTEGER NOT NULL, start_epoch_day INTEGER NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES finance_accounts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+            """)
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_budgets_account_id ON finance_budgets (account_id)")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 }
 
 /**

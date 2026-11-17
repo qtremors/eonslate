@@ -18,6 +18,8 @@ import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -27,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +46,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.qtremors.eonslate.core.settings.Tracking
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
+import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessage
+import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessages
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
@@ -59,6 +65,7 @@ import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateBottomSheet
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.EonslateScaffold
+import dev.qtremors.eonslate.core.ui.components.FilterTop
 import dev.qtremors.eonslate.core.ui.components.FormField
 import dev.qtremors.eonslate.core.ui.components.LoadingState
 import dev.qtremors.eonslate.core.ui.components.MainActionButton
@@ -69,33 +76,76 @@ import java.math.BigInteger
 import java.text.DecimalFormatSymbols
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun FinanceScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hiltViewModel()) {
+fun FinanceScreen(
+    onBack: () -> Unit,
+    viewModel: FinanceViewModel = hiltViewModel(),
+    sharedMessage: String? = null,
+    onMessageOpened: () -> Unit = {},
+) {
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
     val currency by viewModel.currency.collectAsStateWithLifecycle(initialValue = Tracking.deviceCurrency())
+    val firstDay by viewModel.firstDay.collectAsStateWithLifecycle(initialValue = Tracking().firstDayOfWeek())
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val failed by viewModel.failed.collectAsStateWithLifecycle()
     var editor by rememberSaveable { mutableStateOf<Editor?>(null) }
     var recordId by rememberSaveable { mutableStateOf<String?>(null) }
+    var reviewingInbox by rememberSaveable { mutableStateOf(false) }
     var page by rememberSaveable { mutableStateOf(FinancePage.ACTIVITY) }
-    val dismiss = { if (!busy) editor = null }
-    val done = { editor = null }
+    var query by rememberSaveable { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    var prefill by remember { mutableStateOf<PaymentMessage?>(null) }
+    val done = {
+        editor = null
+        message = ""
+        prefill = null
+        reviewingInbox = false
+        viewModel.clearInbox()
+    }
+    val dismiss = { if (!busy) done() }
+    val finishReview = {
+        if (reviewingInbox) {
+            reviewingInbox = false
+            prefill = null
+            editor = Editor.INBOX
+        } else done()
+    }
     val open: (Editor, String?) -> Unit = { type, id ->
         recordId = id
         viewModel.clearError()
         editor = type
     }
 
+    LaunchedEffect(sharedMessage, busy) {
+        if (sharedMessage != null && !busy) {
+            message = sharedMessage
+            open(Editor.SMS, null)
+            onMessageOpened()
+        }
+    }
+
     EonslateScaffold(
         title = stringResource(R.string.finance_title),
         onBack = onBack,
+        filter = if (page == FinancePage.ACTIVITY && ledger?.transactions?.isNotEmpty() == true) {
+            FilterTop(query, { query = it }, stringResource(R.string.finance_search))
+        } else null,
         actions = {
+            IconButton(shapes = IconButtonDefaults.shapes(), onClick = { open(Editor.SMS, null) }) {
+                Icon(Icons.Rounded.Sms, stringResource(R.string.finance_import_sms))
+            }
             if (ledger?.accounts?.isNotEmpty() == true) {
-                IconButton(shapes = IconButtonDefaults.shapes(), onClick = { open(Editor.ACCOUNT, null) }) {
-                    Icon(Icons.Rounded.AccountBalanceWallet, stringResource(R.string.finance_new_account))
+                val plans = page == FinancePage.PLANS
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = { open(if (plans) Editor.BUDGET else Editor.ACCOUNT, null) }) {
+                    Icon(
+                        if (plans) Icons.Rounded.Savings else Icons.Rounded.AccountBalanceWallet,
+                        stringResource(if (plans) R.string.finance_new_budget else R.string.finance_new_account),
+                    )
                 }
             }
         },
@@ -113,6 +163,10 @@ fun FinanceScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hiltViewMode
                             Editor.ACCOUNT -> R.string.finance_new_account
                             Editor.RECURRING -> R.string.finance_new_recurring
                             Editor.TRANSACTION -> R.string.finance_new_transaction
+                            Editor.SMS -> R.string.finance_import_sms
+                            Editor.BUDGET -> R.string.finance_new_budget
+                            Editor.DUE -> R.string.finance_record_due
+                            Editor.INBOX -> R.string.finance_scan_inbox
                         }
                     ),
                     icon = Icons.Rounded.Add,
@@ -130,7 +184,7 @@ fun FinanceScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hiltViewMode
                 message = "",
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
-            else -> LedgerList(data, padding, page, { page = it }, YearMonth.from(viewModel.today()), open)
+            else -> LedgerList(data, padding, page, { page = it }, viewModel.today(), firstDay, query, open)
         }
     }
 
@@ -140,7 +194,7 @@ fun FinanceScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hiltViewMode
             val account = data.accounts.firstOrNull { it.id == recordId }
             val canDelete = account != null && data.transactions.none {
                 it.accountId == account.id || it.destinationId == account.id
-            } && data.recurring.none { it.accountId == account.id }
+            } && data.recurring.none { it.accountId == account.id } && data.budgets.none { it.accountId == account.id }
             if (recordId == null || account != null) key(recordId) {
                 AccountEditor(
                     account = account,
@@ -162,13 +216,17 @@ fun FinanceScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hiltViewMode
                     transaction = transaction,
                     accounts = data.accounts,
                     today = viewModel.today(),
+                    prefill = prefill,
                     busy = busy,
                     failed = failed,
-                    onDismiss = dismiss,
-                    onSave = { account, kind, amount, day, note, destination ->
+                    onDismiss = { if (!busy) finishReview() },
+                    onSave = { account, kind, amount, day, note, destination, category, smsKey ->
                         viewModel.save(
-                            Transaction(transaction?.id ?: viewModel.newId(), account, kind, amount, day, note, destination),
-                            done,
+                            Transaction(
+                                transaction?.id ?: viewModel.newId(), account, kind, amount, day, note,
+                                destination, category, smsKey,
+                            ),
+                            finishReview,
                         )
                     },
                     onDelete = transaction?.let { { viewModel.delete(it, done) } },
@@ -177,31 +235,61 @@ fun FinanceScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hiltViewMode
         }
         Editor.RECURRING -> {
             val existing = data.recurring.firstOrNull { it.id == recordId }
-            if (existing != null) {
-                ConfirmDialog(
-                    icon = Icons.Rounded.Delete,
-                    title = stringResource(R.string.finance_remove_recurring),
-                    message = stringResource(R.string.finance_remove_recurring_message),
-                    confirmLabel = stringResource(R.string.finance_delete),
-                    onConfirm = { viewModel.delete(existing, done) },
-                    onDismiss = dismiss,
+            if (data.accounts.isNotEmpty() && (recordId == null || existing != null)) key(recordId) {
+                val original = remember { existing }
+                RecurringEditor(
+                    original, data.accounts, viewModel.today(), busy, failed, dismiss,
+                    onSave = { viewModel.schedule(original, it.copy(id = original?.id ?: viewModel.newId()), done) },
+                    onDelete = existing?.let { { viewModel.delete(it, done) } },
+                    onRecord = existing?.takeIf { !it.paused && it.nextEpochDay != null }?.let {
+                        { open(Editor.DUE, it.id) }
+                    },
                 )
-            } else if (recordId == null && data.accounts.isNotEmpty()) {
-                RecurringEditor(data.accounts, viewModel.today(), busy, failed, dismiss) { account, minor, note, interval, day ->
-                    viewModel.schedule(
-                        RecurringPayment(viewModel.newId(), account, minor, note, interval, day.dayOfMonth, day.toEpochDay()),
-                        done,
-                    )
+            }
+        }
+        Editor.BUDGET -> {
+            val budget = data.budgets.firstOrNull { it.id == recordId }
+            if (data.accounts.isNotEmpty() && (recordId == null || budget != null)) key(recordId) {
+                CategoryBudgetEditor(
+                    budget, data.accounts, viewModel.today(), busy, failed, dismiss,
+                    onSave = { viewModel.save(it.copy(id = budget?.id ?: viewModel.newId()), done) },
+                    onDelete = budget?.let { { viewModel.delete(it, done) } },
+                )
+            }
+        }
+        Editor.DUE -> {
+            val payment = data.recurring.firstOrNull { it.id == recordId }
+            val account = data.accounts.firstOrNull { it.id == payment?.accountId }
+            if (payment != null && account != null && payment.nextEpochDay != null) {
+                val original = remember(payment.id) { payment }
+                RecordPaymentEditor(original, account, busy, failed, dismiss) { minor, day ->
+                    viewModel.record(original, minor, day, done)
                 }
             }
+        }
+        Editor.SMS -> MessageEditor(
+            message, { message = it }, data, dismiss,
+            onInbox = if (viewModel.inboxAvailable) ({ open(Editor.INBOX, null) }) else null,
+        ) {
+            prefill = it
+            message = ""
+            open(Editor.TRANSACTION, null)
+        }
+        Editor.INBOX -> PaymentInboxSheet(data, viewModel, dismiss) {
+            reviewingInbox = true
+            prefill = it
+            message = ""
+            open(Editor.TRANSACTION, null)
         }
         null -> Unit
     }
 }
 
-private enum class Editor { ACCOUNT, TRANSACTION, RECURRING }
+private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SMS, BUDGET, DUE, INBOX }
 
 private enum class FinancePage { ACTIVITY, PLANS }
+
+private enum class TransactionPeriod { ALL, TODAY, WEEK, MONTH }
 
 @Composable
 private fun LedgerList(
@@ -209,14 +297,33 @@ private fun LedgerList(
     padding: androidx.compose.foundation.layout.PaddingValues,
     page: FinancePage,
     onPage: (FinancePage) -> Unit,
-    currentMonth: YearMonth,
+    today: LocalDate,
+    firstDayOfWeek: DayOfWeek,
+    query: String,
     open: (Editor, String?) -> Unit,
 ) {
     val balances = remember(ledger) { ledger.balances() }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
     var monthOffset by rememberSaveable { mutableStateOf(0L) }
-    val month = currentMonth.plusMonths(monthOffset)
+    val month = YearMonth.from(today).plusMonths(monthOffset)
     val spending = remember(ledger, month) { ledger.monthlySpending(month) }
+    var period by rememberSaveable { mutableStateOf(TransactionPeriod.ALL) }
+    val firstDay = when (period) {
+        TransactionPeriod.ALL -> Transaction.DATES.first
+        TransactionPeriod.TODAY -> today.toEpochDay()
+        TransactionPeriod.WEEK -> today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek)).toEpochDay()
+        TransactionPeriod.MONTH -> today.withDayOfMonth(1).toEpochDay()
+    }
+    val lastDay = if (period == TransactionPeriod.ALL) Transaction.DATES.last else today.toEpochDay()
+    val term = query.trim()
+    val shown = remember(ledger, firstDay, lastDay, term) {
+        ledger.transactions.filter { transaction ->
+            transaction.epochDay in firstDay..lastDay && (term.isBlank() ||
+                listOf(transaction.note, transaction.category, accounts[transaction.accountId]?.name.orEmpty()).any {
+                    it.contains(term, ignoreCase = true)
+                })
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = padding,
@@ -256,6 +363,22 @@ private fun LedgerList(
                     ConnectedRow(account.name, supporting = label, onClick = { open(Editor.ACCOUNT, account.id) })
                 }
             }
+            itemsIndexed(ledger.budgets, key = { _, budget -> "category-" + budget.id }) { index, budget ->
+                val account = accounts.getValue(budget.accountId)
+                val spent = remember(ledger, budget, today) { ledger.spendingFor(budget, today) }
+                val limit = BigInteger.valueOf(budget.minor)
+                val label = stringResource(
+                    R.string.finance_budget_progress, budgetAmount(spent, account.currency), budgetAmount(limit, account.currency)
+                )
+                ConnectedItem(index, ledger.budgets.size) {
+                    ConnectedRow(
+                        budget.category,
+                        supporting = account.name + " · " + label,
+                        trailing = if (spent > limit) ({ Text(stringResource(R.string.finance_over_budget), color = MaterialTheme.colorScheme.error) }) else null,
+                        onClick = { open(Editor.BUDGET, budget.id) },
+                    )
+                }
+            }
             item { SectionHeader(stringResource(R.string.finance_recurring)) }
             if (ledger.recurring.isEmpty()) {
                 item { Text(stringResource(R.string.finance_no_recurring), modifier = Modifier.padding(12.dp)) }
@@ -267,7 +390,10 @@ private fun LedgerList(
                 ConnectedItem(index, ledger.recurring.size) {
                     ConnectedRow(
                         title = payment.note.ifBlank { account.name },
-                        supporting = listOfNotNull(amount, payment.interval.label(), due).joinToString(" · "),
+                        supporting = listOfNotNull(
+                            amount, payment.kind.label(), payment.interval.label(), due,
+                            if (payment.paused) stringResource(R.string.finance_paused) else null,
+                        ).joinToString(" · "),
                         onClick = { open(Editor.RECURRING, payment.id) },
                     )
                 }
@@ -286,10 +412,35 @@ private fun LedgerList(
             }
         }
         item { SectionHeader(stringResource(R.string.finance_activity)) }
-        if (ledger.transactions.isEmpty()) {
-            item { Text(stringResource(R.string.finance_empty_activity), modifier = Modifier.padding(12.dp)) }
+        if (ledger.transactions.isNotEmpty()) {
+            item {
+                ConnectedChoices(
+                    TransactionPeriod.entries, period,
+                    { stringResource(when (it) {
+                        TransactionPeriod.ALL -> R.string.finance_period_all
+                        TransactionPeriod.TODAY -> R.string.finance_period_today
+                        TransactionPeriod.WEEK -> R.string.finance_period_week
+                        TransactionPeriod.MONTH -> R.string.finance_period_month
+                    }) },
+                    { period = it },
+                )
+            }
+            val summaries = shown.groupBy { accounts.getValue(it.accountId).currency }
+            summaries.forEach { (currency, transactions) ->
+                item(key = "totals-" + currency) {
+                    val income = transactions.total(TransactionKind.INCOME)
+                    val expenses = transactions.total(TransactionKind.EXPENSE)
+                    Text(
+                        stringResource(R.string.finance_totals, budgetAmount(income, currency), budgetAmount(expenses, currency)),
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
+            }
         }
-        itemsIndexed(ledger.transactions, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
+        if (shown.isEmpty()) {
+            item { Text(stringResource(if (ledger.transactions.isEmpty()) R.string.finance_empty_activity else R.string.finance_no_matches), modifier = Modifier.padding(12.dp)) }
+        }
+        itemsIndexed(shown, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
             val source = accounts.getValue(transaction.accountId)
             val target = transaction.destinationId?.let(accounts::getValue)
             val accountNames = if (target == null) source.name
@@ -297,16 +448,19 @@ private fun LedgerList(
             val amount = ValueFormat.money(transaction.minor, source.currency, Locale.getDefault())
             val title = stringResource(R.string.finance_transaction_title, transaction.kind.label(), amount)
             val date = ValueFormat.date(transaction.epochDay, Locale.getDefault())
-            ConnectedItem(index, ledger.transactions.size) {
+            ConnectedItem(index, shown.size) {
                 ConnectedRow(
                     title = title,
-                    supporting = listOf(accountNames, date, transaction.note).filter { it.isNotBlank() }.joinToString(" · "),
+                    supporting = listOf(accountNames, date, transaction.category, transaction.note).filter { it.isNotBlank() }.joinToString(" · "),
                     onClick = { open(Editor.TRANSACTION, transaction.id) },
                 )
             }
         }
     }
 }
+
+private fun List<Transaction>.total(kind: TransactionKind): BigInteger =
+    asSequence().filter { it.kind == kind }.fold(BigInteger.ZERO) { sum, entry -> sum + BigInteger.valueOf(entry.minor) }
 
 @Composable
 private fun AccountEditor(
@@ -359,21 +513,35 @@ private fun TransactionEditor(
     transaction: Transaction?,
     accounts: List<Account>,
     today: LocalDate,
+    prefill: PaymentMessage?,
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, TransactionKind, Long, Long, String, String?) -> Unit,
+    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
-    var kind by rememberSaveable { mutableStateOf(transaction?.kind ?: TransactionKind.EXPENSE) }
-    var accountId by rememberSaveable { mutableStateOf(transaction?.accountId ?: accounts.first().id) }
+    var kind by rememberSaveable { mutableStateOf(transaction?.kind ?: prefill?.kind ?: TransactionKind.EXPENSE) }
+    var accountId by rememberSaveable {
+        val matching = accounts.filter { it.currency == prefill?.currency }
+        val byEnding = prefill?.accountEnding?.let { ending -> matching.firstOrNull { it.name.trim().endsWith(ending) } }
+        mutableStateOf(transaction?.accountId ?: byEnding?.id ?: matching.firstOrNull()?.id ?: accounts.first().id)
+    }
     var destinationId by rememberSaveable { mutableStateOf(transaction?.destinationId) }
     val account = accounts.firstOrNull { it.id == accountId } ?: accounts.first()
     val targets = accounts.filter { it.id != account.id && it.currency == account.currency }
     val destination = targets.firstOrNull { it.id == destinationId } ?: targets.firstOrNull()
-    var amount by rememberSaveable { mutableStateOf(transaction?.let { moneyInput(it.minor, account.currency) }.orEmpty()) }
-    var date by rememberSaveable { mutableStateOf(transaction?.let { LocalDate.ofEpochDay(it.epochDay) }?.toString() ?: today.toString()) }
-    var note by rememberSaveable { mutableStateOf(transaction?.note.orEmpty()) }
+    var amount by rememberSaveable {
+        val initial = transaction?.minor ?: prefill?.takeIf { it.currency == account.currency }?.minor
+        mutableStateOf(initial?.let { moneyInput(it, account.currency) }.orEmpty())
+    }
+    var date by rememberSaveable {
+        val initial = transaction?.epochDay ?: prefill?.epochDay
+        mutableStateOf(initial?.let { LocalDate.ofEpochDay(it).toString() } ?: today.toString())
+    }
+    val reference = prefill?.reference?.let { stringResource(R.string.finance_sms_reference, it) }
+    val smsKey by rememberSaveable { mutableStateOf(transaction?.smsKey ?: prefill?.key) }
+    var note by rememberSaveable { mutableStateOf(transaction?.note ?: listOfNotNull(prefill?.merchant, reference).joinToString(" · ")) }
+    var category by rememberSaveable { mutableStateOf(transaction?.category ?: prefill?.category.orEmpty()) }
     val parsed = parseMoney(amount, account.currency)?.takeIf { it > 0 }
     val day = EpochDays.parse(date)?.takeIf { it in Transaction.DATES }
     val transfer = kind == TransactionKind.TRANSFER
@@ -395,11 +563,14 @@ private fun TransactionEditor(
         )
         FormField(date, { date = it }, stringResource(R.string.finance_date), keyboardType = KeyboardType.Ascii, maxLength = 10, enabled = !busy)
         FormField(note, { note = it }, stringResource(R.string.finance_note), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
+        if (!transfer) {
+            FormField(category, { category = it }, stringResource(R.string.finance_category), maxLength = Transaction.CATEGORY_LIMIT, enabled = !busy)
+        }
         SaveRow(
             canSave = !busy && parsed != null && day != null && (!transfer || destination != null),
             onSave = {
                 if (parsed != null && day != null) {
-                    onSave(account.id, kind, parsed, day, note.trim(), destination?.id?.takeIf { transfer })
+                    onSave(account.id, kind, parsed, day, note.trim(), destination?.id?.takeIf { transfer }, if (transfer) "" else category.trim(), smsKey)
                 }
             },
             delete = onDelete?.let { Deletion(stringResource(R.string.finance_delete_transaction), R.string.finance_delete_transaction_message, it) },
@@ -409,50 +580,50 @@ private fun TransactionEditor(
 }
 
 @Composable
-private fun RecurringEditor(
-    accounts: List<Account>,
-    today: LocalDate,
-    busy: Boolean,
-    failed: Boolean,
+private fun MessageEditor(
+    message: String,
+    onMessage: (String) -> Unit,
+    ledger: Ledger,
     onDismiss: () -> Unit,
-    onSave: (String, Long, String, PaymentInterval, LocalDate) -> Unit,
+    onInbox: (() -> Unit)?,
+    onReview: (PaymentMessage) -> Unit,
 ) {
-    var accountId by rememberSaveable { mutableStateOf(accounts.first().id) }
-    val account = accounts.firstOrNull { it.id == accountId } ?: accounts.first()
-    var amount by rememberSaveable { mutableStateOf("") }
-    var note by rememberSaveable { mutableStateOf("") }
-    var interval by rememberSaveable { mutableStateOf(PaymentInterval.MONTHLY) }
-    var date by rememberSaveable { mutableStateOf(today.toString()) }
-    val parsed = parseMoney(amount, account.currency)?.takeIf { it > 0 }
-    val day = EpochDays.parse(date)?.takeIf { it in Transaction.DATES }
-    EditorSheet(stringResource(R.string.finance_new_recurring), busy, failed, onDismiss) {
-        ConnectedChoices(PaymentInterval.entries, interval, { it.label() }, { if (!busy) interval = it })
-        AccountChoice(stringResource(R.string.finance_account), account, accounts, !busy) {
-            if (it.currency != account.currency) amount = ""
-            accountId = it.id
-        }
+    var tried by remember { mutableStateOf(false) }
+    val parsed = remember(message) { PaymentMessages.parse(message) }
+    val duplicate = parsed?.key?.let { key -> ledger.transactions.any { it.smsKey == key } } == true
+    val matching = parsed != null && ledger.accounts.any { it.currency == parsed.currency }
+    val error = if (!tried) null else when {
+        parsed == null -> stringResource(R.string.finance_sms_unknown)
+        duplicate -> stringResource(R.string.finance_sms_duplicate)
+        !matching -> stringResource(R.string.finance_sms_account, parsed.currency)
+        else -> null
+    }
+    EditorSheet(stringResource(R.string.finance_import_sms), busy = false, failed = false, onDismiss = onDismiss) {
         FormField(
-            amount, { amount = it }, stringResource(R.string.finance_amount),
-            keyboardType = KeyboardType.Decimal, suffix = account.currency, maxLength = 24, enabled = !busy,
+            value = message,
+            onValueChange = { tried = false; onMessage(it) },
+            label = stringResource(R.string.finance_payment_sms),
+            error = error,
+            singleLine = false,
+            minLines = 3,
+            maxLength = PaymentMessages.MAX_LENGTH,
         )
-        FormField(
-            date, { date = it }, stringResource(R.string.finance_first_due),
-            keyboardType = KeyboardType.Ascii, maxLength = 10, enabled = !busy,
-        )
-        FormField(note, { note = it }, stringResource(R.string.finance_note), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
-        SaveRow(
-            canSave = !busy && parsed != null && day != null,
-            onSave = {
-                if (parsed != null && day != null) onSave(account.id, parsed, note.trim(), interval, LocalDate.ofEpochDay(day))
+        Button(
+            shapes = ButtonDefaults.shapes(),
+            enabled = message.isNotBlank(),
+            onClick = {
+                tried = true
+                if (parsed != null && matching && !duplicate) onReview(parsed)
             },
-            delete = null,
-            busy = busy,
-        )
+        ) { Text(stringResource(R.string.finance_sms_review)) }
+        if (onInbox != null) {
+            TextButton(shapes = ButtonDefaults.shapes(), onClick = onInbox) { Text(stringResource(R.string.finance_scan_inbox)) }
+        }
     }
 }
 
 @Composable
-private fun EditorSheet(
+internal fun EditorSheet(
     title: String,
     busy: Boolean,
     failed: Boolean,
@@ -468,7 +639,7 @@ private fun EditorSheet(
 }
 
 @Composable
-private fun AccountChoice(label: String, selected: Account, accounts: List<Account>, enabled: Boolean, onPick: (Account) -> Unit) {
+internal fun AccountChoice(label: String, selected: Account, accounts: List<Account>, enabled: Boolean, onPick: (Account) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         ConnectedRow(
@@ -488,10 +659,10 @@ private fun AccountChoice(label: String, selected: Account, accounts: List<Accou
     }
 }
 
-private data class Deletion(val title: String, val message: Int, val confirm: () -> Unit)
+internal data class Deletion(val title: String, val message: Int, val confirm: () -> Unit)
 
 @Composable
-private fun SaveRow(canSave: Boolean, onSave: () -> Unit, delete: Deletion?, busy: Boolean) {
+internal fun SaveRow(canSave: Boolean, onSave: () -> Unit, delete: Deletion?, busy: Boolean) {
     var confirm by rememberSaveable { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.End)) {
         if (delete != null) {
@@ -514,7 +685,7 @@ private fun SaveRow(canSave: Boolean, onSave: () -> Unit, delete: Deletion?, bus
 }
 
 @Composable
-private fun TransactionKind.label() = stringResource(
+internal fun TransactionKind.label() = stringResource(
     when (this) {
         TransactionKind.INCOME -> R.string.finance_income
         TransactionKind.EXPENSE -> R.string.finance_expense
@@ -523,22 +694,24 @@ private fun TransactionKind.label() = stringResource(
 )
 
 @Composable
-private fun PaymentInterval.label() = stringResource(
+internal fun PaymentInterval.label() = stringResource(
     when (this) {
+        PaymentInterval.DAILY -> R.string.finance_daily
         PaymentInterval.WEEKLY -> R.string.finance_weekly
         PaymentInterval.MONTHLY -> R.string.finance_monthly
+        PaymentInterval.YEARLY -> R.string.finance_yearly
     }
 )
 
 private fun budgetAmount(minor: BigInteger, currency: String): String =
     BigDecimal(minor, MoneyAmount.fractionDigits(currency)).toPlainString() + " " + currency
 
-private fun moneyInput(minor: Long, currency: String): String =
+internal fun moneyInput(minor: Long, currency: String): String =
     MoneyAmount.format(minor, currency).replace('.', DecimalFormatSymbols.getInstance().decimalSeparator)
 
 private val decimalInput = Regex("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)")
 
-private fun parseMoney(value: String, currency: String): Long? {
+internal fun parseMoney(value: String, currency: String): Long? {
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
     val normalized = value.trim().map { digit ->
         if (digit == separator) '.' else digit.digitToIntOrNull()?.digitToChar() ?: digit
