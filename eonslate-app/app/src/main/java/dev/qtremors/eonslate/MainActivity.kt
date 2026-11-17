@@ -17,10 +17,12 @@ import dev.qtremors.eonslate.core.settings.Appearance
 import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.settings.WelcomeGate
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
+import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
 import dev.qtremors.eonslate.core.ui.theme.EonslateTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.LocalDate
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -29,6 +31,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var trackers: TrackerRepository
+
+    @Inject
+    lateinit var finance: FinanceRepository
 
     /** Null until the start is decided; the splash stays up until then, so nothing flashes. */
     private var showWelcome by mutableStateOf<Boolean?>(null)
@@ -54,6 +59,11 @@ class MainActivity : ComponentActivity() {
                 showWelcome?.let { EonslateNavHost(startWithWelcome = it, openLog = openLog, onLogOpened = { openLog = null }) }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        lifecycleScope.launch { finance.postDue(LocalDate.now().toEpochDay()) }
     }
 
     override fun onNewIntent(intent: Intent) {

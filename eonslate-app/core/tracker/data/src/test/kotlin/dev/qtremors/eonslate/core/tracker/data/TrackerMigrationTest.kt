@@ -8,8 +8,10 @@ import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase.Companion.conf
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerIntegrity
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerMigrations
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomEntryRepository
+import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,6 +38,45 @@ class TrackerMigrationTest {
     fun everyVersionHasAMigrationToTheNext() {
         val steps = TrackerMigrations.ALL.map { it.startVersion to it.endVersion }
         assertEquals((1 until TrackerDatabase.VERSION).map { it to it + 1 }, steps)
+    }
+
+    @Test
+    fun version4AccountsOpenWithoutBudgetsOrSchedules() = runTest {
+        ExportedSchema.create(context, name, 4).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 100)")
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name)
+            .configure()
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val ledger = RoomFinanceRepository(db).observeLedger().first()
+            assertEquals("cash", ledger.accounts.single().id)
+            assertEquals(null, ledger.accounts.single().monthlyBudgetMinor)
+            assertTrue(ledger.recurring.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun version3TrackersKeepTheirTagsAndStartWithNoAccounts() = runTest {
+        ExportedSchema.create(context, name, 3).use {
+            it.execSQL(
+                """INSERT INTO trackers (id, name, description, icon_name, color_index, archived, position, created_at, updated_at, tags)
+                   VALUES ('t3', 'Water', '', 'LocalDrink', 4, 0, 0, 100, 100, '["Health"]')"""
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name)
+            .configure()
+            .allowMainThreadQueries()
+            .build()
+        try {
+            assertEquals(listOf("Health"), RoomTrackerRepository(db, FakeClock()).getTracker("t3")!!.tags)
+            assertTrue(RoomFinanceRepository(db).observeLedger().first().accounts.isEmpty())
+        } finally {
+            db.close()
+        }
     }
 
     @Test

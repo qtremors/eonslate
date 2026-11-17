@@ -1,6 +1,6 @@
 # Privacy Policy for Eonslate
 
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-17
 
 Eonslate is a personal project built with a privacy-first mindset. This policy explains how the app handles your information.
 
@@ -18,10 +18,10 @@ Everything you create is stored in the app's private storage on your device, whi
 
 | What | Where |
 | :--- | :--- |
-| Trackers, fields, entries and their values | The `eonslate.db` database |
+| Trackers, fields, entries, reminders, accounts and transactions | The `eonslate.db` database |
 | App settings, such as whether the welcome was seen | The `settings` preferences file |
 
-Uninstalling the app or clearing its storage deletes both. Backups and exports, when they arrive, are written only to a location you choose.
+Uninstalling the app or clearing its storage deletes both. Backup files are written to the location you choose.
 
 ## Permissions
 

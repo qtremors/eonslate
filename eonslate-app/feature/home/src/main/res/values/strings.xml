@@ -36,4 +36,5 @@
     </plurals>
     <string name="home_search">Search trackers</string>
     <string name="home_no_matches">No matches</string>
+    <string name="home_finance">Finance</string>
 </resources>

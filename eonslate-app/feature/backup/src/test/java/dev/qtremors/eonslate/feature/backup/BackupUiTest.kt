@@ -116,11 +116,13 @@ class BackupUiTest {
 
     @Test
     fun theReviewComparesTheBackupWithThePhone() {
-        val review = Review(snapshotOf(4, 9).copy(trackers = snapshotOf(4, 9).trackers.mapIndexed { i, t -> t.copy(archived = i == 0) }).summary, DataCounts(2, 5))
-        show(BackupUiState(counts = DataCounts(2, 5), review = review))
+        val snapshot = snapshotOf(4, 9)
+        val summary = snapshot.copy(trackers = snapshot.trackers.mapIndexed { i, t -> t.copy(archived = i == 0) }).summary
+        val current = DataCounts(2, 5, accounts = 1, transactions = 2)
+        show(BackupUiState(counts = current, review = Review(summary, current)))
         compose.onNodeWithText("4 trackers, 9 entries").assertIsDisplayed()
         compose.onNodeWithText("1 archived").assertIsDisplayed()
-        assertTrue(compose.onAllNodesWithText("Replaces 2 trackers, 5 entries", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(compose.onAllNodesWithText("Replaces 2 trackers, 5 entries, 1 account, 2 transactions", substring = true).fetchSemanticsNodes().isNotEmpty())
         // The section header says "Restore" too; the button is the one that can be pressed.
         compose.onNode(hasText("Restore") and hasClickAction()).performClick()
         assertEquals(1, restored)
@@ -130,7 +132,7 @@ class BackupUiTest {
     fun aRestorePointCanBeUndoneAfterAsking() {
         show(BackupUiState(counts = DataCounts(4, 9), restorePoint = 1_762_740_000_000L))
         compose.onNodeWithText("Undo last restore").performClick()
-        compose.onNodeWithText("Entries logged since the restore will be lost.").assertIsDisplayed()
+        compose.onNodeWithText("Changes since the restore will be lost.").assertIsDisplayed()
         compose.onNode(hasText("Undo") and hasClickAction()).performClick()
         assertEquals(1, undone)
     }

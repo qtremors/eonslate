@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="backup_title">Backup and restore</string>
-    <string name="backup_on_phone">On this phone: %1$s, %2$s</string>
+    <string name="backup_on_phone">On this phone: %1$s</string>
 
     <string name="backup_section_create">Back up</string>
     <string name="backup_create">Create a backup</string>
@@ -25,14 +25,13 @@
 
     <string name="backup_sheet_review">Restore this backup?</string>
     <string name="backup_review_made">%1$s · Eonslate %2$s</string>
-    <string name="backup_review_holds">%1$s, %2$s</string>
     <string name="backup_review_archived">%1$d archived</string>
-    <string name="backup_review_replaces">Replaces %1$s, %2$s on this phone. You can undo it.</string>
+    <string name="backup_review_replaces">Replaces %1$s on this phone. You can undo it.</string>
     <string name="backup_restore_action">Restore</string>
     <string name="backup_cancel">Cancel</string>
 
     <string name="backup_undo_dialog_title">Undo last restore?</string>
-    <string name="backup_undo_dialog_message">Entries logged since the restore will be lost.</string>
+    <string name="backup_undo_dialog_message">Changes since the restore will be lost.</string>
     <string name="backup_undo_action">Undo</string>
 
     <string name="backup_busy_creating">Creating backup…</string>
@@ -59,5 +58,13 @@
     <plurals name="backup_entries">
         <item quantity="one">%d entry</item>
         <item quantity="other">%d entries</item>
+    </plurals>
+    <plurals name="backup_accounts">
+        <item quantity="one">%d account</item>
+        <item quantity="other">%d accounts</item>
+    </plurals>
+    <plurals name="backup_transactions">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
     </plurals>
 </resources>

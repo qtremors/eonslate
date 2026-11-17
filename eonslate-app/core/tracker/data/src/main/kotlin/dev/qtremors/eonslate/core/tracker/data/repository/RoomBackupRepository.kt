@@ -8,6 +8,7 @@ import dev.qtremors.eonslate.core.tracker.data.db.TagColumn
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerEntity
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerFieldEntity
+import dev.qtremors.eonslate.core.tracker.data.db.toEntity
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupSnapshot
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
@@ -29,6 +30,7 @@ class RoomBackupRepository @Inject constructor(
     private val clock: AppClock,
 ) : BackupRepository {
     private val dao = database.backupDao()
+    private val finance = database.financeDao()
 
     override val schema: Int = TrackerDatabase.VERSION
 
@@ -42,11 +44,17 @@ class RoomBackupRepository @Inject constructor(
             entries = dao.allEntries().map { it.toRow() },
             values = dao.allValues().map { it.toRow() },
             reminders = dao.allReminders().map { it.toRow() },
+            accounts = finance.accounts().map { it.toDomain() },
+            transactions = finance.transactions().map { it.toDomain() },
+            recurring = finance.recurring().map { it.toDomain() },
         )
     }
 
     override suspend fun replaceAll(snapshot: BackupSnapshot) {
         database.withTransaction {
+            finance.clearTransactions()
+            finance.clearRecurring()
+            finance.clearAccounts()
             dao.clearReminders()
             dao.clearValues()
             dao.clearEntries()
@@ -58,10 +66,15 @@ class RoomBackupRepository @Inject constructor(
             dao.insertEntries(snapshot.entries.map { it.toEntity() })
             dao.insertValues(snapshot.values.map { it.toEntity() })
             dao.insertReminders(snapshot.reminders.map { it.toEntity() })
+            finance.insertAccounts(snapshot.accounts.map { it.toEntity() })
+            finance.insertTransactions(snapshot.transactions.map { it.toEntity() })
+            finance.insertRecurring(snapshot.recurring.map { it.toEntity() })
         }
     }
 
-    override suspend fun counts(): DataCounts = database.withTransaction { DataCounts(dao.trackerCount(), dao.entryCount()) }
+    override suspend fun counts(): DataCounts = database.withTransaction {
+        DataCounts(dao.trackerCount(), dao.entryCount(), finance.accountCount(), finance.transactionCount())
+    }
 }
 
 private fun TrackerEntity.toRow() =

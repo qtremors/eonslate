@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -84,6 +85,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
+    onFinance: (() -> Unit)? = null,
 ) {
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
     val streaks by viewModel.streaks.collectAsStateWithLifecycle()
@@ -99,6 +101,7 @@ fun HomeScreen(
         onLog = { tracker -> if (HomeViewModel.isQuickLog(tracker)) viewModel.quickLog(tracker) else onLog(tracker.id) },
         onArchived = onArchived,
         onSettings = onSettings,
+        onFinance = onFinance,
         onStarter = { id ->
             val spec = Templates.byId(id) ?: return@HomeContent
             viewModel.createFrom { currency ->
@@ -152,6 +155,7 @@ fun HomeContent(
     nowMillis: Long = System.currentTimeMillis(),
     selectedTag: String? = null,
     onTagChange: (String?) -> Unit = {},
+    onFinance: (() -> Unit)? = null,
 ) {
     val haptics = rememberAppHaptics()
     var query by rememberSaveable { mutableStateOf("") }
@@ -176,6 +180,11 @@ fun HomeContent(
         filter = if (trackers.isNullOrEmpty()) null else FilterTop(query, { query = it }, stringResource(R.string.home_search)),
         snackbarHost = { if (snackbar != null) SnackbarHost(snackbar) },
         actions = {
+            if (onFinance != null) {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = onFinance) {
+                    Icon(Icons.Rounded.AccountBalanceWallet, contentDescription = stringResource(R.string.home_finance))
+                }
+            }
             if (onArchived != null) {
                 IconButton(shapes = IconButtonDefaults.shapes(), onClick = onArchived) {
                     Icon(Icons.Rounded.Inventory2, contentDescription = stringResource(R.string.home_archived))

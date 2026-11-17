@@ -1,8 +1,8 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.0.9
-> **Last Updated:** 2026-11-16
+> **Version:** 2.1.0
+> **Last Updated:** 2026-11-17
 
 ## Architecture
 
@@ -23,6 +23,7 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:feature:trackereditor` | Android library | Tracker builder: the template gallery, details, icon, pigment, fields and the field sheet |
 | `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
 | `:feature:backup` | Android library | Creating, restoring and undoing backups |
+| `:feature:finance` | Android library | Accounts, income, expenses and transfers |
 | `:feature:reminders` | Android library | A tracker's reminders: time, days, skip if logged |
 | `:core:reminders` | Android library | Alarm sync, receivers and reminder notifications |
 | `:feature:welcome` | Android library | The first run: what Eonslate is, then starter trackers |
@@ -37,6 +38,7 @@ Destinations are `@Serializable` types in `:core:navigation:api`; `EonslateNavHo
 | :--- | :--- | :--- |
 | `Welcome` | First-run pages | Start, until finished or skipped |
 | `Home` | Grid of tracker slates | Start after the welcome |
+| `Finance` | Account balances and transactions | Home wallet button |
 | `Templates` | Blank tracker and every template | New tracker, the empty Home |
 | `Archived` | Archived trackers | Home top bar |
 | `Settings` | Appearance and behavior | Home's gear |
@@ -89,6 +91,12 @@ A tracker owns an ordered list of fields; each entry fills some of them. Values 
 - List search checks notes and text values across the tracker's full history.
 - Entries store `occurredAt` (epoch milliseconds) and the IANA `zoneId` they were logged in; the day an entry belongs to is always computed in that zone.
 - Schemas are exported to `eonslate-app/core/tracker/data/schemas/` and committed. A schema change bumps `TrackerDatabase.VERSION`, adds a `Migration` to `TrackerMigrations.ALL`, and adds a test to `TrackerMigrationTest` that writes data with `ExportedSchema.create` under the old version and reads it back with the current app.
+
+## Finance
+
+Room schema 4 adds finance accounts and transactions. Accounts hold a fixed currency and an opening balance in minor units. Each transfer is one same-currency transaction with a source and destination. A backup includes the entire ledger and restores it with tracker data in one transaction.
+
+Schema 5 adds monthly budgets and recurring payments. Expenses count toward a budget in the month of their saved date. The app posts due payments on open and advances each schedule in the same transaction as its entries. A monthly payment keeps its original due day after shorter months.
 
 ## Technology stack
 

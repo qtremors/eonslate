@@ -1,10 +1,21 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.0.9
-> **Last Updated:** 2026-11-16
+> **Version:** 2.1.0
+> **Last Updated:** 2026-11-17
 
 ---
+
+## [2.1.0] - 2026-11-17
+
+- Track account balances in their own currencies.
+- Record income and expenses in exact amounts.
+- Transfer money between accounts in the same currency.
+- Backups include accounts and transactions.
+- Set a monthly budget for each account.
+- Review spending by month in Plans.
+- Post weekly and monthly payments when you open the app.
+- Backups include budgets and recurring payments.
 
 ## [2.0.9] - 2026-11-16
 

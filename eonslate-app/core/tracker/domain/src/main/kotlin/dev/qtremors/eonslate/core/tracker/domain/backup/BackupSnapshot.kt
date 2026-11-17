@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.core.tracker.domain.backup
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
+import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,7 +14,7 @@ import kotlinx.serialization.Serializable
  * Settings are not part of a backup: they belong to the phone, and a restore never changes them.
  *
  * @property schema the database version the rows were read from. A restore refuses a newer one.
- *   Schema 2 added [reminders] and schema 3 tracker tags; older files lack them and read as empty.
+ *   Older files use empty defaults for the data added in later schemas.
  */
 @Serializable
 data class BackupSnapshot(
@@ -24,6 +27,9 @@ data class BackupSnapshot(
     val values: List<ValueRow> = emptyList(),
     /** Added in schema 2; a schema 1 file simply has none. */
     val reminders: List<ReminderRow> = emptyList(),
+    val accounts: List<Account> = emptyList(),
+    val transactions: List<Transaction> = emptyList(),
+    @SerialName("recurring_payments") val recurring: List<RecurringPayment> = emptyList(),
 ) {
     /** What a person is shown before they choose to restore it. */
     val summary: BackupSummary
@@ -33,6 +39,8 @@ data class BackupSnapshot(
             trackers = trackers.size,
             archived = trackers.count { it.archived },
             entries = entries.size,
+            accounts = accounts.size,
+            transactions = transactions.size,
         )
 }
 
@@ -43,6 +51,8 @@ data class BackupSummary(
     val trackers: Int,
     val archived: Int,
     val entries: Int,
+    val accounts: Int = 0,
+    val transactions: Int = 0,
 )
 
 @Serializable

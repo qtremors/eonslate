@@ -169,7 +169,7 @@ fun BackupContent(
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     state.counts?.let { counts ->
                         Text(
-                            stringResource(R.string.backup_on_phone, trackers(counts.trackers), entries(counts.entries)),
+                            stringResource(R.string.backup_on_phone, countText(counts.trackers, counts.entries, counts.accounts, counts.transactions)),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -333,7 +333,7 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
             Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        stringResource(R.string.backup_review_holds, trackers(backup.trackers), entries(backup.entries)),
+                        countText(backup.trackers, backup.entries, backup.accounts, backup.transactions),
                         style = MaterialTheme.typography.titleMedium,
                         color = colors.onSurface,
                     )
@@ -348,7 +348,7 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
                 }
             }
             Text(
-                stringResource(R.string.backup_review_replaces, trackers(current.trackers), entries(current.entries)),
+                stringResource(R.string.backup_review_replaces, countText(current.trackers, current.entries, current.accounts, current.transactions)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
             )
@@ -362,10 +362,17 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
 }
 
 @Composable
-private fun trackers(count: Int) = pluralStringResource(R.plurals.backup_trackers, count, count)
-
-@Composable
-private fun entries(count: Int) = pluralStringResource(R.plurals.backup_entries, count, count)
+private fun countText(trackers: Int, entries: Int, accounts: Int, transactions: Int): String {
+    val counts = mutableListOf(
+        pluralStringResource(R.plurals.backup_trackers, trackers, trackers),
+        pluralStringResource(R.plurals.backup_entries, entries, entries),
+    )
+    if (accounts > 0 || transactions > 0) {
+        counts += pluralStringResource(R.plurals.backup_accounts, accounts, accounts)
+        counts += pluralStringResource(R.plurals.backup_transactions, transactions, transactions)
+    }
+    return counts.joinToString(", ")
+}
 
 private fun dateTime(millis: Long): String =
     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(millis))

@@ -10,6 +10,7 @@ import dev.qtremors.eonslate.core.navigation.api.Destination
 import dev.qtremors.eonslate.feature.backup.BackupScreen
 import dev.qtremors.eonslate.feature.reminders.RemindersScreen
 import dev.qtremors.eonslate.feature.entry.LogEntryScreen
+import dev.qtremors.eonslate.feature.finance.FinanceScreen
 import dev.qtremors.eonslate.feature.home.ArchivedScreen
 import dev.qtremors.eonslate.feature.home.HomeScreen
 import dev.qtremors.eonslate.feature.settings.AboutScreen
@@ -52,8 +53,10 @@ fun EonslateNavHost(startWithWelcome: Boolean, openLog: String? = null, onLogOpe
                 onArchived = { navController.navigate(Destination.Archived) },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
+                onFinance = { navController.navigate(Destination.Finance) },
             )
         }
+        composable<Destination.Finance> { FinanceScreen(onBack = { navController.popBackStack() }) }
         composable<Destination.Settings> {
             SettingsScreen(
                 onBack = { navController.popBackStack() },

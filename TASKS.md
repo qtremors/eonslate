@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.0.9
-> **Last Updated:** 2026-11-16
+> **Version:** 2.1.0
+> **Last Updated:** 2026-11-17
 
 ## Roadmap
 
@@ -21,8 +21,8 @@ Each step is planned as one release commit.
 | 9 | 2.0.8 | Backup and restore: encrypted archives, recoverable restores | Done |
 | 10 | 2.0.9 | Local reminders that reschedule after each alert and after reboot | Done |
 | 11 | 2.0.9 | Search, tags, filters and saved views | Done |
-| 12 | 2.1.0 | Finance: accounts, exact money, transfers | Planned |
-| 13 | 2.1.0 | Finance: budgets and recurring payments | Planned |
+| 12 | 2.1.0 | Finance: accounts, exact money, transfers | Done |
+| 13 | 2.1.0 | Finance: budgets and recurring payments | Done |
 | 14 | 2.1.1 | Finance: optional on-device SMS reader | Planned |
 | 15 | 2.1.2 | CSV import and export | Planned |
 | 16 | 2.1.2 | Home screen widgets and quick tiles | Planned |

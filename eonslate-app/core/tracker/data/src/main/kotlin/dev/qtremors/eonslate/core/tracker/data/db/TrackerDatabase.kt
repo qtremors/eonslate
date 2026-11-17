@@ -19,6 +19,9 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
         EntryEntity::class,
         EntryValueEntity::class,
         ReminderEntity::class,
+        AccountEntity::class,
+        TransactionEntity::class,
+        RecurringEntity::class,
     ],
     version = TrackerDatabase.VERSION,
     exportSchema = true,
@@ -28,9 +31,10 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
     abstract fun backupDao(): BackupDao
     abstract fun reminderDao(): ReminderDao
+    abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 3
+        const val VERSION = 5
         const val NAME = "eonslate.db"
 
         /**
@@ -82,7 +86,42 @@ object TrackerMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS finance_accounts (
+                    id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, currency TEXT NOT NULL, opening_minor INTEGER NOT NULL
+                )
+            """)
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS finance_transactions (
+                    id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, kind TEXT NOT NULL, minor INTEGER NOT NULL,
+                    epoch_day INTEGER NOT NULL, note TEXT NOT NULL, destination_id TEXT,
+                    FOREIGN KEY(account_id) REFERENCES finance_accounts(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(destination_id) REFERENCES finance_accounts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+            """)
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_transactions_account_id ON finance_transactions (account_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_transactions_destination_id ON finance_transactions (destination_id)")
+        }
+    }
+
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_accounts ADD COLUMN monthly_budget_minor INTEGER")
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS finance_recurring (
+                    id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, minor INTEGER NOT NULL,
+                    note TEXT NOT NULL, interval TEXT NOT NULL, anchor_day INTEGER NOT NULL, next_epoch_day INTEGER,
+                    FOREIGN KEY(account_id) REFERENCES finance_accounts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+            """)
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_recurring_account_id ON finance_recurring (account_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_recurring_next_epoch_day ON finance_recurring (next_epoch_day)")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }
 
 /**

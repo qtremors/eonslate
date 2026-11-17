@@ -8,6 +8,9 @@ sealed interface Destination {
     @Serializable
     data object Home : Destination
 
+    @Serializable
+    data object Finance : Destination
+
     /** Trackers put away from Home. */
     @Serializable
     data object Archived : Destination
