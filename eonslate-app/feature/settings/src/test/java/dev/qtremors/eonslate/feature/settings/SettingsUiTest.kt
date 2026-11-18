@@ -2,6 +2,7 @@ package dev.qtremors.eonslate.feature.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,6 +35,7 @@ class SettingsUiTest {
         override fun setPreset(name: String) { calls += "preset:$name" }
         override fun setHaptics(on: Boolean) { calls += "haptics:$on" }
         override fun setReduceMotion(on: Boolean) { calls += "motion:$on" }
+        override fun setBlockScreenshots(on: Boolean) { calls += "screenshots:$on" }
         override fun setWeekStart(start: dev.qtremors.eonslate.core.settings.WeekStart) { calls += "week:$start" }
         override fun setCurrency(code: String?) { calls += "currency:$code" }
     }
@@ -85,6 +87,15 @@ class SettingsUiTest {
         show(Appearance(theme = ThemeChoice.LIGHT))
         compose.onNodeWithText("Dark theme only").assertIsDisplayed()
         compose.onNodeWithText("Pure black").assertIsNotEnabled()
+    }
+
+    @Test
+    fun screenshotBlockingReportsItsSwitchState() {
+        show(Appearance(blockScreenshots = true))
+        val label = "Block screenshots"
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText(label))
+        compose.onNodeWithText(label).assertIsOn().performClick()
+        assertEquals(listOf("screenshots:false"), calls)
     }
 
     @Test

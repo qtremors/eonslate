@@ -96,5 +96,8 @@ val EonslateTypography = Typography(
  */
 val MetricTextStyle: TextStyle = display(30, 34, FontWeight.Bold)
 
+/** The one number a page leads with, such as a balance. */
+val HeroTextStyle: TextStyle = display(52, 56, FontWeight.Bold)
+
 /** Values in rows, such as amounts and times, with aligned digits. */
 val ValueTextStyle: TextStyle = style(14, 20, tracking = 0.1).copy(fontFeatureSettings = "tnum")

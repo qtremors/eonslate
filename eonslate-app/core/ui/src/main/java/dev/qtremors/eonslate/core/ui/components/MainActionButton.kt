@@ -13,8 +13,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 
 /**
- * The page's main action: Save, Log it, New tracker. One per page, floating bottom end, in the
- * accent color (white on black in the default Mono look).
+ * The page's main action: Save, Log it, New tracker. One per page, in the accent color. Inside
+ * the app shell it is shown by the floating toolbar beside the tabs; elsewhere it floats bottom end.
  *
  * The extended button does not merge its label into its own semantics, so screen readers would
  * meet a nameless button. The label is set on the button itself here, once for every screen.
@@ -27,6 +27,11 @@ fun MainActionButton(
     modifier: Modifier = Modifier,
     expanded: Boolean = true
 ) {
+    val shell = LocalShellHost.current
+    if (shell != null) {
+        shell.Offer(PageAction(text, icon, onClick))
+        return
+    }
     ExtendedFloatingActionButton(
         onClick = onClick,
         expanded = expanded,

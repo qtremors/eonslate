@@ -1,8 +1,34 @@
 package dev.qtremors.eonslate
 
+import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.EventRepeat
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.SpaceDashboard
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import dev.qtremors.eonslate.core.ui.components.FloatingTabBar
+import dev.qtremors.eonslate.core.ui.components.LocalShellHost
+import dev.qtremors.eonslate.core.ui.components.ShellHost
+import dev.qtremors.eonslate.core.ui.components.TabItem
+import dev.qtremors.eonslate.core.ui.theme.LocalReduceMotion
+import dev.qtremors.eonslate.feature.finance.FinanceSection
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -42,9 +68,31 @@ fun EonslateNavHost(
     }
     val start: Destination = remember { if (startWithWelcome) Destination.Welcome else Destination.Home }
     LaunchedEffect(sharedMessage) {
-        if (sharedMessage != null) navController.navigate(Destination.Finance) { launchSingleTop = true }
+        if (sharedMessage != null) navController.navigateToTab(Destination.Transactions)
     }
-    NavHost(navController = navController, startDestination = start) {
+    val entry by navController.currentBackStackEntryAsState()
+    val destination = entry?.destination
+    val shell = remember { ShellHost() }
+    val reduceMotion = LocalReduceMotion.current
+    val tabs = listOf(
+        TabItem(Icons.Rounded.SpaceDashboard, stringResource(R.string.tab_home)),
+        TabItem(Icons.AutoMirrored.Rounded.ReceiptLong, stringResource(R.string.tab_transactions)),
+        TabItem(Icons.Rounded.Autorenew, stringResource(R.string.tab_subscriptions)),
+        TabItem(Icons.Rounded.TrackChanges, stringResource(R.string.tab_trackers)),
+    )
+    CompositionLocalProvider(LocalShellHost provides shell) {
+    Box(Modifier.fillMaxSize()) {
+    NavHost(
+        navController = navController,
+        startDestination = start,
+        modifier = Modifier.fillMaxSize(),
+        enterTransition = { shellEnter(reduceMotion) },
+        exitTransition = { shellExit(reduceMotion) },
+        popEnterTransition = { shellPopEnter(reduceMotion) },
+        popExitTransition = { shellPopExit(reduceMotion) },
+        predictivePopEnterTransition = { shellPopEnter(reduceMotion) },
+        predictivePopExitTransition = { shellPopExit(reduceMotion) },
+    ) {
         composable<Destination.Welcome> {
             WelcomeScreen(
                 onDone = {
@@ -55,6 +103,15 @@ fun EonslateNavHost(
             )
         }
         composable<Destination.Home> {
+            HomeTab(
+                onTransactions = { navController.navigateToTab(Destination.Transactions) },
+                onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
+                onTrackers = { navController.navigateToTab(Destination.Trackers) },
+                onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
+                onSettings = { navController.navigate(Destination.Settings) },
+            )
+        }
+        composable<Destination.Trackers> {
             HomeScreen(
                 onNewTracker = { navController.navigate(Destination.Templates) },
                 onOpenTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
@@ -62,16 +119,12 @@ fun EonslateNavHost(
                 onArchived = { navController.navigate(Destination.Archived) },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
-                onFinance = { navController.navigate(Destination.Finance) },
             )
         }
-        composable<Destination.Finance> {
-            FinanceScreen(
-                onBack = { navController.popBackStack() },
-                sharedMessage = sharedMessage,
-                onMessageOpened = onMessageOpened,
-            )
+        composable<Destination.Transactions> {
+            FinanceScreen(FinanceSection.TRANSACTIONS, sharedMessage = sharedMessage, onMessageOpened = onMessageOpened)
         }
+        composable<Destination.Subscriptions> { FinanceScreen(FinanceSection.SUBSCRIPTIONS) }
         composable<Destination.Settings> {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
@@ -126,8 +179,46 @@ fun EonslateNavHost(
             TrackerEditorScreen(
                 onDone = { navController.popBackStack() },
                 // A deleted tracker has no page to return to, so go all the way back to Home.
-                onDeleted = { navController.popBackStack(Destination.Home, inclusive = false) },
+                onDeleted = { navController.popBackStack(Destination.Trackers, inclusive = false) },
             )
         }
+    }
+        if (destination != null && !destination.hasRoute<Destination.Welcome>()) {
+            val top = destination.isTab()
+            FloatingTabBar(
+                tabs = tabs,
+                selectedIndex = destination.tabIndex(),
+                onSelect = { navController.navigateToTab(TABS[it]) },
+                backTitle = if (top) null else shell.title,
+                onBack = if (top) null else ({ navController.popBackStack() }),
+                action = shell.action,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+    }
+    }
+}
+
+private val TABS = listOf(Destination.Home, Destination.Transactions, Destination.Subscriptions, Destination.Trackers)
+
+private fun NavDestination.isTab(): Boolean =
+    hasRoute<Destination.Home>() || hasRoute<Destination.Transactions>() || hasRoute<Destination.Subscriptions>() || hasRoute<Destination.Trackers>()
+
+/** Detail pages light up the tab they belong to. */
+private fun NavDestination.tabIndex(): Int = when {
+    hasRoute<Destination.Transactions>() -> 1
+    hasRoute<Destination.Subscriptions>() -> 2
+    hasRoute<Destination.Trackers>() || hasRoute<Destination.TrackerDetail>() || hasRoute<Destination.TrackerEditor>() ||
+        hasRoute<Destination.Templates>() || hasRoute<Destination.Archived>() || hasRoute<Destination.LogEntry>() ||
+        hasRoute<Destination.Reminders>() -> 3
+    else -> 0
+}
+
+/** Tabs keep their own back stacks and scroll positions. */
+private fun NavHostController.navigateToTab(route: Destination) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

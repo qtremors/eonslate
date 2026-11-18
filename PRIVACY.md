@@ -1,6 +1,6 @@
 # Privacy Policy for Eonslate
 
-**Last Updated:** 2026-11-17
+**Last Updated:** 2026-11-18
 
 Eonslate is a personal project built with a privacy-first mindset. This policy explains how the app handles your information.
 
@@ -21,9 +21,11 @@ Everything you create is stored in the app's private storage on your device, whi
 | Trackers, fields, entries, reminders, accounts and transactions | The `eonslate.db` database |
 | App settings, such as whether the welcome was seen | The `settings` preferences file |
 
-Uninstalling the app or clearing its storage deletes both. Backup files are written to the location you choose.
+Uninstalling the app or clearing its storage deletes both. Backups and CSV exports are written to the location you choose.
 
 Payment SMS import reads text you paste or share. Inbox-enabled builds can scan the selected period after you grant SMS access. Eonslate processes messages locally and stores the transactions you approve and fingerprints used to avoid importing them twice.
+
+Turn on Block screenshots in Settings to protect app windows in screenshots and screen sharing.
 
 ## Permissions
 

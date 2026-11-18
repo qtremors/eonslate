@@ -1,3 +1,13 @@
 <resources>
     <string name="share_payment_message">Import payment SMS</string>
+    <string name="quick_log_title">Log entry</string>
+    <string name="quick_log_choose">Choose tracker</string>
+    <string name="quick_log_empty">No trackers</string>
+    <string name="quick_log_open">Open Eonslate</string>
+    <string name="app_title">Eonslate</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_transactions">Transactions</string>
+    <string name="tab_subscriptions">Subscriptions</string>
+    <string name="tab_trackers">Trackers</string>
+    <string name="tab_settings">Settings</string>
 </resources>

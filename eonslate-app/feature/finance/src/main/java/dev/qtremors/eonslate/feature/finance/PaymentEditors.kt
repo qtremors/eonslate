@@ -1,5 +1,22 @@
 package dev.qtremors.eonslate.feature.finance
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
+import java.util.Locale
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,7 +75,7 @@ internal fun RecurringEditor(
         }
         AmountField(amount, { amount = it }, account.currency, busy)
         FormField(note, { note = it }, stringResource(R.string.finance_payment_name), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
-        CategoryField(category, { category = it }, busy)
+        CategoryPicker(category, { category = it }, kind, busy)
         PeriodFields(interval, { interval = it }, every, { every = it }, busy)
         DateField(
             date, { date = it },
@@ -115,7 +132,7 @@ internal fun CategoryBudgetEditor(
             if (it.currency != account.currency) amount = ""
             accountId = it.id
         }
-        CategoryField(category, { category = it }, busy)
+        CategoryPicker(category, { category = it }, TransactionKind.EXPENSE, busy)
         AmountField(amount, { amount = it }, account.currency, busy)
         PeriodFields(interval, { interval = it }, every, { every = it }, busy)
         DateField(date, { date = it }, stringResource(R.string.finance_budget_start), busy)
@@ -167,15 +184,35 @@ private fun AmountField(value: String, onChange: (String) -> Unit, currency: Str
     )
 }
 
+
+/** A date picked from a calendar; [value] stays an ISO date, as the editors store it. */
 @Composable
-private fun CategoryField(value: String, onChange: (String) -> Unit, busy: Boolean) {
-    FormField(value, onChange, stringResource(R.string.finance_category), maxLength = Transaction.CATEGORY_LIMIT, enabled = !busy)
+internal fun DateField(value: String, onChange: (String) -> Unit, label: String, busy: Boolean) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val day = EpochDays.parse(value)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Rounded.CalendarToday, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(day?.let { ValueFormat.date(it, Locale.getDefault()) } ?: value)
+        }
+    }
+    if (open) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = day?.times(DAY_MILLIS))
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = {
+                    state.selectedDateMillis?.let { onChange(LocalDate.ofEpochDay(Math.floorDiv(it, DAY_MILLIS)).toString()) }
+                    open = false
+                }) { Text(stringResource(R.string.finance_save)) }
+            },
+        ) { DatePicker(state = state) }
+    }
 }
 
-@Composable
-private fun DateField(value: String, onChange: (String) -> Unit, label: String, busy: Boolean) {
-    FormField(value, onChange, label, keyboardType = KeyboardType.Ascii, maxLength = 10, enabled = !busy)
-}
+private const val DAY_MILLIS = 86_400_000L
 
 @Composable
 private fun PeriodFields(interval: PaymentInterval, onInterval: (PaymentInterval) -> Unit, count: String, onCount: (String) -> Unit, busy: Boolean) {

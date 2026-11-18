@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
@@ -69,6 +70,16 @@ interface EntryDao {
            ORDER BY occurred_at DESC, created_at DESC, id DESC"""
     )
     fun observeEntries(trackerId: String): Flow<List<EntryWithValues>>
+
+    @Transaction
+    @Query("SELECT * FROM entries WHERE tracker_id = :trackerId ORDER BY occurred_at DESC, created_at DESC, id DESC")
+    suspend fun getEntries(trackerId: String): List<EntryWithValues>
+
+    @Insert
+    suspend fun insertEntries(entries: List<EntryEntity>)
+
+    @Insert
+    suspend fun insertValues(values: List<EntryValueEntity>)
 
     @Transaction
     @Query(

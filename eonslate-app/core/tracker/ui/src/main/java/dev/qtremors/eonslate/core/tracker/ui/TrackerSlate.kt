@@ -1,5 +1,14 @@
 package dev.qtremors.eonslate.core.tracker.ui
 
+import dev.qtremors.eonslate.core.ui.theme.LocalReduceMotion
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material3.ripple
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -67,8 +76,19 @@ fun TrackerSlate(
     // A whisper of the pigment over the row color, so a grid of trackers reads by color at a glance.
     val container: Color = lerp(colors.surfaceBright, badge.container, if (dark) 0.28f else 0.42f)
 
+    // The same press spring as every tappable card; still when Reduce Motion is on.
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val still = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !still) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "slatePress",
+    )
     val clickable = if (onClick != null || onLongClick != null) {
         Modifier.combinedClickable(
+            interactionSource = interaction,
+            indication = ripple(),
             role = Role.Button,
             onClick = {
                 haptics.tap()
@@ -83,7 +103,7 @@ fun TrackerSlate(
         )
     } else Modifier
 
-    Surface(color = container, shape = SlateCardShape, modifier = modifier.fillMaxWidth()) {
+    Surface(color = container, shape = SlateCardShape, modifier = modifier.fillMaxWidth().graphicsLayer { scaleX = scale; scaleY = scale }) {
         Column(
             modifier = Modifier
                 .clip(SlateCardShape)

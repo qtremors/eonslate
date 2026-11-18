@@ -1,5 +1,9 @@
 package dev.qtremors.eonslate.core.ui.components
 
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -72,7 +76,9 @@ fun FloatingTabBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     backTitle: String? = null,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    /** The page's main action, as a button beside the toolbar. */
+    action: PageAction? = null
 ) {
     val haptics = rememberAppHaptics()
     val colors = MaterialTheme.colorScheme
@@ -101,16 +107,7 @@ fun FloatingTabBar(
         label = "toolbarWidth"
     )
 
-    HorizontalFloatingToolbar(
-        expanded = true,
-        modifier = modifier
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(
-            toolbarContainerColor = colors.primary,
-            toolbarContentColor = colors.onPrimary
-        )
-    ) {
+    val toolbarContent: @Composable RowScope.() -> Unit = {
         SharedTransitionLayout(modifier = Modifier.width(barWidth).height(BACK_BUTTON)) {
             AnimatedContent(
                 targetState = onBack != null,
@@ -195,6 +192,43 @@ fun FloatingTabBar(
                         }
                     }
                 }
+            }
+        }
+    }
+    // One toolbar for every page, so switching tabs never rebuilds it; the page's action slides in
+    // beside it, and the row re-centres smoothly as it comes and goes.
+    var lastAction by remember { mutableStateOf(action) }
+    if (action != null) lastAction = action
+    Row(
+        modifier = modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(
+                toolbarContainerColor = colors.primary,
+                toolbarContentColor = colors.onPrimary
+            ),
+            content = toolbarContent,
+        )
+        AnimatedVisibility(
+            visible = action != null,
+            enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn() + scaleIn(initialScale = 0.6f),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut() + scaleOut(targetScale = 0.6f),
+        ) {
+            lastAction?.let { shown ->
+                FloatingToolbarDefaults.VibrantFloatingActionButton(
+                    onClick = {
+                        haptics.tap()
+                        shown.onClick()
+                    },
+                    // Outside the toolbar it has no height limit of its own.
+                    modifier = Modifier.padding(start = 8.dp).size(56.dp),
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary,
+                ) { Icon(shown.icon, contentDescription = shown.label) }
             }
         }
     }

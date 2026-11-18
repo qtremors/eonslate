@@ -77,6 +77,7 @@ fun TrackerDetailScreen(
     viewModel: TrackerDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val csv: TrackerCsvViewModel = hiltViewModel()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     LaunchedEffect(viewModel) {
@@ -95,6 +96,7 @@ fun TrackerDetailScreen(
     }
 
     val tracker = state.tracker
+    TrackerCsvFeedback(csv, snackbar)
     EonslateScaffold(
         title = tracker?.name.orEmpty(),
         onBack = onBack,
@@ -111,6 +113,7 @@ fun TrackerDetailScreen(
                 IconButton(shapes = IconButtonDefaults.shapes(), onClick = { onEditTracker(tracker.id) }) {
                     Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.detail_edit_tracker))
                 }
+                TrackerCsvMenu(tracker.name, csv)
             }
         },
         floatingActionButton = {

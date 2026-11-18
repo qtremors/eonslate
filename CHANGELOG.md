@@ -1,10 +1,30 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.1
-> **Last Updated:** 2026-11-17
+> **Version:** 2.1.2
+> **Last Updated:** 2026-11-18
 
 ---
+
+## [2.1.2] - 2026-11-18
+
+- Import and export tracker entries as CSV.
+- Import and export finance transactions as CSV.
+- Review import counts before adding records.
+- Open a chosen tracker’s log from a Home screen widget.
+- Choose a tracker from the Quick Settings tile.
+- Block screenshots from Privacy settings.
+- Screen readers announce section headings and switch states.
+- **Tabs**: Home, Transactions, Subscriptions and Trackers in a floating bar; each tab keeps its place.
+- **Home**: Balance, this month in and out, spending trend, spending by category, budgets, payments due, recent transactions and today's trackers.
+- **Transactions**: Period chips, in/out/net totals, days grouped, income green and expenses red.
+- **One account by default**: Account pickers and transfers appear once you add a second account.
+- **Dates**: Picked from a calendar instead of typed.
+- **Subscriptions tab**: Monthly cost up front; each subscription with its next payment and amount.
+- **Budgets**: Lead the Transactions tab as meters, red when over.
+- **Icons**: New tab icons; letter tiles for categories and subscriptions; one menu for rarer actions.
+- **Categories**: Picked from chips, most used first, with icons for the common ones; "New" for any other.
+- **Touch**: Cards and tracker slates spring when pressed.
 
 ## [2.1.1] - 2026-11-17
 

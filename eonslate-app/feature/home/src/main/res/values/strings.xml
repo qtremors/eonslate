@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_title">Eonslate</string>
+    <string name="home_title">Trackers</string>
     <string name="home_empty_title">Nothing tracked yet</string>
     <string name="home_empty_message">Create a tracker to start.</string>
     <string name="home_new_tracker">New tracker</string>
@@ -37,4 +37,7 @@
     <string name="home_search">Search trackers</string>
     <string name="home_no_matches">No matches</string>
     <string name="home_finance">Finance</string>
+    <string name="today_title">Today</string>
+    <string name="today_logged">%1$d of %2$d logged</string>
+    <string name="today_all">All</string>
 </resources>

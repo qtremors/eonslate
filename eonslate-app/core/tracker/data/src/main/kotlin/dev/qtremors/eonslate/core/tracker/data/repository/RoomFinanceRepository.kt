@@ -49,6 +49,13 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
 
     override suspend fun deleteTransaction(id: String) = dao.deleteTransaction(id)
 
+    override suspend fun appendTransactions(transactions: List<Transaction>): Boolean = database.withTransaction {
+        val accounts = dao.accounts().associate { it.id to it.toDomain() }
+        if (transactions.any { !it.isValid(accounts) }) return@withTransaction false
+        dao.insertTransactions(transactions.map { it.toEntity() })
+        true
+    }
+
     override suspend fun addRecurring(payment: RecurringPayment, throughDay: Long): Boolean = database.withTransaction {
         val account = dao.account(payment.accountId) ?: return@withTransaction false
         val nextDay = payment.nextEpochDay ?: return@withTransaction false

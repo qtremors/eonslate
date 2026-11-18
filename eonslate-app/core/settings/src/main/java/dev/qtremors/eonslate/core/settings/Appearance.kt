@@ -19,6 +19,7 @@ data class Appearance(
     val preset: String = DEFAULT_PRESET,
     val haptics: Boolean = true,
     val reduceMotion: Boolean = false,
+    val blockScreenshots: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_PRESET = "MONO"

@@ -109,6 +109,7 @@ interface FinanceRepository {
     suspend fun saveAccount(account: Account): Boolean
     suspend fun deleteAccount(id: String): Boolean
     suspend fun saveTransaction(transaction: Transaction): Boolean
+    suspend fun appendTransactions(transactions: List<Transaction>): Boolean
     suspend fun deleteTransaction(id: String)
     suspend fun addRecurring(payment: RecurringPayment, throughDay: Long): Boolean
     suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long): Boolean

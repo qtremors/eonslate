@@ -53,8 +53,9 @@ class DataStoreSettingsRepositoryTest {
         settings.updateAppearance { it.copy(theme = ThemeChoice.DARK) }
         settings.updateAppearance { it.copy(pureBlack = false, preset = "TIDE") }
         settings.updateAppearance { it.copy(haptics = false, reduceMotion = true) }
+        settings.updateAppearance { it.copy(blockScreenshots = true) }
         assertEquals(
-            Appearance(theme = ThemeChoice.DARK, pureBlack = false, preset = "TIDE", haptics = false, reduceMotion = true),
+            Appearance(theme = ThemeChoice.DARK, pureBlack = false, preset = "TIDE", haptics = false, reduceMotion = true, blockScreenshots = true),
             settings.appearance.first(),
         )
     }

@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.1
-> **Last Updated:** 2026-11-17
+> **Version:** 2.1.2
+> **Last Updated:** 2026-11-18
 
 ## Roadmap
 
@@ -24,9 +24,11 @@ Each step is planned as one release commit.
 | 12 | 2.1.0 | Finance: accounts, exact money, transfers | Done |
 | 13 | 2.1.0 | Finance: budgets and recurring payments | Done |
 | 14 | 2.1.1 | Finance: optional on-device SMS reader | Done |
-| 15 | 2.1.2 | CSV import and export | Planned |
-| 16 | 2.1.2 | Home screen widgets and quick tiles | Planned |
-| 17 | 2.1.3 | Accessibility, localization, screenshot blocking, architecture tests, release readiness | Planned |
+| 15 | 2.1.2 | CSV import and export, log widget and Quick Settings tile, accessibility, screenshot blocking, architecture tests and release readiness | Done |
+| 16 | 2.1.2 | Four tabs, money overview, transactions and subscriptions redesign, budgets in Transactions, new icons | Done |
+| 17 | 2.1.3 | Material 3 Expressive pass across the remaining screens; categories with their own icon and color | Planned |
+| 18 | 2.1.3 | Import old Earnslate backups; custom icons (PNG, SVG, JPEG, WebP) in backups; service directory | Planned |
+| 19 | 2.1.4 | Batch actions and sorting for transactions, recurring charts, SMS parser parity and auto-approve | Planned |
 
 ## Waiting on a decision
 

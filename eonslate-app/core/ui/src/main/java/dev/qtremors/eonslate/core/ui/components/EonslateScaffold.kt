@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.ui.components
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.IconButtonDefaults
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -78,6 +80,10 @@ fun EonslateScaffold(
     val colors = MaterialTheme.colorScheme
     val spacing = MaterialTheme.spacing
     val layoutDirection = LocalLayoutDirection.current
+    val shell = LocalShellHost.current
+    // In the shell the floating toolbar shows Back with this title, so the top bar draws neither.
+    shell?.Offer(title)
+    val onBack = if (shell != null) null else onBack
     var filtering by rememberSaveable { mutableStateOf(false) }
     // The keyboard opens once, when search opens. Coming back from a result keeps the results
     // in view instead of popping the keyboard up over them again.
@@ -93,7 +99,8 @@ fun EonslateScaffold(
     Scaffold(
         modifier = if (filterVisible) modifier else modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = colors.surfaceContainer,
-        snackbarHost = snackbarHost,
+        // Above the shell's floating toolbar, never behind it.
+        snackbarHost = { Box(Modifier.padding(bottom = if (shell != null) spacing.toolbarClearance else 0.dp)) { snackbarHost() } },
         floatingActionButton = floatingActionButton,
         topBar = {
             when {

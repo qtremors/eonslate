@@ -3,6 +3,7 @@ package dev.qtremors.eonslate.core.ui.components
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -27,6 +28,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.ui.theme.GroupCorner
@@ -96,7 +99,7 @@ fun SectionHeader(
             text = text,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).semantics { heading() }
         )
         trailing?.invoke(this)
     }
@@ -120,11 +123,14 @@ fun ConnectedRow(
     containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
     enabled: Boolean = true,
     /** False when [onClick] plays its own haptic, so a tap never buzzes twice. */
-    tapHaptic: Boolean = true
+    tapHaptic: Boolean = true,
+    checked: Boolean? = null,
 ) {
     val spacing = MaterialTheme.spacing
     val haptics = rememberAppHaptics()
-    val clickable = if (onClick != null || onLongClick != null) {
+    val clickable = if (checked != null && onClick != null) {
+        Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = { onClick() })
+    } else if (onClick != null || onLongClick != null) {
         Modifier.combinedClickable(
             enabled = enabled,
             role = role,
@@ -248,6 +254,7 @@ fun ToggleRow(
         },
         role = Role.Switch,
         enabled = enabled,
-        tapHaptic = false
+        tapHaptic = false,
+        checked = checked,
     )
 }

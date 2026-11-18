@@ -106,4 +106,18 @@ fun IconBadge(
     }
 }
 
+/** The same pigmented tile with a letter, for things named by people, such as categories and payments. */
+@Composable
+fun MonogramBadge(text: String, key: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    val dark = MaterialTheme.colorScheme.surface.luminance() < DARK_SURFACE
+    val resolved = remember(key, dark) { BadgePalette.forKey(key.lowercase(), dark) }
+    Box(modifier.size(size).background(resolved.container, SlateTileShape), contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Text(
+            text = text.trim().take(1).uppercase(),
+            style = MaterialTheme.typography.titleMedium.copy(fontFamily = dev.qtremors.eonslate.core.ui.theme.EonslateDisplay),
+            color = resolved.content,
+        )
+    }
+}
+
 private const val DARK_SURFACE = 0.5f

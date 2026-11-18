@@ -67,6 +67,7 @@
     <string name="licenses_project">Open the project</string>
 
     <string name="privacy_title">Privacy</string>
+    <string name="settings_block_screenshots">Block screenshots</string>
     <string name="privacy_collect_title">No data collection</string>
     <string name="privacy_collect">Eonslate does not collect or transmit any personal data, tracked entries, financial records, usage statistics or telemetry.</string>
     <string name="privacy_offline_title">Offline by design</string>

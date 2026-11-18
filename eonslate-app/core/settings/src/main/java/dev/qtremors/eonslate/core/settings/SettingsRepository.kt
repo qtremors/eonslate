@@ -74,6 +74,7 @@ class DataStoreSettingsRepository @Inject constructor(
             prefs[PRESET] = next.preset
             prefs[HAPTICS] = next.haptics
             prefs[REDUCE_MOTION] = next.reduceMotion
+            prefs[BLOCK_SCREENSHOTS] = next.blockScreenshots
         }
     }
 
@@ -110,6 +111,7 @@ class DataStoreSettingsRepository @Inject constructor(
             preset = prefs[PRESET] ?: defaults.preset,
             haptics = prefs[HAPTICS] ?: defaults.haptics,
             reduceMotion = prefs[REDUCE_MOTION] ?: defaults.reduceMotion,
+            blockScreenshots = prefs[BLOCK_SCREENSHOTS] ?: defaults.blockScreenshots,
         )
     }
 
@@ -122,6 +124,7 @@ class DataStoreSettingsRepository @Inject constructor(
         private val PRESET = stringPreferencesKey("preset")
         private val HAPTICS = booleanPreferencesKey("haptics")
         private val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
+        private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
         private val WEEK_START = stringPreferencesKey("week_start")
         private val CURRENCY = stringPreferencesKey("currency")
         private val HOME_TAG = stringPreferencesKey("home_tag")

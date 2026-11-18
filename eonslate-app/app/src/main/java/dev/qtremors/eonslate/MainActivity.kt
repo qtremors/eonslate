@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen().setKeepOnScreenCondition { showWelcome == null }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        applyScreenshotPolicy(settings)
         if (savedInstanceState == null) {
             openLog = intent.getStringExtra(EXTRA_LOG_TRACKER)
             sharedMessage = takePaymentMessage(intent)

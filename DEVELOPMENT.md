@@ -1,8 +1,8 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.1.1
-> **Last Updated:** 2026-11-17
+> **Version:** 2.1.2
+> **Last Updated:** 2026-11-18
 
 ## Architecture
 
@@ -33,28 +33,18 @@ Planned modules follow the same pattern: pure Kotlin `domain` modules for models
 
 ## Navigation
 
-Destinations are `@Serializable` types in `:core:navigation:api`; `EonslateNavHost` in `:app` wires each to its screen.
-
-| Destination | Screen | Opened from |
-| :--- | :--- | :--- |
-| `Welcome` | First-run pages | Start, until finished or skipped |
-| `Home` | Grid of tracker slates | Start after the welcome |
-| `Finance` | Account balances and transactions | Home wallet button |
-| `Templates` | Blank tracker and every template | New tracker, the empty Home |
-| `Archived` | Archived trackers | Home top bar |
-| `Settings` | Appearance and behavior | Home's gear |
-| `About`, `Licenses`, `Privacy` | About Eonslate and its legal pages | Settings, then About |
-| `TrackerDetail(trackerId)` | A tracker's page | A slate on Home or Archived |
-| `TrackerEditor(trackerId?, templateId?)` | Tracker builder; null creates, a template fills it in | The gallery, the detail pencil, a slate's menu |
-| `LogEntry(trackerId, entryId?)` | Log or edit an entry | A slate's button, Log it, an entry's Edit |
-
-Deleting a tracker from its editor returns to Home, since its detail page no longer exists.
+- One shell in `EonslateNavHost`: the `NavHost` and a `FloatingTabBar` with four tabs (Home, Transactions, Subscriptions, Trackers). Tabs switch with saved state, so each keeps its back stack and scroll.
+- On pages below a tab the bar morphs into Back and the page title. `LocalShellHost` collects the title from `EonslateScaffold` and the action from `MainActionButton`, so pages need no shell code; outside the shell (tests) both render themselves.
+- The page's main action sits beside the bar and animates in and out. Transitions are springs: tabs crossfade, pages slide.
+- Budgets lead the Transactions tab; Subscriptions holds recurring payments only. Tappable cards use `PressableCard`; people-named things use `MonogramBadge`. Category chips come from `Categories.suggestions` (used most first, then defaults), provided to editors through `LocalCategorySuggestions`.
 
 ## Settings
 
 `Appearance` in `:core:settings` stores the theme, pure black, the color source, the preset, haptics and reduce motion, each by name so a value from a newer version falls back to its default. `Appearance.toThemeOptions()` in `:app` maps it onto `:core:ui`'s `ThemeOptions`, and `MainActivity` feeds it to `EonslateTheme`, so a change recolors the whole app at once. A near-grey preset seed uses Material's neutral scheme so it stays grey.
 
 `Tracking` holds the week's first day and the currency new money fields start with; `firstDayOfWeek()` and `currencyCode()` fall back to the device. Screens that build trackers from templates pass a builder to their view model, which calls it with the currency read from settings, so a template never starts with a stale default. `InMemorySettingsRepository` stands in for DataStore in tests and previews.
+
+The screenshot setting applies Android's secure-window flag to the main app and the tracker picker.
 
 The Licenses page lists `OpenSource.parts`. Full license texts ship as raw resources: Apache 2.0 taken verbatim from the Android SDK's NOTICE file and the MIT body from a published MIT license. Roboto Flex shows the copyright and license notice embedded in the font itself.
 
@@ -102,6 +92,14 @@ Schema 5 adds monthly budgets and recurring payments. Expenses count toward a bu
 Schema 6 adds transaction categories, category budgets, and custom recurring intervals with pause and amount confirmation. Category budgets use an anchored cycle. Variable payments advance only after confirmation.
 
 Finance reviews payment SMS from pasted or shared text and can also scan the inbox in builds that include the SMS permission. Build an inbox-enabled APK with `./gradlew :app:assembleDebug -Peonslate.smsInbox=true`. The standard build reads pasted or shared text. The parser suggests a category, identifies the account ending and reference when present, and keeps a fingerprint for duplicate detection. Raw SMS stays in memory during import.
+
+## CSV
+
+The tracker menu exchanges entries with matching field columns. Finance exchanges transactions with matching accounts and can assign an account to files that lack one. Exports use UTF-8 with quoted cells, exact decimals and ISO dates. Imports validate the file before presenting a count and append the batch in one transaction. The system file picker supplies access to each selected file.
+
+## Quick logging
+
+The Home screen widget stores a tracker ID per widget and opens its log. The Quick Settings tile opens a picker for active trackers. Both use the same log destination as reminder taps.
 
 ## Technology stack
 
@@ -183,9 +181,12 @@ UI tests run on the JVM with Robolectric and Compose's test rule (`FieldInputCar
 
 ```bash
 ./gradlew assembleRelease
+./gradlew :app:bundleRelease
 ```
 
 Release signing reads `signing.properties` (or `local.properties`) with `signing.storeFile`, `signing.storePassword`, `signing.keyAlias` and `signing.keyPassword`. Both files are ignored by git.
+
+`ArchitectureTest` checks module dependencies and rejects network permissions in source manifests.
 
 ## Conventions
 

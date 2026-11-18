@@ -2,6 +2,7 @@ package dev.qtremors.eonslate.core.tracker.data
 
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomEntryRepository
+import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerCsvRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
 import dev.qtremors.eonslate.core.tracker.domain.validation.ValidationError
@@ -40,6 +41,18 @@ class RoomEntryRepositoryTest {
         assertEquals(ValidationResult.Valid, entries.saveEntry(saved))
 
         assertEquals(saved.copy(note = "Long day"), entries.getEntry("e1"))
+    }
+
+    @Test
+    fun csvAppendRollsBackIfARowClashes() = runTest {
+        val csv = RoomTrackerCsvRepository(db)
+        val tracker = trackers.getTracker("t1")!!
+        val existing = entry(note = "Original")
+        entries.saveEntry(existing)
+        val batch = listOf(entry(id = "first", note = "First"), existing.copy(note = "Duplicate"))
+
+        assertTrue(runCatching { csv.append(tracker, batch) }.isFailure)
+        assertEquals(listOf(existing), csv.readHistory("t1")!!.entries)
     }
 
     @Test

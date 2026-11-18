@@ -83,6 +83,7 @@ interface SettingsActions {
     fun setPreset(name: String)
     fun setHaptics(on: Boolean)
     fun setReduceMotion(on: Boolean)
+    fun setBlockScreenshots(on: Boolean) {}
     fun setWeekStart(start: WeekStart) {}
     fun setCurrency(code: String?) {}
 }
@@ -105,6 +106,7 @@ fun SettingsScreen(
             override fun setPreset(name: String) = viewModel.setPreset(name)
             override fun setHaptics(on: Boolean) = viewModel.setHaptics(on)
             override fun setReduceMotion(on: Boolean) = viewModel.setReduceMotion(on)
+            override fun setBlockScreenshots(on: Boolean) = viewModel.setBlockScreenshots(on)
             override fun setWeekStart(start: WeekStart) = viewModel.setWeekStart(start)
             override fun setCurrency(code: String?) = viewModel.setCurrency(code)
         }
@@ -198,6 +200,16 @@ fun SettingsContent(
                         checked = appearance.reduceMotion,
                         onCheckedChange = actions::setReduceMotion,
                         icon = Icons.Rounded.Animation,
+                    )
+                }
+            }
+            item(key = "privacy") {
+                SectionHeader(stringResource(R.string.privacy_title))
+                ConnectedGroup {
+                    ToggleRow(
+                        title = stringResource(R.string.settings_block_screenshots),
+                        checked = appearance.blockScreenshots,
+                        onCheckedChange = actions::setBlockScreenshots,
                     )
                 }
             }

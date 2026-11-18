@@ -118,4 +118,22 @@
     <string name="detail_reminders">Reminders</string>
     <string name="detail_search">Search entries</string>
     <string name="detail_no_matches">No matches</string>
+    <string name="detail_csv_actions">CSV options</string>
+    <string name="detail_csv_export">Export CSV</string>
+    <string name="detail_csv_import">Import CSV</string>
+    <string name="detail_csv_add">Add entries</string>
+    <string name="detail_csv_saved">CSV saved</string>
+    <string name="detail_csv_failed">Couldn’t read or write the CSV.</string>
+    <string name="detail_csv_columns">CSV columns don’t match this tracker.</string>
+    <string name="detail_csv_row">Check CSV row %1$d.</string>
+    <string name="detail_csv_large">CSV is too large.</string>
+    <string name="detail_csv_tracker_changed">The tracker changed. Pick the file again.</string>
+    <plurals name="detail_csv_review">
+        <item quantity="one">Add %d new entry to this tracker?</item>
+        <item quantity="other">Add %d new entries to this tracker?</item>
+    </plurals>
+    <plurals name="detail_csv_imported">
+        <item quantity="one">Added %d entry</item>
+        <item quantity="other">Added %d entries</item>
+    </plurals>
 </resources>

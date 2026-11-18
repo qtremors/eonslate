@@ -17,7 +17,9 @@ import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomReminderRepository
 import dev.qtremors.eonslate.core.tracker.domain.reminders.ReminderRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerRepository
+import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerCsvRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.Backups
+import dev.qtremors.eonslate.core.tracker.domain.csv.TrackerCsvRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
@@ -59,6 +61,9 @@ abstract class TrackerRepositoryModule {
 
     @Binds
     abstract fun bindEntryRepository(impl: RoomEntryRepository): EntryRepository
+
+    @Binds
+    abstract fun bindTrackerCsvRepository(impl: RoomTrackerCsvRepository): TrackerCsvRepository
 
     @Binds
     abstract fun bindFinanceRepository(impl: RoomFinanceRepository): FinanceRepository

@@ -291,3 +291,31 @@ fun Meter(fraction: Float, color: Color, contentDescription: String, modifier: M
         }
     }
 }
+
+/** One row of [RankedBars]: a name, its amount as written, and the amount to scale by. */
+data class RankedBar(val label: String, val valueText: String, val value: Float)
+
+/**
+ * Parts of a whole compared with each other, such as spending by category: one bar per part,
+ * largest first, all on one baseline and in one hue, with the name above and the amount beside.
+ */
+@Composable
+fun RankedBars(bars: List<RankedBar>, color: Color, modifier: Modifier = Modifier) {
+    val max = bars.maxOfOrNull { it.value }?.takeIf { it > 0f } ?: return
+    val colors = MaterialTheme.colorScheme
+    androidx.compose.foundation.layout.Column(modifier, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+        bars.forEach { bar ->
+            androidx.compose.foundation.layout.Column(Modifier.semantics(mergeDescendants = true) {}) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(bar.label, style = MaterialTheme.typography.bodyMedium, color = colors.onSurface, modifier = Modifier.weight(1f), maxLines = 1)
+                    Text(bar.valueText, style = dev.qtremors.eonslate.core.ui.theme.ValueTextStyle, color = colors.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(4.dp))
+                Canvas(Modifier.fillMaxWidth().height(8.dp)) {
+                    val width = size.width * (bar.value / max).coerceIn(0f, 1f)
+                    if (width > 0f) drawRoundRect(color, size = Size(width.coerceAtLeast(DataEnd.toPx() * 2), size.height), cornerRadius = CornerRadius(DataEnd.toPx()))
+                }
+            }
+        }
+    }
+}

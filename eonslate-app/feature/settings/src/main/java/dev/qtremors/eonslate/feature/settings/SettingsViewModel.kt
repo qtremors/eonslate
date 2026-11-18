@@ -36,6 +36,7 @@ class SettingsViewModel @Inject constructor(
     fun setPreset(name: String) = update { it.copy(preset = name, accent = AccentChoice.PRESET) }
     fun setHaptics(on: Boolean) = update { it.copy(haptics = on) }
     fun setReduceMotion(on: Boolean) = update { it.copy(reduceMotion = on) }
+    fun setBlockScreenshots(on: Boolean) = update { it.copy(blockScreenshots = on) }
 
     /** Null until read, like [appearance]. */
     val tracking: StateFlow<Tracking?> = settings.tracking

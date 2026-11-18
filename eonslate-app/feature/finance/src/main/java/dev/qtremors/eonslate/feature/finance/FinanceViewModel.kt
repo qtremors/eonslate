@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -58,6 +59,19 @@ class FinanceViewModel @Inject constructor(
     fun today() = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId())).toLocalDate()
 
     fun newId() = ids.newId()
+
+    private var creatingAccount = false
+
+    /** Money works from the first launch: one account in the app's currency, made once. */
+    fun ensureAccount() {
+        val data = ledger.value ?: return
+        if (data.accounts.isNotEmpty() || _busy.value || creatingAccount) return
+        creatingAccount = true
+        viewModelScope.launch {
+            val code = currency.first()
+            finance.saveAccount(Account(ids.newId(), context.getString(R.string.finance_default_account), code))
+        }
+    }
 
     fun clearError() {
         _failed.value = false

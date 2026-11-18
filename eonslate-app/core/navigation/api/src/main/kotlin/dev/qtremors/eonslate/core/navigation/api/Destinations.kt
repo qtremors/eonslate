@@ -8,8 +8,17 @@ sealed interface Destination {
     @Serializable
     data object Home : Destination
 
+    /** Every tracker as a slate, with search and tags. */
     @Serializable
-    data object Finance : Destination
+    data object Trackers : Destination
+
+    /** Money in and out, with search and filters. */
+    @Serializable
+    data object Transactions : Destination
+
+    /** Subscriptions and other recurring payments. */
+    @Serializable
+    data object Subscriptions : Destination
 
     /** Trackers put away from Home. */
     @Serializable

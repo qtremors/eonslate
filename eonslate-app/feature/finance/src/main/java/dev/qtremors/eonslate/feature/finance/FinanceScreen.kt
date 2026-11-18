@@ -1,5 +1,27 @@
 package dev.qtremors.eonslate.feature.finance
 
+import androidx.compose.runtime.CompositionLocalProvider
+import dev.qtremors.eonslate.core.tracker.domain.finance.Categories
+import dev.qtremors.eonslate.core.ui.components.PressableCard
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.AccountBalance
+import dev.qtremors.eonslate.core.tracker.domain.finance.monthlyMinor
+import dev.qtremors.eonslate.core.ui.theme.HeroTextStyle
+import dev.qtremors.eonslate.core.ui.components.Meter
+import dev.qtremors.eonslate.core.ui.components.MonogramBadge
+import dev.qtremors.eonslate.core.ui.theme.LocalSignals
+import dev.qtremors.eonslate.core.ui.components.IconBadge
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.SouthWest
+import androidx.compose.material3.Surface
+import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
+import dev.qtremors.eonslate.core.ui.theme.MetricTextStyle
+import dev.qtremors.eonslate.core.ui.theme.ValueTextStyle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +48,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -81,14 +105,20 @@ import java.time.temporal.TemporalAdjusters
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** The two money tabs: everything logged (with budgets on top), and subscriptions. */
+enum class FinanceSection { TRANSACTIONS, SUBSCRIPTIONS }
+
 @Composable
 fun FinanceScreen(
-    onBack: () -> Unit,
+    section: FinanceSection,
+    onBack: (() -> Unit)? = null,
     viewModel: FinanceViewModel = hiltViewModel(),
     sharedMessage: String? = null,
     onMessageOpened: () -> Unit = {},
 ) {
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
+    val csv: FinanceCsvViewModel = hiltViewModel()
+    val snackbar = remember { SnackbarHostState() }
     val currency by viewModel.currency.collectAsStateWithLifecycle(initialValue = Tracking.deviceCurrency())
     val firstDay by viewModel.firstDay.collectAsStateWithLifecycle(initialValue = Tracking().firstDayOfWeek())
     val busy by viewModel.busy.collectAsStateWithLifecycle()
@@ -96,7 +126,7 @@ fun FinanceScreen(
     var editor by rememberSaveable { mutableStateOf<Editor?>(null) }
     var recordId by rememberSaveable { mutableStateOf<String?>(null) }
     var reviewingInbox by rememberSaveable { mutableStateOf(false) }
-    var page by rememberSaveable { mutableStateOf(FinancePage.ACTIVITY) }
+    val page = if (section == FinanceSection.SUBSCRIPTIONS) FinancePage.PLANS else FinancePage.ACTIVITY
     var query by rememberSaveable { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var prefill by remember { mutableStateOf<PaymentMessage?>(null) }
@@ -129,25 +159,22 @@ fun FinanceScreen(
         }
     }
 
+    FinanceCsvFeedback(csv, snackbar)
     EonslateScaffold(
-        title = stringResource(R.string.finance_title),
+        title = stringResource(if (section == FinanceSection.SUBSCRIPTIONS) R.string.finance_subscriptions else R.string.finance_activity),
         onBack = onBack,
+        snackbarHost = { SnackbarHost(snackbar) },
         filter = if (page == FinancePage.ACTIVITY && ledger?.transactions?.isNotEmpty() == true) {
             FilterTop(query, { query = it }, stringResource(R.string.finance_search))
         } else null,
         actions = {
-            IconButton(shapes = IconButtonDefaults.shapes(), onClick = { open(Editor.SMS, null) }) {
-                Icon(Icons.Rounded.Sms, stringResource(R.string.finance_import_sms))
-            }
-            if (ledger?.accounts?.isNotEmpty() == true) {
-                val plans = page == FinancePage.PLANS
-                IconButton(shapes = IconButtonDefaults.shapes(), onClick = { open(if (plans) Editor.BUDGET else Editor.ACCOUNT, null) }) {
-                    Icon(
-                        if (plans) Icons.Rounded.Savings else Icons.Rounded.AccountBalanceWallet,
-                        stringResource(if (plans) R.string.finance_new_budget else R.string.finance_new_account),
-                    )
-                }
-            }
+            // Rarer actions live in one menu; a second account is opt-in from here.
+            val more = listOfNotNull(
+                MenuAction(stringResource(R.string.finance_import_sms), Icons.Rounded.Sms) { open(Editor.SMS, null) },
+                if (page == FinancePage.ACTIVITY) MenuAction(stringResource(R.string.finance_new_budget), Icons.Rounded.Savings) { open(Editor.BUDGET, null) } else null,
+                MenuAction(stringResource(R.string.finance_new_account), Icons.Rounded.AccountBalance) { open(Editor.ACCOUNT, null) },
+            )
+            FinanceCsvMenu(ledger?.accounts.orEmpty(), csv, more)
         },
         floatingActionButton = {
             ledger?.let { data ->
@@ -177,18 +204,17 @@ fun FinanceScreen(
     ) { padding ->
         val data = ledger
         when {
-            data == null -> LoadingState(Modifier.fillMaxSize().padding(padding))
-            data.accounts.isEmpty() -> EmptyState(
-                icon = Icons.Rounded.AccountBalanceWallet,
-                title = stringResource(R.string.finance_empty),
-                message = "",
-                modifier = Modifier.fillMaxSize().padding(padding),
-            )
-            else -> LedgerList(data, padding, page, { page = it }, viewModel.today(), firstDay, query, open)
+            data == null || data.accounts.isEmpty() -> {
+                LaunchedEffect(Unit) { viewModel.ensureAccount() }
+                LoadingState(Modifier.fillMaxSize().padding(padding))
+            }
+            else -> LedgerList(data, padding, page, viewModel.today(), firstDay, query, open)
         }
     }
 
     val data = ledger ?: return
+    val suggest = remember(data) { { kind: TransactionKind -> Categories.suggestions(data, kind) } }
+    CompositionLocalProvider(LocalCategorySuggestions provides suggest) {
     when (editor) {
         Editor.ACCOUNT -> {
             val account = data.accounts.firstOrNull { it.id == recordId }
@@ -283,6 +309,7 @@ fun FinanceScreen(
         }
         null -> Unit
     }
+    }
 }
 
 private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SMS, BUDGET, DUE, INBOX }
@@ -296,7 +323,6 @@ private fun LedgerList(
     ledger: Ledger,
     padding: androidx.compose.foundation.layout.PaddingValues,
     page: FinancePage,
-    onPage: (FinancePage) -> Unit,
     today: LocalDate,
     firstDayOfWeek: DayOfWeek,
     query: String,
@@ -329,79 +355,45 @@ private fun LedgerList(
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        item {
-            ConnectedChoices(
-                FinancePage.entries,
-                page,
-                { stringResource(if (it == FinancePage.ACTIVITY) R.string.finance_activity else R.string.finance_plans) },
-                onPage,
-            )
-        }
         if (page == FinancePage.PLANS) {
-            item { SectionHeader(stringResource(R.string.finance_budgets)) }
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { monthOffset-- }) {
-                        Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.finance_previous_month))
-                    }
-                    Text(month.format(DateTimeFormatter.ofPattern("LLLL yyyy")))
-                    IconButton(shapes = IconButtonDefaults.shapes(), enabled = monthOffset < 0, onClick = { monthOffset++ }) {
-                        Icon(Icons.Rounded.ChevronRight, stringResource(R.string.finance_next_month))
-                    }
-                }
-            }
-            itemsIndexed(ledger.accounts, key = { _, account -> "budget-" + account.id }) { index, account ->
-                val spent = budgetAmount(spending.getOrDefault(account.id, BigInteger.ZERO), account.currency)
-                val limit = account.monthlyBudgetMinor
-                val label = if (limit == null) stringResource(R.string.finance_budget_unset, spent)
-                else stringResource(R.string.finance_budget_progress, spent, budgetAmount(BigInteger.valueOf(limit), account.currency))
-                ConnectedItem(index, ledger.accounts.size) {
-                    ConnectedRow(account.name, supporting = label, onClick = { open(Editor.ACCOUNT, account.id) })
-                }
-            }
-            itemsIndexed(ledger.budgets, key = { _, budget -> "category-" + budget.id }) { index, budget ->
-                val account = accounts.getValue(budget.accountId)
-                val spent = remember(ledger, budget, today) { ledger.spendingFor(budget, today) }
-                val limit = BigInteger.valueOf(budget.minor)
-                val label = stringResource(
-                    R.string.finance_budget_progress, budgetAmount(spent, account.currency), budgetAmount(limit, account.currency)
+            val main = ledger.accounts.first().currency
+            val ids = ledger.accounts.filter { it.currency == main }.mapTo(HashSet()) { it.id }
+            val active = ledger.recurring.filter { !it.paused && it.accountId in ids }
+            item(key = "commitments") {
+                PlansHero(
+                    out = active.filter { it.kind == TransactionKind.EXPENSE }.sumOf { it.monthlyMinor() },
+                    into = active.filter { it.kind == TransactionKind.INCOME }.sumOf { it.monthlyMinor() },
+                    currency = main,
                 )
-                ConnectedItem(index, ledger.budgets.size) {
-                    ConnectedRow(
-                        budget.category,
-                        supporting = account.name + " · " + label,
-                        trailing = if (spent > limit) ({ Text(stringResource(R.string.finance_over_budget), color = MaterialTheme.colorScheme.error) }) else null,
-                        onClick = { open(Editor.BUDGET, budget.id) },
-                    )
-                }
             }
-            item { SectionHeader(stringResource(R.string.finance_recurring)) }
             if (ledger.recurring.isEmpty()) {
-                item { Text(stringResource(R.string.finance_no_recurring), modifier = Modifier.padding(12.dp)) }
+                item { Text(stringResource(R.string.finance_no_recurring), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
             }
-            itemsIndexed(ledger.recurring, key = { _, payment -> "recurring-" + payment.id }) { index, payment ->
+            val ordered = ledger.recurring.sortedWith(compareBy({ it.paused }, { it.nextEpochDay ?: Long.MAX_VALUE }))
+            itemsIndexed(ordered, key = { _, payment -> "recurring-" + payment.id }) { index, payment ->
                 val account = accounts.getValue(payment.accountId)
-                val amount = ValueFormat.money(payment.minor, account.currency, Locale.getDefault())
-                val due = payment.nextEpochDay?.let { ValueFormat.date(it, Locale.getDefault()) }
-                ConnectedItem(index, ledger.recurring.size) {
+                val name = payment.note.ifBlank { account.name }
+                val due = payment.nextEpochDay
+                val whenText = when {
+                    payment.paused -> stringResource(R.string.finance_paused)
+                    due == null -> payment.interval.label()
+                    else -> payment.interval.label() + " · " + dueLabel(due - today.toEpochDay())
+                }
+                ConnectedItem(index, ordered.size) {
                     ConnectedRow(
-                        title = payment.note.ifBlank { account.name },
-                        supporting = listOfNotNull(
-                            amount, payment.kind.label(), payment.interval.label(), due,
-                            if (payment.paused) stringResource(R.string.finance_paused) else null,
-                        ).joinToString(" · "),
+                        title = name,
+                        supporting = whenText,
+                        leading = { MonogramBadge(name, payment.category.ifBlank { name }) },
+                        trailing = { Amount(payment.kind, ValueFormat.money(payment.minor, account.currency, Locale.getDefault())) },
                         onClick = { open(Editor.RECURRING, payment.id) },
                     )
                 }
             }
             return@LazyColumn
         }
-        item { SectionHeader(stringResource(R.string.finance_accounts)) }
-        itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
+        // One account is the whole balance; the list matters only once there are several.
+        if (ledger.accounts.size > 1) item { SectionHeader(stringResource(R.string.finance_accounts)) }
+        if (ledger.accounts.size > 1) itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
             val balance = BigDecimal(balances.getValue(account.id), MoneyAmount.fractionDigits(account.currency))
             ConnectedItem(index, ledger.accounts.size) {
                 ConnectedRow(
@@ -411,28 +403,40 @@ private fun LedgerList(
                 )
             }
         }
-        item { SectionHeader(stringResource(R.string.finance_activity)) }
+        // Budgets lead the page, as meters for this month; there is no heading when there are none.
+        if (ledger.budgets.isNotEmpty() || ledger.accounts.any { it.monthlyBudgetMinor != null }) {
+            item { SectionHeader(stringResource(R.string.finance_budgets)) }
+        items(ledger.accounts.filter { it.monthlyBudgetMinor != null }, key = { "budget-" + it.id }) { account ->
+            BudgetCard(
+                name = account.name,
+                spent = spending.getOrDefault(account.id, BigInteger.ZERO),
+                limit = BigInteger.valueOf(account.monthlyBudgetMinor!!),
+                currency = account.currency,
+                onClick = { open(Editor.ACCOUNT, account.id) },
+            )
+        }
+        items(ledger.budgets, key = { "category-" + it.id }) { budget ->
+            BudgetCard(
+                name = budget.category,
+                spent = remember(ledger, budget, today) { ledger.spendingFor(budget, today) },
+                limit = BigInteger.valueOf(budget.minor),
+                currency = accounts.getValue(budget.accountId).currency,
+                onClick = { open(Editor.BUDGET, budget.id) },
+            )
+        }
+        }
         if (ledger.transactions.isNotEmpty()) {
-            item {
-                ConnectedChoices(
-                    TransactionPeriod.entries, period,
-                    { stringResource(when (it) {
-                        TransactionPeriod.ALL -> R.string.finance_period_all
-                        TransactionPeriod.TODAY -> R.string.finance_period_today
-                        TransactionPeriod.WEEK -> R.string.finance_period_week
-                        TransactionPeriod.MONTH -> R.string.finance_period_month
-                    }) },
-                    { period = it },
-                )
-            }
+            item(key = "periods") { PeriodChips(period) { period = it } }
             val summaries = shown.groupBy { accounts.getValue(it.accountId).currency }
             summaries.forEach { (currency, transactions) ->
                 item(key = "totals-" + currency) {
+                    val locale = Locale.getDefault()
                     val income = transactions.total(TransactionKind.INCOME)
                     val expenses = transactions.total(TransactionKind.EXPENSE)
-                    Text(
-                        stringResource(R.string.finance_totals, budgetAmount(income, currency), budgetAmount(expenses, currency)),
-                        modifier = Modifier.padding(12.dp),
+                    Totals(
+                        income = ValueFormat.money(income.toLong(), currency, locale),
+                        expenses = ValueFormat.money(expenses.toLong(), currency, locale),
+                        net = ValueFormat.money((income - expenses).toLong(), currency, locale),
                     )
                 }
             }
@@ -440,23 +444,157 @@ private fun LedgerList(
         if (shown.isEmpty()) {
             item { Text(stringResource(if (ledger.transactions.isEmpty()) R.string.finance_empty_activity else R.string.finance_no_matches), modifier = Modifier.padding(12.dp)) }
         }
-        itemsIndexed(shown, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
-            val source = accounts.getValue(transaction.accountId)
-            val target = transaction.destinationId?.let(accounts::getValue)
-            val accountNames = if (target == null) source.name
-            else stringResource(R.string.finance_transfer_accounts, source.name, target.name)
-            val amount = ValueFormat.money(transaction.minor, source.currency, Locale.getDefault())
-            val title = stringResource(R.string.finance_transaction_title, transaction.kind.label(), amount)
-            val date = ValueFormat.date(transaction.epochDay, Locale.getDefault())
-            ConnectedItem(index, shown.size) {
-                ConnectedRow(
-                    title = title,
-                    supporting = listOf(accountNames, date, transaction.category, transaction.note).filter { it.isNotBlank() }.joinToString(" · "),
-                    onClick = { open(Editor.TRANSACTION, transaction.id) },
-                )
+        // Newest day first, each day under its own heading.
+        shown.sortedWith(compareByDescending<Transaction> { it.epochDay }).groupBy { it.epochDay }.forEach { (epochDay, day) ->
+            item(key = "day-$epochDay") { SectionHeader(dayLabel(epochDay, today)) }
+            itemsIndexed(day, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
+                val source = accounts.getValue(transaction.accountId)
+                val target = transaction.destinationId?.let(accounts::getValue)
+                val accountNames = if (target == null) source.name
+                else stringResource(R.string.finance_transfer_accounts, source.name, target.name)
+                // The note names it best, then the category, then the kind.
+                val title = transaction.note.ifBlank { transaction.category.ifBlank { transaction.kind.label() } }
+                val details = listOfNotNull(
+                    transaction.category.takeIf { it.isNotBlank() && it != title },
+                    accountNames.takeIf { target != null || ledger.accounts.size > 1 },
+                ).joinToString(" · ").ifBlank { null }
+                ConnectedItem(index, day.size) {
+                    ConnectedRow(
+                        title = title,
+                        supporting = details,
+                        leading = {
+                            if (transaction.kind == TransactionKind.TRANSFER) {
+                                IconBadge(icon = Icons.Rounded.SwapHoriz, key = "transfer")
+                            } else {
+                                val label = transaction.category.ifBlank { title }
+                                val icon = categoryIcon(label)
+                                if (icon != null) IconBadge(icon = icon, key = label.lowercase()) else MonogramBadge(label, label)
+                            }
+                        },
+                        trailing = { Amount(transaction.kind, ValueFormat.money(transaction.minor, source.currency, Locale.getDefault())) },
+                        onClick = { open(Editor.TRANSACTION, transaction.id) },
+                    )
+                }
             }
         }
     }
+}
+
+/** In, out and net for the shown period. In is green and out red, each with its sign too. */
+@Composable
+private fun Totals(income: String, expenses: String, net: String) {
+    val colors = MaterialTheme.colorScheme
+    val signals = LocalSignals.current
+    Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(Modifier.padding(20.dp)) {
+            listOf(
+                Triple(R.string.overview_in, "+$income", signals.positive),
+                Triple(R.string.overview_out, "−$expenses", colors.error),
+                Triple(R.string.overview_net, net, colors.onSurface),
+            ).forEach { (label, value, color) ->
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+                    Text(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+/** A signed amount: green coming in, red going out, plain for transfers. */
+@Composable
+internal fun Amount(kind: TransactionKind, amount: String) {
+    val (text, color) = when (kind) {
+        TransactionKind.INCOME -> "+$amount" to LocalSignals.current.positive
+        TransactionKind.EXPENSE -> "−$amount" to MaterialTheme.colorScheme.error
+        TransactionKind.TRANSFER -> amount to MaterialTheme.colorScheme.onSurface
+    }
+    Text(text, style = ValueTextStyle.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = color)
+}
+
+@Composable
+private fun PeriodChips(period: TransactionPeriod, onPick: (TransactionPeriod) -> Unit) {
+    Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TransactionPeriod.entries.forEach {
+            FilterChip(
+                selected = it == period,
+                onClick = { onPick(it) },
+                label = {
+                    Text(stringResource(when (it) {
+                        TransactionPeriod.ALL -> R.string.finance_period_all
+                        TransactionPeriod.TODAY -> R.string.finance_period_today
+                        TransactionPeriod.WEEK -> R.string.finance_period_week
+                        TransactionPeriod.MONTH -> R.string.finance_period_month
+                    }))
+                },
+                shape = MaterialTheme.shapes.medium,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun dayLabel(epochDay: Long, today: LocalDate): String {
+    val date = LocalDate.ofEpochDay(epochDay)
+    return when (date) {
+        today -> stringResource(R.string.finance_period_today)
+        today.minusDays(1) -> stringResource(R.string.finance_yesterday)
+        else -> date.format(DateTimeFormatter.ofPattern(if (date.year == today.year) "EEE, d MMM" else "d MMM yyyy", Locale.getDefault()))
+    }
+}
+
+/** What recurring payments cost in an average month: going out, and coming in when there is any. */
+@Composable
+private fun PlansHero(out: Double, into: Double, currency: String) {
+    val colors = MaterialTheme.colorScheme
+    val locale = Locale.getDefault()
+    Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.finance_per_month), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
+            Text(ValueFormat.money(Math.round(out), currency, locale), style = HeroTextStyle.copy(fontSize = MetricTextStyle.fontSize * 1.4f), color = colors.onSurface, maxLines = 1)
+            if (into > 0) {
+                Text("+" + ValueFormat.money(Math.round(into), currency, locale) + " " + stringResource(R.string.finance_coming_in), style = MaterialTheme.typography.bodyMedium, color = LocalSignals.current.positive)
+            }
+        }
+    }
+}
+
+/** One budget: its name, how much is spent of the limit, and a meter that turns red past it. */
+@Composable
+private fun BudgetCard(name: String, spent: BigInteger, limit: BigInteger, currency: String, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val over = spent > limit
+    val fraction = if (limit.signum() == 0) 0f else spent.toFloat() / limit.toFloat()
+    val locale = Locale.getDefault()
+    val spentText = ValueFormat.money(spent.toLong(), currency, locale)
+    val limitText = ValueFormat.money(limit.toLong(), currency, locale)
+    PressableCard(Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = onClick) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, modifier = Modifier.weight(1f))
+                if (over) {
+                    Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.error, modifier = Modifier.padding(end = 4.dp))
+                    Text(stringResource(R.string.finance_over_budget), style = MaterialTheme.typography.labelLarge, color = colors.error)
+                }
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(spentText, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize), color = colors.onSurface)
+                Text(" / " + limitText, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            }
+            Meter(fraction, if (over) colors.error else LocalSignals.current.positive, "$name $spentText / $limitText")
+        }
+    }
+}
+
+@Composable
+private fun dueLabel(days: Long): String = when {
+    days <= 0L -> stringResource(R.string.finance_due_today)
+    days == 1L -> stringResource(R.string.finance_due_tomorrow)
+    else -> stringResource(R.string.finance_due_in, days)
 }
 
 private fun List<Transaction>.total(kind: TransactionKind): BigInteger =
@@ -548,8 +686,10 @@ private fun TransactionEditor(
     val title = stringResource(if (transaction == null) R.string.finance_new_transaction else R.string.finance_edit_transaction)
 
     EditorSheet(title, busy, failed, onDismiss) {
-        ConnectedChoices(TransactionKind.entries, kind, { it.label() }, { if (!busy) kind = it })
-        AccountChoice(stringResource(if (transfer) R.string.finance_from else R.string.finance_account), account, accounts, !busy) {
+        // Transfers and the account picker exist only once there is a second account.
+        val kinds = if (accounts.size > 1) TransactionKind.entries else TransactionKind.entries - TransactionKind.TRANSFER
+        ConnectedChoices(kinds, kind, { it.label() }, { if (!busy) kind = it })
+        if (accounts.size > 1) AccountChoice(stringResource(if (transfer) R.string.finance_from else R.string.finance_account), account, accounts, !busy) {
             if (it.currency != account.currency) amount = ""
             accountId = it.id
         }
@@ -561,10 +701,10 @@ private fun TransactionEditor(
             amount, { amount = it }, stringResource(R.string.finance_amount),
             keyboardType = KeyboardType.Decimal, suffix = account.currency, maxLength = 24, enabled = !busy,
         )
-        FormField(date, { date = it }, stringResource(R.string.finance_date), keyboardType = KeyboardType.Ascii, maxLength = 10, enabled = !busy)
+        DateField(date, { date = it }, stringResource(R.string.finance_date), busy)
         FormField(note, { note = it }, stringResource(R.string.finance_note), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
         if (!transfer) {
-            FormField(category, { category = it }, stringResource(R.string.finance_category), maxLength = Transaction.CATEGORY_LIMIT, enabled = !busy)
+            CategoryPicker(category, { category = it }, kind, busy)
         }
         SaveRow(
             canSave = !busy && parsed != null && day != null && (!transfer || destination != null),
@@ -640,6 +780,8 @@ internal fun EditorSheet(
 
 @Composable
 internal fun AccountChoice(label: String, selected: Account, accounts: List<Account>, enabled: Boolean, onPick: (Account) -> Unit) {
+    // With one account there is nothing to choose.
+    if (accounts.size <= 1) return
     var expanded by remember { mutableStateOf(false) }
     Box {
         ConnectedRow(
