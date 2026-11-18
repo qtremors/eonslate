@@ -78,4 +78,8 @@
     <string name="privacy_permissions">Reminders can ask for notifications and exact alarms. Inbox scanning asks for SMS access in builds that include it.</string>
     <string name="privacy_source_title">Source code</string>
     <string name="privacy_source">Eonslate\'s source code is public, so anyone can check how it handles your data.</string>
+    <string name="settings_section_sms">SMS</string>
+    <string name="settings_sms_detect">Detect payment SMS</string>
+    <string name="settings_sms_auto">Add without review</string>
+    <string name="settings_categories">Manage categories</string>
 </resources>

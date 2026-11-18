@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.settings
 
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -40,6 +41,11 @@ interface SettingsRepository {
     val homeTag: Flow<String?>
 
     suspend fun setHomeTag(tag: String?)
+
+    /** Payment SMS detection and what was dismissed. */
+    val sms: Flow<SmsSettings>
+
+    suspend fun updateSms(change: (SmsSettings) -> SmsSettings)
 }
 
 /** Whether the welcome pages show at start. */
@@ -97,6 +103,24 @@ class DataStoreSettingsRepository @Inject constructor(
         }
     }
 
+    override val sms: Flow<SmsSettings> = store.data.map(::readSms).distinctUntilChanged()
+
+    override suspend fun updateSms(change: (SmsSettings) -> SmsSettings) {
+        store.edit { prefs ->
+            val next = change(readSms(prefs))
+            prefs[SMS_DETECT] = next.detect
+            prefs[SMS_AUTO] = next.autoApprove
+            // Bounded, so a years-long habit of dismissing never grows the file without end.
+            prefs[SMS_DISCARDED] = next.discarded.toList().takeLast(MAX_DISCARDED).toSet()
+        }
+    }
+
+    private fun readSms(prefs: Preferences) = SmsSettings(
+        detect = prefs[SMS_DETECT] ?: false,
+        autoApprove = prefs[SMS_AUTO] ?: false,
+        discarded = prefs[SMS_DISCARDED].orEmpty(),
+    )
+
     private fun readTracking(prefs: Preferences): Tracking = Tracking(
         weekStart = enumOrDefault(prefs[WEEK_START], WeekStart.LOCALE),
         currency = prefs[CURRENCY]?.takeIf { it.isNotEmpty() },
@@ -127,6 +151,10 @@ class DataStoreSettingsRepository @Inject constructor(
         private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
         private val WEEK_START = stringPreferencesKey("week_start")
         private val CURRENCY = stringPreferencesKey("currency")
+        private val SMS_DETECT = booleanPreferencesKey("sms_detect")
+        private val SMS_AUTO = booleanPreferencesKey("sms_auto_approve")
+        private val SMS_DISCARDED = stringSetPreferencesKey("sms_discarded")
+        private const val MAX_DISCARDED = 2_000
         private val HOME_TAG = stringPreferencesKey("home_tag")
     }
 }

@@ -23,7 +23,7 @@ import dev.qtremors.eonslate.core.ui.theme.EonslateTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import java.time.LocalDate
+import java.time.LocalDateTime
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -77,7 +77,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        lifecycleScope.launch { finance.postDue(LocalDate.now().toEpochDay()) }
+        val now = LocalDateTime.now()
+        lifecycleScope.launch { finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute) }
     }
 
     override fun onNewIntent(intent: Intent) {

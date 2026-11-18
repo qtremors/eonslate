@@ -15,16 +15,29 @@ data class CategoryBudget(
     val interval: PaymentInterval,
     val every: Int,
     @SerialName("start_epoch_day") val startEpochDay: Long,
+    val name: String = "",
+    val icon: String? = null,
+    val color: Int? = null,
 ) {
+    val title: String get() = name.ifBlank { category }
+
     fun isValid(accountIds: Set<String>): Boolean =
         id.isNotBlank() && accountId in accountIds && category.isNotBlank() &&
             category.length <= Transaction.CATEGORY_LIMIT && minor > 0 &&
-            every in 1..RecurringPayment.MAX_INTERVAL && startEpochDay in Transaction.DATES
+            every in 1..RecurringPayment.MAX_INTERVAL && startEpochDay in Transaction.DATES &&
+            interval != PaymentInterval.HOURLY &&
+            name.length <= NAME_LIMIT && (icon == null || icon.isNotBlank() && icon.length <= 64) &&
+            (color == null || color in 0..0xFFFFFF)
+
+    companion object {
+        const val NAME_LIMIT = 500
+    }
 
     fun periodOn(day: LocalDate): LongRange? {
         val anchor = LocalDate.ofEpochDay(startEpochDay)
         if (day < anchor) return null
         val elapsed = when (interval) {
+            PaymentInterval.HOURLY -> return null
             PaymentInterval.DAILY -> ChronoUnit.DAYS.between(anchor, day)
             PaymentInterval.WEEKLY -> ChronoUnit.WEEKS.between(anchor, day)
             PaymentInterval.MONTHLY -> ChronoUnit.MONTHS.between(YearMonth.from(anchor), YearMonth.from(day))

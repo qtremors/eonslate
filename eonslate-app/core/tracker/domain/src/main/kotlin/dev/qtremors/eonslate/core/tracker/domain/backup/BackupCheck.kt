@@ -35,6 +35,8 @@ object BackupCheck {
         duplicates(snapshot.transactions.map { it.id }).forEach { add("transaction $it appears twice") }
         duplicates(snapshot.recurring.map { it.id }).forEach { add("recurring payment $it appears twice") }
         duplicates(snapshot.budgets.map { it.id }).forEach { add("budget $it appears twice") }
+        duplicates(snapshot.categories.map { it.id }).forEach { add("category $it appears twice") }
+        duplicates(snapshot.categories.map { it.key }).forEach { add("category name $it appears twice") }
         duplicates(snapshot.transactions.mapNotNull { it.smsKey }).forEach { add("a payment message appears twice") }
 
         val accounts = snapshot.accounts.associateBy { it.id }
@@ -42,6 +44,7 @@ object BackupCheck {
         snapshot.transactions.filterNot { it.isValid(accounts) }.forEach { add("invalid transaction ${it.id}") }
         snapshot.recurring.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid recurring payment ${it.id}") }
         snapshot.budgets.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid budget ${it.id}") }
+        snapshot.categories.filterNot { it.isValid() }.forEach { add("invalid category ${it.id}") }
 
         snapshot.trackers.forEach { t ->
             if (t.name.isBlank() || t.iconName.isBlank()) add("tracker ${t.id} has no name or icon")

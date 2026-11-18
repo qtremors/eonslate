@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.backup
 
+import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -91,6 +92,7 @@ fun BackupScreen(
         onRestore = { viewModel.restore(versionName) },
         onPutAway = viewModel::putAway,
         onUndo = viewModel::undoRestore,
+        onClearAll = { viewModel.clearAll(versionName) },
         onMessageShown = viewModel::messageShown,
         modifier = modifier,
     )
@@ -108,16 +110,31 @@ fun BackupContent(
     onPutAway: () -> Unit,
     onUndo: () -> Unit,
     onMessageShown: () -> Unit,
+    onClearAll: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     var creating by rememberSaveable { mutableStateOf(false) }
     var confirmUndo by rememberSaveable { mutableStateOf(false) }
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
+    if (confirmClear) {
+        ConfirmDialog(
+            icon = Icons.Rounded.DeleteForever,
+            title = stringResource(R.string.backup_clear_dialog),
+            message = stringResource(R.string.backup_clear_message),
+            confirmLabel = stringResource(R.string.backup_clear_action),
+            onConfirm = {
+                confirmClear = false
+                onClearAll()
+            },
+            onDismiss = { confirmClear = false },
+        )
+    }
 
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
-        val canUndo = message == BackupMessage.RESTORED
+        val canUndo = message == BackupMessage.RESTORED || message == BackupMessage.CLEARED
         // Cleared only once the snackbar is gone: clearing it first changes this effect's key,
         // which cancels the effect and the snackbar with it.
         val result = try {
@@ -208,6 +225,16 @@ fun BackupContent(
                             enabled = idle,
                         )
                     }
+                }
+                SectionHeader(stringResource(R.string.backup_section_danger))
+                ConnectedGroup {
+                    ConnectedRow(
+                        title = stringResource(R.string.backup_clear),
+                        supporting = stringResource(R.string.backup_clear_hint),
+                        leading = { Icon(Icons.Rounded.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                        onClick = { confirmClear = true },
+                        enabled = idle,
+                    )
                 }
             }
         }
@@ -381,6 +408,7 @@ private fun BackupMessage.text(): Int = when (this) {
     BackupMessage.SAVED -> R.string.backup_saved
     BackupMessage.RESTORED -> R.string.backup_restored
     BackupMessage.UNDONE -> R.string.backup_undone
+    BackupMessage.CLEARED -> R.string.backup_cleared
     BackupMessage.NOT_A_BACKUP -> R.string.backup_error_not_backup
     BackupMessage.NEWER_VERSION -> R.string.backup_error_newer
     BackupMessage.DAMAGED -> R.string.backup_error_damaged

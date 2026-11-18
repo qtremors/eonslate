@@ -1,5 +1,13 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
+import androidx.compose.material3.FilledTonalButton
+import kotlinx.coroutines.launch
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.Button
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.LoadingIndicator
 import dev.qtremors.eonslate.core.ui.components.PressableCard
@@ -32,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.qtremors.eonslate.core.settings.Tracking
 import dev.qtremors.eonslate.core.tracker.domain.finance.BudgetHealth
 import dev.qtremors.eonslate.core.tracker.domain.finance.MoneySummary
+import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
 import dev.qtremors.eonslate.core.ui.components.BarChart
@@ -46,7 +55,6 @@ import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
 import dev.qtremors.eonslate.core.ui.theme.ValueTextStyle
 import java.math.BigInteger
 import java.time.format.TextStyle
-import java.util.Locale
 
 /** How many categories get their own bar before the rest fold into "Other". */
 private const val TOP_CATEGORIES = 5
@@ -60,6 +68,8 @@ private val LOADING_HEIGHT = 260.dp
 @Composable
 fun MoneyOverview(
     onTransactions: () -> Unit,
+    onReviewSms: () -> Unit,
+    onAdd: (TransactionKind) -> Unit = {},
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FinanceViewModel = hiltViewModel(),
@@ -69,7 +79,9 @@ fun MoneyOverview(
     val data = ledger
     LaunchedEffect(data?.accounts?.isEmpty()) { if (data != null) viewModel.ensureAccount() }
     val today = remember { viewModel.today() }
-    val summary = remember(data, currency, today) { data?.let { MoneySummary.of(it, today, currency) } }
+    val summary = remember(data, currency, today) {
+        data?.let { MoneySummary.of(it, today, it.accounts.singleOrNull()?.currency ?: currency) }
+    }
     // The balance card's space is held while loading, so nothing below it jumps when it arrives.
     if (summary == null) {
         Surface(color = MaterialTheme.colorScheme.surfaceBright, shape = SlateCardShape, modifier = modifier.fillMaxWidth().height(LOADING_HEIGHT)) {
@@ -77,13 +89,33 @@ fun MoneyOverview(
         }
         return
     }
-    MoneyOverviewContent(summary, onTransactions, onSubscriptions, modifier)
+    val pending by viewModel.detection.pending.collectAsStateWithLifecycle()
+    val added by viewModel.detection.added.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (pending.isNotEmpty() || added > 0) {
+            SmsBanner(
+                found = pending.size,
+                added = added,
+                onReview = onReviewSms,
+                onAddAll = { scope.launch { viewModel.detection.approveAll() } },
+                onDismiss = { viewModel.detection.addedShown() },
+            )
+        }
+        MoneyOverviewContent(summary, onTransactions, onSubscriptions, onAdd = onAdd)
+    }
 }
 
 @Composable
-fun MoneyOverviewContent(summary: MoneySummary, onTransactions: () -> Unit, onSubscriptions: () -> Unit, modifier: Modifier = Modifier) {
-    val locale = Locale.getDefault()
-    val money = { minor: BigInteger -> ValueFormat.money(minor.toLong(), summary.currency, locale) }
+fun MoneyOverviewContent(
+    summary: MoneySummary,
+    onTransactions: () -> Unit,
+    onSubscriptions: () -> Unit,
+    modifier: Modifier = Modifier,
+    onAdd: (TransactionKind) -> Unit = {},
+) {
+    val locale = LocalValueDisplay.current.numberLocale
+    val money = { minor: BigInteger -> ValueFormat.money(minor, summary.currency, locale) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card {
             Label(stringResource(R.string.overview_balance))
@@ -93,6 +125,15 @@ fun MoneyOverviewContent(summary: MoneySummary, onTransactions: () -> Unit, onSu
                 Figure(stringResource(R.string.overview_in), "+" + money(summary.monthIncome), Modifier.weight(1f), LocalSignals.current.positive)
                 Figure(stringResource(R.string.overview_out), "−" + money(summary.monthExpense), Modifier.weight(1f), MaterialTheme.colorScheme.error)
                 Figure(stringResource(R.string.overview_net), money(summary.monthNet), Modifier.weight(1f))
+            }
+            // Quick add, as the old app had: one tap from Home to the editor.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { onAdd(TransactionKind.INCOME) }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.overview_add_income))
+                }
+                FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { onAdd(TransactionKind.EXPENSE) }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.overview_add_expense))
+                }
             }
         }
 
@@ -132,7 +173,7 @@ fun MoneyOverviewContent(summary: MoneySummary, onTransactions: () -> Unit, onSu
         if (summary.dueSoon.isNotEmpty()) Card(onClick = onSubscriptions) {
             Label(stringResource(R.string.overview_due))
             summary.dueSoon.forEach { payment ->
-                Line(payment.note, ValueFormat.date(payment.nextEpochDay!!, locale), money(BigInteger.valueOf(payment.minor)))
+                DuePaymentLine(payment, displayDate(payment.nextEpochDay!!), money(BigInteger.valueOf(payment.minor)))
             }
         }
 
@@ -151,10 +192,33 @@ fun MoneyOverviewContent(summary: MoneySummary, onTransactions: () -> Unit, onSu
                             t.note.ifBlank { t.category.ifBlank { stringResource(R.string.overview_uncategorized) } },
                             style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
                         )
-                        Text(ValueFormat.date(t.epochDay, locale), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(displayDate(t.epochDay), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Amount(t.kind, money(BigInteger.valueOf(t.minor)))
                 }
+            }
+        }
+    }
+}
+
+/** Payments found in SMS: review them, add them all, or a note of how many were added. */
+@Composable
+private fun SmsBanner(found: Int, added: Int, onReview: () -> Unit, onAddAll: () -> Unit, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    PressableCard(Modifier.fillMaxWidth(), color = colors.primaryContainer) {
+        Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Sms, contentDescription = null, tint = colors.onPrimaryContainer)
+            Text(
+                if (found > 0) pluralStringResource(R.plurals.sms_found, found, found) else pluralStringResource(R.plurals.sms_added, added, added),
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.onPrimaryContainer,
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
+            )
+            if (found > 0) {
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = onAddAll) { Text(stringResource(R.string.sms_add_all), color = colors.onPrimaryContainer) }
+                Button(shapes = ButtonDefaults.shapes(), onClick = onReview) { Text(stringResource(R.string.sms_review)) }
+            } else {
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = onDismiss) { Text(stringResource(R.string.sms_ok), color = colors.onPrimaryContainer) }
             }
         }
     }
@@ -181,23 +245,26 @@ private fun Figure(label: String, value: String, modifier: Modifier = Modifier, 
 }
 
 @Composable
-private fun Line(title: String, detail: String, amount: String) {
+private fun DuePaymentLine(payment: RecurringPayment, detail: String, amount: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Text(payment.note, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(amount, style = ValueTextStyle, color = MaterialTheme.colorScheme.onSurface)
+        Amount(payment.kind, amount)
     }
 }
 
 @Composable
 private fun BudgetLine(health: BudgetHealth, money: (BigInteger) -> String) {
     val colors = MaterialTheme.colorScheme
-    val color: Color = if (health.over) colors.error else LocalSignals.current.positive
+    val budget = health.budget
+    val color: Color = if (health.over) colors.error
+        else budget.color?.let { financeBadgeColors(it, budget.title).content } ?: LocalSignals.current.positive
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(health.budget.category, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface, modifier = Modifier.weight(1f))
+            FinanceBadge(budget.icon, budget.color, budget.title, budget.category, size = 32.dp, fallback = "Wallet")
+            Text(budget.title, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface, modifier = Modifier.weight(1f).padding(start = 8.dp))
             if (health.over) {
                 Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.error, modifier = Modifier.size(16.dp).padding(end = 2.dp))
                 Text(stringResource(R.string.finance_over_budget), style = MaterialTheme.typography.labelMedium, color = colors.error)
@@ -205,6 +272,6 @@ private fun BudgetLine(health: BudgetHealth, money: (BigInteger) -> String) {
                 Text(money(health.spent) + " / " + money(health.limit), style = ValueTextStyle, color = colors.onSurfaceVariant)
             }
         }
-        Meter(health.fraction, color, contentDescription = health.budget.category + " " + money(health.spent) + " / " + money(health.limit))
+        Meter(health.fraction, color, contentDescription = budget.title + " " + money(health.spent) + " / " + money(health.limit))
     }
 }

@@ -34,8 +34,8 @@ import dev.qtremors.eonslate.core.tracker.domain.csv.CsvException
 import dev.qtremors.eonslate.core.tracker.domain.csv.CsvFiles
 import dev.qtremors.eonslate.core.tracker.domain.csv.CsvProblem
 import dev.qtremors.eonslate.core.tracker.domain.csv.FinanceCsv
-import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
+import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator
 import dev.qtremors.eonslate.core.ui.components.ConfirmDialog
@@ -72,13 +72,23 @@ internal class FinanceCsvViewModel @Inject constructor(
     private val _state = MutableStateFlow(FinanceCsvState())
     val state = _state.asStateFlow()
     private var pending: List<Transaction>? = null
+    private var exportSnapshot: Ledger? = null
 
-    fun export(uri: Uri) = work {
-        val ledger = repository.observeLedger().first()
-        withContext(Dispatchers.IO) {
-            checkNotNull(resolver.openOutputStream(uri, "wt")).bufferedWriter().use { FinanceCsv.write(ledger, it) }
+    fun prepareExport(ledger: Ledger) {
+        exportSnapshot = ledger
+    }
+
+    fun finishExport(uri: Uri?) {
+        val ledger = exportSnapshot
+        exportSnapshot = null
+        if (uri == null) return
+        work {
+            checkNotNull(ledger)
+            withContext(Dispatchers.IO) {
+                checkNotNull(resolver.openOutputStream(uri, "wt")).bufferedWriter().use { FinanceCsv.write(ledger, it) }
+            }
+            _state.value = FinanceCsvState(notice = FinanceCsvNotice.Exported)
         }
-        _state.value = FinanceCsvState(notice = FinanceCsvNotice.Exported)
     }
 
     fun preview(uri: Uri, fallbackId: String) = work {
@@ -128,15 +138,15 @@ internal class FinanceCsvViewModel @Inject constructor(
 }
 
 @Composable
-internal fun FinanceCsvMenu(accounts: List<Account>, viewModel: FinanceCsvViewModel, more: List<MenuAction> = emptyList()) {
+internal fun FinanceCsvMenu(
+    ledger: Ledger?, viewModel: FinanceCsvViewModel, onExport: () -> Unit, more: List<MenuAction> = emptyList(),
+) {
+    val accounts = ledger?.accounts.orEmpty()
     val state by viewModel.state.collectAsStateWithLifecycle()
     var expanded by remember { mutableStateOf(false) }
     var chooseAccount by rememberSaveable { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf(accounts.firstOrNull()?.id) }
     val account = accounts.firstOrNull { it.id == selected } ?: accounts.firstOrNull()
-    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(CsvFiles.MIME)) { uri ->
-        uri?.let(viewModel::export)
-    }
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && account != null) viewModel.preview(uri, account.id)
     }
@@ -148,9 +158,7 @@ internal fun FinanceCsvMenu(accounts: List<Account>, viewModel: FinanceCsvViewMo
             expanded,
             onDismissRequest = { expanded = false },
             groups = listOf(more, listOf(
-                MenuAction(stringResource(R.string.finance_csv_export), Icons.Rounded.FileDownload) {
-                    export.launch("eonslate-transactions.csv")
-                },
+                MenuAction(stringResource(R.string.finance_csv_export), Icons.Rounded.FileDownload, enabled = ledger != null, onClick = onExport),
                 MenuAction(stringResource(R.string.finance_csv_import), Icons.Rounded.FileUpload, enabled = accounts.isNotEmpty()) {
                     chooseAccount = true
                 },

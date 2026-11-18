@@ -23,7 +23,7 @@ enum class Busy { CREATING, OPENING, RESTORING, UNDOING }
 
 /** One thing to tell the person once, as a snackbar. */
 enum class BackupMessage {
-    SAVED, RESTORED, UNDONE,
+    SAVED, RESTORED, UNDONE, CLEARED,
     NOT_A_BACKUP, NEWER_VERSION, DAMAGED, INCONSISTENT,
     READ_FAILED, WRITE_FAILED, RESTORE_FAILED,
 }
@@ -136,6 +136,21 @@ class BackupViewModel @Inject constructor(
         } catch (e: Exception) {
             // The database refused it inside its transaction, so nothing on the phone changed.
             putAway()
+            say(BackupMessage.RESTORE_FAILED)
+        }
+    }
+
+    /**
+     * Deletes every tracker, entry, account and transaction. It is a restore of nothing, so the
+     * current data is kept as the restore point first, and Undo brings it all back.
+     */
+    fun clearAll(appVersion: String) = work(Busy.RESTORING) {
+        try {
+            backups.restore(BackupSnapshot(schema = 1, createdAt = 0, appVersion = appVersion), appVersion)
+            say(BackupMessage.CLEARED)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             say(BackupMessage.RESTORE_FAILED)
         }
     }

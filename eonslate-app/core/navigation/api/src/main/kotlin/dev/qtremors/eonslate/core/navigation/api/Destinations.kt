@@ -46,6 +46,9 @@ sealed interface Destination {
     @Serializable
     data object Settings : Destination
 
+    @Serializable
+    data object Categories : Destination
+
     /** The reminders of one tracker. */
     @Serializable
     data class Reminders(val trackerId: String) : Destination

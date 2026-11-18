@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import dev.qtremors.eonslate.core.ui.components.FormField
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
@@ -39,6 +40,7 @@ import java.util.Locale
 
 /** Category names to offer, by kind of money; provided by the finance screen from the ledger. */
 internal val LocalCategorySuggestions = compositionLocalOf<(TransactionKind) -> List<String>> { { emptyList() } }
+internal val LocalCategoryStyles = compositionLocalOf<List<CategoryChoice>> { emptyList() }
 
 /** The icon of a default category, or null for one a person named. */
 internal fun categoryIcon(name: String): ImageVector? = when (name.trim().lowercase(Locale.ROOT)) {
@@ -74,6 +76,8 @@ internal fun CategoryPicker(value: String, onChange: (String) -> Unit, kind: Tra
         Text(stringResource(R.string.finance_category), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             suggestions.forEach { name ->
+                val category = LocalCategoryStyles.current.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                val icon = financeIcon(category?.icon) ?: categoryIcon(name)
                 val selected = !typing && name.equals(value.trim(), ignoreCase = true)
                 FilterChip(
                     selected = selected,
@@ -84,7 +88,15 @@ internal fun CategoryPicker(value: String, onChange: (String) -> Unit, kind: Tra
                         onChange(if (selected) "" else name)
                     },
                     label = { Text(name) },
-                    leadingIcon = categoryIcon(name)?.let { icon -> { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) } },
+                    leadingIcon = when {
+                        category?.color != null && !selected -> {
+                            { FinanceBadge(category.icon, category.color, name, size = 26.dp) }
+                        }
+                        icon != null -> {
+                            { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        }
+                        else -> null
+                    },
                     shape = MaterialTheme.shapes.medium,
                     colors = colors,
                 )

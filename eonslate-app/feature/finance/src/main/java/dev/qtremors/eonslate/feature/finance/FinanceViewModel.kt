@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.asTransaction
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessage
@@ -36,6 +38,7 @@ class FinanceViewModel @Inject constructor(
     settings: SettingsRepository,
     private val ids: IdGenerator,
     private val clock: AppClock,
+    val detection: SmsDetection,
 ) : ViewModel() {
     val ledger: StateFlow<Ledger?> = finance.observeLedger()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -53,10 +56,16 @@ class FinanceViewModel @Inject constructor(
     private var scanJob: Job? = null
 
     init {
-        viewModelScope.launch { finance.postDue(today().toEpochDay()) }
+        viewModelScope.launch {
+            val now = now()
+            finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
+        }
+        viewModelScope.launch { detection.runOnce() }
     }
 
-    fun today() = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId())).toLocalDate()
+    private fun now() = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId()))
+
+    fun today() = now().toLocalDate()
 
     fun newId() = ids.newId()
 
@@ -80,15 +89,23 @@ class FinanceViewModel @Inject constructor(
     fun save(account: Account, onDone: () -> Unit) = write(onDone) { finance.saveAccount(account) }
     fun save(transaction: Transaction, onDone: () -> Unit) = write(onDone) { finance.saveTransaction(transaction) }
     fun delete(account: Account, onDone: () -> Unit) = write(onDone) { finance.deleteAccount(account.id) }
+    /** Deletes several transactions in one go, as selection mode asks. */
+    fun deleteTransactions(ids: Collection<String>, onDone: () -> Unit) = write(onDone) {
+        ids.forEach { finance.deleteTransaction(it) }
+        true
+    }
+
     fun delete(transaction: Transaction, onDone: () -> Unit) = write(onDone) {
         finance.deleteTransaction(transaction.id)
         true
     }
 
     fun schedule(expected: RecurringPayment?, payment: RecurringPayment, onDone: () -> Unit) = write(onDone) {
-        val day = today().toEpochDay()
-        if (expected == null) finance.addRecurring(payment, day)
-        else finance.updateRecurring(expected, payment, day)
+        val now = now()
+        val day = now.toLocalDate().toEpochDay()
+        val minute = now.hour * 60 + now.minute
+        if (expected == null) finance.addRecurring(payment, day, minute)
+        else finance.updateRecurring(expected, payment, day, minute)
     }
 
     fun delete(payment: RecurringPayment, onDone: () -> Unit) = write(onDone) {
@@ -101,6 +118,9 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun save(budget: CategoryBudget, onDone: () -> Unit) = write(onDone) { finance.saveBudget(budget) }
+
+    fun save(category: CategoryChoice, previous: CategoryChoice?, onDone: () -> Unit) =
+        write(onDone) { finance.saveCategory(category, previous) }
 
     fun delete(budget: CategoryBudget, onDone: () -> Unit) = write(onDone) {
         finance.deleteBudget(budget.id)
@@ -120,6 +140,17 @@ class FinanceViewModel @Inject constructor(
             } catch (_: Exception) {
                 _inbox.value = InboxState(failed = true)
             }
+        }
+    }
+
+    /** Adds [messages] as transactions in one write, and forgets them as found. */
+    suspend fun approveAll(messages: List<PaymentMessage>) {
+        val data = ledger.value ?: return
+        val today = today().toEpochDay()
+        val transactions = messages.mapNotNull { it.asTransaction(ids.newId(), data.accounts, today) }
+        if (finance.appendTransactions(transactions)) {
+            messages.forEach(detection::reviewed)
+            _inbox.value = InboxState(messages = emptyList())
         }
     }
 

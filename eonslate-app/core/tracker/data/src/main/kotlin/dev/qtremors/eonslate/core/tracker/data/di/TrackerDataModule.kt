@@ -47,7 +47,7 @@ object TrackerDatabaseModule {
     @Provides
     @Singleton
     fun provideBackups(@ApplicationContext context: Context, repository: RoomBackupRepository): Backups =
-        BackupManager(repository, File(context.filesDir, "backups"), Dispatchers.Default)
+        BackupManager(repository, File(context.filesDir, "backups"), Dispatchers.Default, icons = File(context.filesDir, "icons"))
 
     @Provides
     fun provideIdGenerator(): IdGenerator = UuidIdGenerator

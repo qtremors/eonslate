@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
+import java.util.Base64
 import dev.qtremors.eonslate.core.tracker.domain.backup.ArchiveHeader
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupArchive
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupCheck
@@ -33,6 +34,8 @@ class BackupManager(
     private val directory: File,
     private val work: CoroutineDispatcher,
     private val iterations: Int = BackupArchive.DEFAULT_ITERATIONS,
+    /** Where custom icons live; their files travel inside every backup. */
+    private val icons: File? = null,
 ) : Backups {
     private val lock = Mutex()
     private val point = File(directory, RESTORE_POINT)
@@ -42,7 +45,7 @@ class BackupManager(
     override val restorePoint: StateFlow<Long?> = _restorePoint.asStateFlow()
 
     override suspend fun create(password: CharArray?, appVersion: String): ByteArray = lock.withLock {
-        val snapshot = repository.snapshot(appVersion)
+        val snapshot = withIcons(repository.snapshot(appVersion))
         withContext(work) { BackupArchive.encode(snapshot, password, iterations) }
     }
 
@@ -56,8 +59,9 @@ class BackupManager(
 
     override suspend fun restore(snapshot: BackupSnapshot, appVersion: String) = lock.withLock {
         BackupCheck.requireSound(snapshot, repository.schema)
-        val current = repository.snapshot(appVersion)
+        val current = withIcons(repository.snapshot(appVersion))
         withContext(work) {
+            writeIcons(snapshot)
             directory.mkdirs()
             pending.writeBytes(BackupArchive.encode(current, password = null))
         }
@@ -82,12 +86,38 @@ class BackupManager(
             ?: throw BackupException(BackupProblem.NOT_A_BACKUP)
         val snapshot = withContext(work) { BackupArchive.decode(bytes, password = null) }
         BackupCheck.requireSound(snapshot, repository.schema)
+        withContext(work) { writeIcons(snapshot) }
         repository.replaceAll(snapshot)
         withContext(work) { point.delete() }
         _restorePoint.value = null
     }
 
+    private suspend fun withIcons(snapshot: BackupSnapshot): BackupSnapshot = withContext(work) {
+        val dir = icons ?: return@withContext snapshot
+        val used = snapshot.recurring.mapNotNull { payment ->
+            payment.icon?.takeIf { it.startsWith(FILE_PREFIX) }?.removePrefix(FILE_PREFIX)
+        }.toSet()
+        val files = used.mapNotNull { hash ->
+            File(dir, "$hash.png").takeIf { HASH.matches(hash) && it.isFile }?.let { hash to Base64.getEncoder().encodeToString(it.readBytes()) }
+        }.toMap()
+        snapshot.copy(icons = files)
+    }
+
+    /** Writes a backup's icons; each name is checked so a crafted file cannot write elsewhere. */
+    private fun writeIcons(snapshot: BackupSnapshot) {
+        val dir = icons ?: return
+        dir.mkdirs()
+        snapshot.icons.forEach { (hash, data) ->
+            if (!HASH.matches(hash)) return@forEach
+            val bytes = runCatching { Base64.getDecoder().decode(data) }.getOrNull() ?: return@forEach
+            if (bytes.size <= MAX_ICON_BYTES) File(dir, "$hash.png").writeBytes(bytes)
+        }
+    }
+
     companion object {
+        private const val FILE_PREFIX = "file:"
+        private val HASH = Regex("[0-9a-f]{64}")
+        private const val MAX_ICON_BYTES = 512 * 1024
         const val RESTORE_POINT = "before-restore.${BackupArchive.EXTENSION}"
     }
 }

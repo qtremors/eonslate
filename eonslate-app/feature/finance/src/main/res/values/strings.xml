@@ -30,7 +30,6 @@
     <string name="finance_empty_activity">No transactions</string>
     <string name="finance_transfer_accounts">%1$s → %2$s</string>
     <string name="finance_transaction_title">%1$s · %2$s</string>
-    <string name="finance_balance">%1$s %2$s</string>
     <string name="finance_plans">Plans</string>
     <string name="finance_budgets">Budgets</string>
     <string name="finance_previous_month">Previous month</string>
@@ -53,7 +52,8 @@
     <string name="finance_sms_account">Add a %1$s account first.</string>
     <string name="finance_sms_duplicate">This payment is already recorded.</string>
     <string name="finance_sms_reference">Ref %1$s</string>
-    <string name="finance_sms_ending">Ending %1$s</string>
+    <string name="finance_sms_ending">Account •%1$s</string>
+    <string name="finance_sms_card_ending">Card •%1$s</string>
     <string name="finance_scan_inbox">Scan SMS inbox</string>
     <string name="finance_sms_scan">Scan</string>
     <string name="finance_sms_denied">SMS access is off.</string>
@@ -92,6 +92,7 @@
     <string name="finance_totals">%1$s income · %2$s expenses</string>
     <string name="finance_csv_options">CSV options</string>
     <string name="finance_csv_export">Export transactions</string>
+    <string name="finance_csv_export_matches">Export matching transactions</string>
     <string name="finance_csv_import">Import transactions</string>
     <string name="finance_csv_fallback">Account for files without one</string>
     <string name="finance_csv_choose">Choose CSV</string>
@@ -130,4 +131,91 @@
     <string name="finance_due_in">In %1$d days</string>
     <string name="finance_subscriptions">Subscriptions</string>
     <string name="finance_category_new">New</string>
+    <plurals name="sms_found">
+        <item quantity="one">%d payment found in SMS</item>
+        <item quantity="other">%d payments found in SMS</item>
+    </plurals>
+    <plurals name="sms_added">
+        <item quantity="one">%d payment added from SMS</item>
+        <item quantity="other">%d payments added from SMS</item>
+    </plurals>
+    <string name="sms_review">Review</string>
+    <string name="sms_add_all">Add all</string>
+    <string name="sms_discard_all">Discard all</string>
+    <string name="sms_discard">Discard</string>
+    <string name="sms_ok">OK</string>
+    <string name="finance_started">Started</string>
+    <string name="finance_notes">Notes</string>
+    <string name="finance_since">Since %1$s</string>
+    <string name="finance_icon">Icon</string>
+    <string name="finance_icon_change">Change</string>
+    <string name="finance_icon_letter">Letter</string>
+    <string name="finance_icon_image">Image</string>
+    <string name="finance_icon_choose">Choose image</string>
+    <string name="finance_icon_search">Search services</string>
+    <string name="finance_icon_failed">That image can\'t be used</string>
+    <string name="finance_sort_newest">Newest</string>
+    <string name="finance_sort_oldest">Oldest</string>
+    <string name="finance_sort_largest">Largest</string>
+    <string name="finance_search_subscriptions">Search subscriptions</string>
+    <string name="overview_add_income">+ Income</string>
+    <string name="overview_add_expense">− Expense</string>
+    <string name="finance_cancel">Cancel</string>
+    <plurals name="finance_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="finance_delete_selected">
+        <item quantity="one">Delete %d transaction?</item>
+        <item quantity="other">Delete %d transactions?</item>
+    </plurals>
+    <string name="finance_monthly_cost">Monthly cost</string>
+    <string name="finance_allocation">Budget limits</string>
+    <string name="finance_budget_name">Budget name</string>
+    <string name="finance_manage_categories">Manage categories</string>
+    <string name="finance_add_category">Add category</string>
+    <string name="finance_edit_category">Edit category</string>
+    <string name="finance_category_exists">Category already exists</string>
+    <string name="finance_category_both">Both</string>
+    <string name="finance_style">Style</string>
+    <string name="finance_done">Done</string>
+    <string name="finance_color">Color</string>
+    <string name="finance_hourly">Hourly</string>
+    <string name="finance_hours">hours</string>
+    <string name="finance_billing_time">Billing time</string>
+    <string-array name="finance_style_icons">
+        <item>Wallet</item>
+        <item>Credit card</item>
+        <item>Dining</item>
+        <item>Car</item>
+        <item>Movie</item>
+        <item>Shopping cart</item>
+        <item>Light bulb</item>
+        <item>Heart</item>
+        <item>Work</item>
+        <item>Home</item>
+        <item>Fitness</item>
+        <item>Cloud</item>
+        <item>Tag</item>
+        <item>Sparkles</item>
+    </string-array>
+    <string-array name="finance_style_colors">
+        <item>Slate</item>
+        <item>Ember</item>
+        <item>Moss</item>
+        <item>Tide</item>
+        <item>Clay</item>
+        <item>Saffron</item>
+        <item>Plum</item>
+        <item>Lichen</item>
+        <item>Rust</item>
+        <item>Lagoon</item>
+        <item>Heather</item>
+        <item>Sand</item>
+        <item>Pine</item>
+        <item>Coral</item>
+        <item>Iris</item>
+        <item>Ochre</item>
+        <item>Stone</item>
+    </string-array>
 </resources>

@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.ui
 
+import androidx.compose.runtime.Composable
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
@@ -7,7 +8,11 @@ import dev.qtremors.eonslate.core.tracker.domain.value.DurationSeconds
 import dev.qtremors.eonslate.core.tracker.domain.value.EpochDays
 import dev.qtremors.eonslate.core.tracker.domain.value.MoneyAmount
 import dev.qtremors.eonslate.core.tracker.domain.value.ScaledDecimal
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 import java.math.BigDecimal
+import java.math.BigInteger
+import java.text.DecimalFormatSymbols
+import java.text.FieldPosition
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -33,13 +38,19 @@ data class ValueWords(
     val removedOption: String,
 )
 
+@Composable
+fun displayDate(epochDay: Long): String =
+    ValueFormat.date(epochDay, Locale.getDefault(), LocalValueDisplay.current.datePattern)
+
 /**
  * Turns exact stored values into what a person reads, in their locale. Every value keeps its
  * exact digits: a number with two decimals always shows two, and money uses its currency's own.
  */
 object ValueFormat {
-
-    fun format(field: FieldDefinition, value: FieldValue, words: ValueWords, locale: Locale = Locale.getDefault()): String =
+    fun format(
+        field: FieldDefinition, value: FieldValue, words: ValueWords,
+        locale: Locale = Locale.getDefault(), datePattern: String? = null, dateLocale: Locale = locale,
+    ): String =
         when (value) {
             is FieldValue.Number -> {
                 val config = field.config as? FieldConfig.Number
@@ -59,7 +70,7 @@ object ValueFormat {
                     .ifEmpty { if (value.optionIds.isEmpty()) "–" else words.removedOption }
             }
             is FieldValue.Text -> value.text
-            is FieldValue.Date -> date(value.epochDay, locale)
+            is FieldValue.Date -> date(value.epochDay, dateLocale, datePattern)
         }
 
     /**
@@ -78,25 +89,41 @@ object ValueFormat {
                 runCatching { format.currency = Currency.getInstance(config.currencyCode) }
                 format.minimumFractionDigits = decimals
                 format.maximumFractionDigits = decimals
-                format.format(value.setScale(decimals, java.math.RoundingMode.HALF_UP))
+                localizedNumber(value.setScale(decimals, java.math.RoundingMode.HALF_UP), format, locale)
             }
             is FieldConfig.Duration -> duration(value.setScale(0, java.math.RoundingMode.HALF_UP).toLong(), words)
             else -> decimal(value, decimals, locale)
         }
 
     fun decimal(value: BigDecimal, decimals: Int, locale: Locale): String =
-        NumberFormat.getNumberInstance(locale).apply {
+        localizedNumber(value, NumberFormat.getNumberInstance(locale).apply {
             minimumFractionDigits = decimals
             maximumFractionDigits = decimals
-        }.format(value)
+        }, locale)
 
-    fun money(minor: Long, currencyCode: String, locale: Locale): String {
+    fun money(minor: Long, currencyCode: String, locale: Locale): String =
+        money(BigInteger.valueOf(minor), currencyCode, locale)
+
+    fun money(minor: BigInteger, currencyCode: String, locale: Locale): String {
         val digits = MoneyAmount.fractionDigits(currencyCode)
         val format = NumberFormat.getCurrencyInstance(locale)
         runCatching { format.currency = Currency.getInstance(currencyCode) }
         format.minimumFractionDigits = digits
         format.maximumFractionDigits = digits
-        return format.format(ScaledDecimal.toBigDecimal(minor, digits))
+        return localizedNumber(BigDecimal(minor, digits), format, locale)
+    }
+
+    private fun localizedNumber(value: BigDecimal, format: NumberFormat, locale: Locale): String {
+        if (locale.country != "IN") return format.format(value)
+        // java.text implementations differ in support for the Indian secondary grouping size.
+        format.isGroupingUsed = false
+        val integer = FieldPosition(NumberFormat.INTEGER_FIELD)
+        val text = format.format(value, StringBuffer(), integer)
+        val digits = text.substring(integer.beginIndex, integer.endIndex)
+        if (digits.length <= 3) return text.toString()
+        val separator = DecimalFormatSymbols.getInstance(locale).groupingSeparator.toString()
+        val leading = digits.dropLast(3).reversed().chunked(2).joinToString(separator).reversed()
+        return text.replace(integer.beginIndex, integer.endIndex, leading + separator + digits.takeLast(3)).toString()
     }
 
     fun duration(seconds: Long, words: ValueWords): String {
@@ -108,8 +135,11 @@ object ValueFormat {
         }
     }
 
-    fun date(epochDay: Long, locale: Locale): String =
-        EpochDays.toDate(epochDay).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+    fun date(epochDay: Long, locale: Locale, pattern: String? = null): String {
+        val formatter = if (pattern == null) DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+        else DateTimeFormatter.ofPattern(pattern, locale)
+        return EpochDays.toDate(epochDay).format(formatter)
+    }
 
     private fun optionLabel(field: FieldDefinition, optionId: String): String? = when (val c = field.config) {
         is FieldConfig.SingleChoice -> c.options.firstOrNull { it.id == optionId }?.label

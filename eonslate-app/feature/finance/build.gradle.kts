@@ -26,6 +26,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.androidsvg)
     implementation(project(":core:tracker:ui"))
     implementation(project(":core:settings"))
     implementation(libs.androidx.lifecycle.runtime.compose)

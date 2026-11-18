@@ -23,6 +23,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
         TransactionEntity::class,
         RecurringEntity::class,
         CategoryBudgetEntity::class,
+        CategoryEntity::class,
     ],
     version = TrackerDatabase.VERSION,
     exportSchema = true,
@@ -35,7 +36,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 6
+        const val VERSION = 8
         const val NAME = "eonslate.db"
 
         /**
@@ -143,7 +144,34 @@ object TrackerMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    /** Subscriptions keep when they began, notes, and an icon. */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN start_epoch_day INTEGER")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN details TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN icon TEXT")
+            // Older payments never recorded when they began; left empty rather than guessed.
+        }
+    }
+
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_budgets ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE finance_budgets ADD COLUMN icon TEXT")
+            db.execSQL("ALTER TABLE finance_budgets ADD COLUMN color INTEGER")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN color INTEGER")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN next_minute INTEGER")
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS finance_categories (
+                    id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL,
+                    kind TEXT NOT NULL, icon TEXT, color INTEGER
+                )
+            """)
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_finance_categories_name_key ON finance_categories (name_key)")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 }
 
 /**

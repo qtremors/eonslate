@@ -67,4 +67,11 @@
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>
     </plurals>
+    <string name="backup_section_danger">Everything</string>
+    <string name="backup_clear">Delete all data</string>
+    <string name="backup_clear_hint">Trackers, entries, accounts and transactions. Settings stay.</string>
+    <string name="backup_clear_dialog">Delete all data?</string>
+    <string name="backup_clear_message">Everything is removed. It can be undone from this page until the next restore.</string>
+    <string name="backup_clear_action">Delete all</string>
+    <string name="backup_cleared">All data deleted</string>
 </resources>

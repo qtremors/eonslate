@@ -53,6 +53,7 @@ data class FilterTop(
     val query: String,
     val onQueryChange: (String) -> Unit,
     val placeholder: String,
+    val actions: @Composable RowScope.() -> Unit = {},
     val onOpenChange: (Boolean) -> Unit = {}
 )
 
@@ -200,6 +201,7 @@ private fun FilterTopBar(filter: FilterTop, onClose: () -> Unit, requestFocus: B
                 modifier = Modifier.fillMaxWidth().focusRequester(focus)
             )
         },
+        actions = filter.actions,
         colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceContainer)
     )
 }

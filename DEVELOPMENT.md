@@ -1,7 +1,7 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.1.2
+> **Version:** 2.1.3
 > **Last Updated:** 2026-11-18
 
 ## Architecture
@@ -36,7 +36,7 @@ Planned modules follow the same pattern: pure Kotlin `domain` modules for models
 - One shell in `EonslateNavHost`: the `NavHost` and a `FloatingTabBar` with four tabs (Home, Transactions, Subscriptions, Trackers). Tabs switch with saved state, so each keeps its back stack and scroll.
 - On pages below a tab the bar morphs into Back and the page title. `LocalShellHost` collects the title from `EonslateScaffold` and the action from `MainActionButton`, so pages need no shell code; outside the shell (tests) both render themselves.
 - The page's main action sits beside the bar and animates in and out. Transitions are springs: tabs crossfade, pages slide.
-- Budgets lead the Transactions tab; Subscriptions holds recurring payments only. Tappable cards use `PressableCard`; people-named things use `MonogramBadge`. Category chips come from `Categories.suggestions` (used most first, then defaults), provided to editors through `LocalCategorySuggestions`.
+- Budgets lead the Transactions tab and Subscriptions holds recurring payments. Category management opens from Settings or the Transactions menu. Editors get category suggestions from `Categories.suggestions` through `LocalCategorySuggestions`.
 
 ## Settings
 
@@ -91,11 +91,13 @@ Schema 5 adds monthly budgets and recurring payments. Expenses count toward a bu
 
 Schema 6 adds transaction categories, category budgets, and custom recurring intervals with pause and amount confirmation. Category budgets use an anchored cycle. Variable payments advance only after confirmation.
 
+Schema 8 stores budget names, icons, and colors and adds the finance category catalog. Category renames update transactions, recurring payments, and budgets in one Room transaction. The schema also keeps the next billing minute for hourly subscriptions. Automatic hourly postings keep one transaction per local day.
+
 Finance reviews payment SMS from pasted or shared text and can also scan the inbox in builds that include the SMS permission. Build an inbox-enabled APK with `./gradlew :app:assembleDebug -Peonslate.smsInbox=true`. The standard build reads pasted or shared text. The parser suggests a category, identifies the account ending and reference when present, and keeps a fingerprint for duplicate detection. Raw SMS stays in memory during import.
 
 ## CSV
 
-The tracker menu exchanges entries with matching field columns. Finance exchanges transactions with matching accounts and can assign an account to files that lack one. Exports use UTF-8 with quoted cells, exact decimals and ISO dates. Imports validate the file before presenting a count and append the batch in one transaction. The system file picker supplies access to each selected file.
+The tracker menu exchanges entries with matching field columns. Finance exports the rows matching the Transactions filters in the displayed sort order. The export captures those rows when the file picker opens. Exports use UTF-8 with quoted cells, exact decimals and ISO dates. Imports can assign an account to files that lack one and validate the file before appending the batch in one transaction.
 
 ## Quick logging
 

@@ -1,5 +1,14 @@
 package dev.qtremors.eonslate.feature.finance
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalButton
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,7 +56,10 @@ internal fun PaymentInboxSheet(
         if (granted) viewModel.scanInbox(days)
     }
     val keys = ledger.transactions.mapNotNullTo(HashSet()) { it.smsKey }
-    val messages = state.messages.orEmpty().filter { it.key !in keys }
+    val held by viewModel.detection.pending.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    // Payments found on open come first, before any manual scan.
+    val messages = (state.messages ?: held).filter { it.key !in keys }
     EonslateBottomSheet(onDismiss, title = stringResource(R.string.finance_scan_inbox)) {
         ConnectedChoices(
             listOf(7, 30, 90),
@@ -74,7 +86,17 @@ internal fun PaymentInboxSheet(
             state.failed -> Text(stringResource(R.string.finance_sms_failed), modifier = Modifier.padding(vertical = 8.dp))
             state.messages != null && messages.isEmpty() ->
                 Text(stringResource(R.string.finance_sms_empty), modifier = Modifier.padding(vertical = 8.dp))
-            messages.isNotEmpty() -> LazyColumn(
+            messages.isNotEmpty() -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { scope.launch { viewModel.detection.discard(messages) }; viewModel.clearInbox() }) {
+                    Text(stringResource(R.string.sms_discard_all))
+                }
+                Button(shapes = ButtonDefaults.shapes(), enabled = messages.any { m -> ledger.accounts.any { it.currency == m.currency } }, onClick = {
+                    scope.launch { viewModel.approveAll(messages) }
+                }) { Text(stringResource(R.string.sms_add_all)) }
+            }
+        }
+        if (!state.scanning && messages.isNotEmpty()) {
+            LazyColumn(
                 Modifier.weight(1f, fill = false),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
@@ -93,7 +115,15 @@ internal fun PaymentInboxSheet(
                             stringResource(R.string.finance_transaction_title, item.kind.label(), amount),
                             supporting = supporting,
                             enabled = eligible,
-                            onClick = { onReview(item) },
+                            trailing = {
+                                IconButton(shapes = IconButtonDefaults.shapes(), onClick = { scope.launch { viewModel.detection.discard(listOf(item)) } }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.sms_discard))
+                                }
+                            },
+                            onClick = {
+                                viewModel.detection.reviewed(item)
+                                onReview(item)
+                            },
                         )
                     }
                 }

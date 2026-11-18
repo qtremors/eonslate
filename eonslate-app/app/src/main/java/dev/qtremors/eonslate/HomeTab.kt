@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +25,8 @@ fun HomeTab(
     onTrackers: () -> Unit,
     onLog: (String) -> Unit,
     onSettings: () -> Unit,
+    onReviewSms: () -> Unit,
+    onAdd: (TransactionKind) -> Unit,
 ) {
     EonslateScaffold(
         title = stringResource(R.string.app_title),
@@ -34,7 +37,7 @@ fun HomeTab(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onSubscriptions = onSubscriptions) }
+            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onReviewSms = onReviewSms, onSubscriptions = onSubscriptions, onAdd = onAdd) }
             item(key = "today") { TodayStrip(onLog = onLog, onAll = onTrackers) }
         }
     }

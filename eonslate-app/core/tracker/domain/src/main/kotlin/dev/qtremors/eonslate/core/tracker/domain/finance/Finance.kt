@@ -56,8 +56,8 @@ data class Transaction(
     }
 
     companion object {
-        const val NOTE_LIMIT = 200
-        const val CATEGORY_LIMIT = 60
+        const val NOTE_LIMIT = 1024
+        const val CATEGORY_LIMIT = 100
         private val SMS_KEY = Regex("[0-9a-f]{64}")
         val DATES = LocalDate.of(1, 1, 1).toEpochDay()..LocalDate.of(9999, 12, 31).toEpochDay()
     }
@@ -68,7 +68,24 @@ data class Ledger(
     val transactions: List<Transaction> = emptyList(),
     val recurring: List<RecurringPayment> = emptyList(),
     val budgets: List<CategoryBudget> = emptyList(),
+    val categories: List<CategoryChoice> = emptyList(),
 ) {
+    fun filteredTransactions(days: LongRange, category: String?, query: String, sort: TransactionSort): List<Transaction> {
+        val term = query.trim()
+        val names = accounts.associate { it.id to it.name }
+        val order = when (sort) {
+            TransactionSort.NEWEST -> compareByDescending<Transaction> { it.epochDay }
+            TransactionSort.OLDEST -> compareBy<Transaction> { it.epochDay }
+            TransactionSort.LARGEST -> compareByDescending<Transaction> { it.minor }
+        }
+        return transactions.asSequence().filter { transaction ->
+            transaction.epochDay in days &&
+                (category == null || transaction.category.trim().equals(category, ignoreCase = true)) &&
+                (term.isEmpty() || transaction.note.contains(term, ignoreCase = true) ||
+                    transaction.category.contains(term, ignoreCase = true) ||
+                    names[transaction.accountId]?.contains(term, ignoreCase = true) == true)
+        }.sortedWith(order).toList()
+    }
     /** Balances may exceed the range of a single transaction. Each account retains its own currency. */
     fun balances(): Map<String, BigInteger> {
         val balances = accounts.associate { it.id to BigInteger.valueOf(it.openingMinor) }.toMutableMap()
@@ -104,6 +121,8 @@ data class Ledger(
     }
 }
 
+enum class TransactionSort { NEWEST, OLDEST, LARGEST }
+
 interface FinanceRepository {
     fun observeLedger(): Flow<Ledger>
     suspend fun saveAccount(account: Account): Boolean
@@ -111,11 +130,12 @@ interface FinanceRepository {
     suspend fun saveTransaction(transaction: Transaction): Boolean
     suspend fun appendTransactions(transactions: List<Transaction>): Boolean
     suspend fun deleteTransaction(id: String)
-    suspend fun addRecurring(payment: RecurringPayment, throughDay: Long): Boolean
-    suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long): Boolean
+    suspend fun addRecurring(payment: RecurringPayment, throughDay: Long, throughMinute: Int = 1439): Boolean
+    suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long, throughMinute: Int = 1439): Boolean
     suspend fun deleteRecurring(id: String)
     suspend fun recordRecurring(expected: RecurringPayment, minor: Long, day: Long): Boolean
-    suspend fun postDue(throughDay: Long)
+    suspend fun postDue(throughDay: Long, throughMinute: Int = 1439)
     suspend fun saveBudget(budget: CategoryBudget): Boolean
     suspend fun deleteBudget(id: String)
+    suspend fun saveCategory(category: CategoryChoice, previous: CategoryChoice?): Boolean
 }

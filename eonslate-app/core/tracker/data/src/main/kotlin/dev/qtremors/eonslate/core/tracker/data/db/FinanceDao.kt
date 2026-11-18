@@ -15,11 +15,12 @@ import androidx.room.Transaction
 import androidx.room.Upsert
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction as LedgerTransaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
-import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "finance_accounts")
 data class AccountEntity(
@@ -74,10 +75,15 @@ data class RecurringEntity(
     @ColumnInfo(defaultValue = "0") val paused: Boolean,
     @ColumnInfo(defaultValue = "0") val variable: Boolean,
     @ColumnInfo(defaultValue = "''") val category: String,
+    @ColumnInfo(name = "start_epoch_day") val startEpochDay: Long? = null,
+    @ColumnInfo(defaultValue = "''") val details: String = "",
+    val icon: String? = null,
+    val color: Int? = null,
+    @ColumnInfo(name = "next_minute") val nextMinute: Int? = null,
 ) {
     fun toDomain() = RecurringPayment(
         id, accountId, minor, note, PaymentInterval.valueOf(interval), anchorDay, nextEpochDay,
-        TransactionKind.valueOf(kind), every, paused, variable, category,
+        TransactionKind.valueOf(kind), every, paused, variable, category, startEpochDay, details, icon, color, nextMinute,
     )
 }
 
@@ -96,16 +102,33 @@ data class CategoryBudgetEntity(
     val interval: String,
     val every: Int,
     @ColumnInfo(name = "start_epoch_day") val startEpochDay: Long,
+    @ColumnInfo(defaultValue = "''") val name: String,
+    val icon: String?,
+    val color: Int?,
 ) {
-    fun toDomain() = CategoryBudget(id, accountId, category, minor, PaymentInterval.valueOf(interval), every, startEpochDay)
+    fun toDomain() = CategoryBudget(id, accountId, category, minor, PaymentInterval.valueOf(interval), every, startEpochDay, name, icon, color)
+}
+
+@Entity(tableName = "finance_categories", indices = [Index(value = ["name_key"], unique = true)])
+data class CategoryEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    @ColumnInfo(name = "name_key") val nameKey: String,
+    val kind: String,
+    val icon: String?,
+    val color: Int?,
+) {
+    fun toDomain() = CategoryChoice(name, CategoryKind.valueOf(kind), id, icon, color)
 }
 
 internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor)
 
 internal fun RecurringPayment.toEntity() =
-    RecurringEntity(id, accountId, minor, note, interval.name, anchorDay, nextEpochDay, kind.name, every, paused, variable, category)
+    RecurringEntity(id, accountId, minor, note, interval.name, anchorDay, nextEpochDay, kind.name, every, paused, variable, category, startEpochDay, details, icon, color, nextMinute)
 
-internal fun CategoryBudget.toEntity() = CategoryBudgetEntity(id, accountId, category, minor, interval.name, every, startEpochDay)
+internal fun CategoryBudget.toEntity() = CategoryBudgetEntity(id, accountId, category, minor, interval.name, every, startEpochDay, name, icon, color)
+
+internal fun CategoryChoice.toEntity() = CategoryEntity(id, name, key, kind.name, icon, color)
 
 internal fun LedgerTransaction.toEntity() =
     TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey)
@@ -121,7 +144,7 @@ data class AccountWithTransactions(
 interface FinanceDao {
     @Transaction
     @Query("SELECT * FROM finance_accounts ORDER BY name COLLATE NOCASE, id")
-    fun observeLedger(): Flow<List<AccountWithTransactions>>
+    suspend fun ledger(): List<AccountWithTransactions>
 
     @Query("SELECT * FROM finance_accounts ORDER BY id")
     suspend fun accounts(): List<AccountEntity>
@@ -176,11 +199,15 @@ interface FinanceDao {
     @Query("SELECT * FROM finance_recurring ORDER BY id")
     suspend fun recurring(): List<RecurringEntity>
 
-    @Query("SELECT * FROM finance_recurring WHERE paused = 0 AND variable = 0 AND next_epoch_day <= :throughDay ORDER BY next_epoch_day, id")
-    suspend fun due(throughDay: Long): List<RecurringEntity>
+    @Query("""
+        SELECT * FROM finance_recurring WHERE paused = 0 AND variable = 0
+          AND (next_epoch_day < :throughDay OR (next_epoch_day = :throughDay AND COALESCE(next_minute, 0) <= :throughMinute))
+        ORDER BY next_epoch_day, next_minute, id
+    """)
+    suspend fun due(throughDay: Long, throughMinute: Int): List<RecurringEntity>
 
-    @Query("UPDATE finance_recurring SET next_epoch_day = :nextDay WHERE id = :id")
-    suspend fun advance(id: String, nextDay: Long?)
+    @Query("UPDATE finance_recurring SET next_epoch_day = :nextDay, next_minute = :minute WHERE id = :id")
+    suspend fun advance(id: String, nextDay: Long?, minute: Int?)
 
     @Query("DELETE FROM finance_recurring WHERE id = :id")
     suspend fun deleteRecurring(id: String)
@@ -211,4 +238,25 @@ interface FinanceDao {
 
     @Insert
     suspend fun insertBudgets(budgets: List<CategoryBudgetEntity>)
+
+    @Query("SELECT * FROM finance_categories ORDER BY name COLLATE NOCASE, id")
+    suspend fun categories(): List<CategoryEntity>
+
+    @Upsert
+    suspend fun upsert(category: CategoryEntity)
+
+    @Insert
+    suspend fun insertCategories(categories: List<CategoryEntity>)
+
+    @Query("DELETE FROM finance_categories")
+    suspend fun clearCategories()
+
+    @Query("UPDATE finance_transactions SET category = :name WHERE category IN (:previous)")
+    suspend fun renameTransactionCategories(previous: List<String>, name: String)
+
+    @Query("UPDATE finance_recurring SET category = :name WHERE category IN (:previous)")
+    suspend fun renameRecurringCategories(previous: List<String>, name: String)
+
+    @Query("UPDATE finance_budgets SET category = :name WHERE category IN (:previous)")
+    suspend fun renameBudgetCategories(previous: List<String>, name: String)
 }

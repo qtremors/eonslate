@@ -8,6 +8,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionSort
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -45,6 +46,28 @@ class CsvTest {
         val file = StringWriter()
         FinanceCsv.write(ledger, file)
         assertEquals(entry.copy(id = "new"), FinanceCsv.read(file.toString(), ledger.accounts, bank) { "new" }.single())
+    }
+
+    @Test
+    fun financeExportWritesOnlyTheMatchesInTheSelectedOrder() {
+        val bank = Account("bank", "Bank", "INR")
+        val lunch = Transaction("lunch", bank.id, TransactionKind.EXPENSE, 500, 20_001, note = "Cafe lunch", category = "Food")
+        val dinner = lunch.copy(id = "dinner", minor = 900, epochDay = 20_002, note = "Cafe dinner")
+        val ledger = Ledger(
+            accounts = listOf(bank),
+            transactions = listOf(
+                lunch,
+                lunch.copy(id = "outside", epochDay = 19_999),
+                lunch.copy(id = "other-category", category = "Transport"),
+                lunch.copy(id = "other-note", note = "Groceries"),
+                dinner,
+            ),
+        )
+        val matching = ledger.filteredTransactions(20_000L..20_005L, "food", " cafe ", TransactionSort.LARGEST)
+        val file = StringWriter()
+        FinanceCsv.write(ledger.copy(transactions = matching), file)
+        val exported = FinanceCsv.read(file.toString(), ledger.accounts, bank) { "new" }
+        assertEquals(listOf("Cafe dinner", "Cafe lunch"), exported.map(Transaction::note))
     }
 
     @Test

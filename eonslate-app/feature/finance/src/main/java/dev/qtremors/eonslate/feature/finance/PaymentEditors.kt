@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.FilledTonalButton
@@ -15,8 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
-import java.util.Locale
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,9 +35,13 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import dev.qtremors.eonslate.core.tracker.domain.value.EpochDays
 import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
+import dev.qtremors.eonslate.core.ui.components.EonslateTimePicker
 import dev.qtremors.eonslate.core.ui.components.FormField
 import dev.qtremors.eonslate.core.ui.components.ToggleRow
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 internal fun RecurringEditor(
@@ -62,6 +66,11 @@ internal fun RecurringEditor(
     var paused by rememberSaveable { mutableStateOf(existing?.paused ?: false) }
     var variable by rememberSaveable { mutableStateOf(existing?.variable ?: false) }
     var date by rememberSaveable { mutableStateOf(existing?.nextEpochDay?.let(EpochDays::format) ?: today.toString()) }
+    var started by rememberSaveable { mutableStateOf(existing?.startEpochDay?.let(EpochDays::format) ?: today.toString()) }
+    var details by rememberSaveable { mutableStateOf(existing?.details.orEmpty()) }
+    var icon by rememberSaveable { mutableStateOf(existing?.icon) }
+    var minute by rememberSaveable { mutableStateOf(existing?.nextMinute ?: 0) }
+    var chooseTime by rememberSaveable { mutableStateOf(false) }
     val parsed = parseMoney(amount, account.currency)?.takeIf { it > 0 }
     val day = parseDay(date)
     val repeat = parseInterval(every)
@@ -73,15 +82,37 @@ internal fun RecurringEditor(
             if (it.currency != account.currency) amount = ""
             accountId = it.id
         }
+        IconChoice(icon, note, onPick = { picked, service ->
+            icon = picked
+            // Picking a service fills in what it already knows.
+            if (service != null && note.isBlank()) note = service.name
+            if (service != null && category.isBlank()) category = service.category
+        }, busy = busy)
         AmountField(amount, { amount = it }, account.currency, busy)
         FormField(note, { note = it }, stringResource(R.string.finance_payment_name), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
         CategoryPicker(category, { category = it }, kind, busy)
-        PeriodFields(interval, { interval = it }, every, { every = it }, busy)
+        PeriodFields(interval, { interval = it }, every, { every = it }, busy, allowHourly = true)
         DateField(
             date, { date = it },
             stringResource(if (existing == null) R.string.finance_first_due else R.string.finance_next_due),
             busy,
         )
+        if (interval == PaymentInterval.HOURLY) {
+            val time = LocalTime.of(minute / 60, minute % 60)
+            val label = stringResource(R.string.finance_billing_time)
+            FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { chooseTime = true }) {
+                Icon(Icons.Rounded.Schedule, contentDescription = label)
+                Spacer(Modifier.width(8.dp))
+                Text(time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)))
+            }
+            if (chooseTime) EonslateTimePicker(label, time, onConfirm = {
+                minute = it.hour * 60 + it.minute
+                chooseTime = false
+            }, onDismiss = { chooseTime = false })
+        }
+        // A new one starts with its first payment; an existing one can say when it really began.
+        if (existing != null) DateField(started, { started = it }, stringResource(R.string.finance_started), busy)
+        FormField(details, { details = it }, stringResource(R.string.finance_notes), singleLine = false, minLines = 2, maxLength = RecurringPayment.DETAILS_LIMIT, enabled = !busy)
         ToggleRow(stringResource(R.string.finance_variable), variable, { variable = it }, enabled = !busy)
         if (existing != null) ToggleRow(stringResource(R.string.finance_paused), paused, { paused = it }, enabled = !busy)
         if (onRecord != null) {
@@ -94,7 +125,16 @@ internal fun RecurringEditor(
             onSave = {
                 if (parsed != null && day != null && repeat != null) {
                     val anchor = existing?.takeIf { it.nextEpochDay == day }?.anchorDay ?: LocalDate.ofEpochDay(day).dayOfMonth
-                    onSave(RecurringPayment("", account.id, parsed, note.trim(), interval, anchor, day, kind, repeat, paused, variable, category.trim()))
+                    val untouched = existing?.startEpochDay == null && started == today.toString()
+                    val start = if (existing == null) day else if (untouched) null else parseDay(started) ?: existing.startEpochDay
+                    onSave(
+                        RecurringPayment(
+                            "", account.id, parsed, note.trim(), interval, anchor, day, kind, repeat, paused, variable, category.trim(),
+                            startEpochDay = start, details = details.trim(), icon = icon,
+                            color = existing?.color?.takeIf { existing.icon == icon },
+                            nextMinute = minute.takeIf { interval == PaymentInterval.HOURLY },
+                        )
+                    )
                 }
             },
             delete = onDelete?.let {
@@ -116,6 +156,9 @@ internal fun CategoryBudgetEditor(
     onSave: (CategoryBudget) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
+    var name by rememberSaveable { mutableStateOf(existing?.title.orEmpty()) }
+    var icon by rememberSaveable { mutableStateOf(existing?.icon) }
+    var color by rememberSaveable { mutableStateOf(existing?.color) }
     var accountId by rememberSaveable { mutableStateOf(existing?.accountId ?: accounts.first().id) }
     val account = accounts.firstOrNull { it.id == accountId } ?: accounts.first()
     var amount by rememberSaveable { mutableStateOf(existing?.let { moneyInput(it.minor, account.currency) }.orEmpty()) }
@@ -128,6 +171,7 @@ internal fun CategoryBudgetEditor(
     val repeat = parseInterval(every)
     val title = stringResource(if (existing == null) R.string.finance_new_budget else R.string.finance_edit_budget)
     EditorSheet(title, busy, failed, onDismiss) {
+        FormField(name, { name = it }, stringResource(R.string.finance_budget_name), maxLength = CategoryBudget.NAME_LIMIT, enabled = !busy)
         AccountChoice(stringResource(R.string.finance_account), account, accounts, !busy) {
             if (it.currency != account.currency) amount = ""
             accountId = it.id
@@ -136,11 +180,12 @@ internal fun CategoryBudgetEditor(
         AmountField(amount, { amount = it }, account.currency, busy)
         PeriodFields(interval, { interval = it }, every, { every = it }, busy)
         DateField(date, { date = it }, stringResource(R.string.finance_budget_start), busy)
+        FinanceStyleField(icon, color, name, category, "Wallet", busy, { icon = it }, { color = it })
         SaveRow(
-            canSave = !busy && parsed != null && day != null && repeat != null && category.isNotBlank(),
+            canSave = !busy && parsed != null && day != null && repeat != null && category.isNotBlank() && name.isNotBlank(),
             onSave = {
                 if (parsed != null && day != null && repeat != null) {
-                    onSave(CategoryBudget("", account.id, category.trim(), parsed, interval, repeat, day))
+                    onSave(CategoryBudget("", account.id, category.trim(), parsed, interval, repeat, day, name.trim(), icon, color))
                 }
             },
             delete = onDelete?.let {
@@ -195,7 +240,7 @@ internal fun DateField(value: String, onChange: (String) -> Unit, label: String,
         FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Rounded.CalendarToday, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(day?.let { ValueFormat.date(it, Locale.getDefault()) } ?: value)
+            Text(day?.let { displayDate(it) } ?: value)
         }
     }
     if (open) {
@@ -215,19 +260,24 @@ internal fun DateField(value: String, onChange: (String) -> Unit, label: String,
 private const val DAY_MILLIS = 86_400_000L
 
 @Composable
-private fun PeriodFields(interval: PaymentInterval, onInterval: (PaymentInterval) -> Unit, count: String, onCount: (String) -> Unit, busy: Boolean) {
-    ConnectedChoices(PaymentInterval.entries, interval, { it.label() }, { if (!busy) onInterval(it) })
+private fun PeriodFields(
+    interval: PaymentInterval, onInterval: (PaymentInterval) -> Unit, count: String,
+    onCount: (String) -> Unit, busy: Boolean, allowHourly: Boolean = false,
+) {
+    val intervals = if (allowHourly) PaymentInterval.entries else PaymentInterval.entries.filterNot { it == PaymentInterval.HOURLY }
+    ConnectedChoices(intervals, interval, { it.label() }, { if (!busy) onInterval(it) })
     FormField(
         count, onCount, stringResource(R.string.finance_interval_count), keyboardType = KeyboardType.Number,
         suffix = stringResource(
             when (interval) {
+                PaymentInterval.HOURLY -> R.string.finance_hours
                 PaymentInterval.DAILY -> R.string.finance_days
                 PaymentInterval.WEEKLY -> R.string.finance_weeks
                 PaymentInterval.MONTHLY -> R.string.finance_months
                 PaymentInterval.YEARLY -> R.string.finance_years
             }
         ),
-        maxLength = 3, enabled = !busy,
+        maxLength = RecurringPayment.MAX_INTERVAL.toString().length, enabled = !busy,
     )
 }
 

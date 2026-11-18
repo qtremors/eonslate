@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.Savings
@@ -37,6 +40,7 @@ import dev.qtremors.eonslate.feature.backup.BackupScreen
 import dev.qtremors.eonslate.feature.reminders.RemindersScreen
 import dev.qtremors.eonslate.feature.entry.LogEntryScreen
 import dev.qtremors.eonslate.feature.finance.FinanceScreen
+import dev.qtremors.eonslate.feature.finance.ManageCategoriesScreen
 import dev.qtremors.eonslate.feature.home.ArchivedScreen
 import dev.qtremors.eonslate.feature.home.HomeScreen
 import dev.qtremors.eonslate.feature.settings.AboutScreen
@@ -73,6 +77,8 @@ fun EonslateNavHost(
     val entry by navController.currentBackStackEntryAsState()
     val destination = entry?.destination
     val shell = remember { ShellHost() }
+    var openInbox by remember { mutableStateOf(false) }
+    var openNew by remember { mutableStateOf<TransactionKind?>(null) }
     val reduceMotion = LocalReduceMotion.current
     val tabs = listOf(
         TabItem(Icons.Rounded.SpaceDashboard, stringResource(R.string.tab_home)),
@@ -109,6 +115,14 @@ fun EonslateNavHost(
                 onTrackers = { navController.navigateToTab(Destination.Trackers) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
+                onReviewSms = {
+                    openInbox = true
+                    navController.navigateToTab(Destination.Transactions)
+                },
+                onAdd = { kind ->
+                    openNew = kind
+                    navController.navigateToTab(Destination.Transactions)
+                },
             )
         }
         composable<Destination.Trackers> {
@@ -122,7 +136,12 @@ fun EonslateNavHost(
             )
         }
         composable<Destination.Transactions> {
-            FinanceScreen(FinanceSection.TRANSACTIONS, sharedMessage = sharedMessage, onMessageOpened = onMessageOpened)
+            FinanceScreen(
+                FinanceSection.TRANSACTIONS, sharedMessage = sharedMessage, onMessageOpened = onMessageOpened,
+                openInbox = openInbox, onInboxOpened = { openInbox = false },
+                openNew = openNew, onNewOpened = { openNew = null },
+                onManageCategories = { navController.navigate(Destination.Categories) },
+            )
         }
         composable<Destination.Subscriptions> { FinanceScreen(FinanceSection.SUBSCRIPTIONS) }
         composable<Destination.Settings> {
@@ -130,7 +149,11 @@ fun EonslateNavHost(
                 onBack = { navController.popBackStack() },
                 onAbout = { navController.navigate(Destination.About) },
                 onBackup = { navController.navigate(Destination.Backup) },
+                onCategories = { navController.navigate(Destination.Categories) },
             )
+        }
+        composable<Destination.Categories> {
+            ManageCategoriesScreen(onBack = { navController.popBackStack() })
         }
         composable<Destination.Backup> {
             BackupScreen(versionName = BuildConfig.VERSION_NAME, onBack = { navController.popBackStack() })

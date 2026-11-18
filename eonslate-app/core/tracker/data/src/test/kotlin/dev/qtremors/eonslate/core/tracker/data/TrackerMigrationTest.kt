@@ -41,6 +41,29 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version7BudgetsKeepTheirCategoryAndStartWithDefaultStyling() = runTest {
+        ExportedSchema.create(context, name, 7).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 100)")
+            it.execSQL(
+                """INSERT INTO finance_budgets (id, account_id, category, minor, interval, every, start_epoch_day)
+                   VALUES ('food', 'cash', 'Food', 8500, 'MONTHLY', 1, 20000)"""
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().build()
+        try {
+            val ledger = RoomFinanceRepository(db).observeLedger().first()
+            val budget = ledger.budgets.single()
+            assertEquals("Food", budget.title)
+            assertEquals(8500L, budget.minor)
+            assertEquals(null, budget.icon)
+            assertEquals(null, budget.color)
+            assertTrue(ledger.categories.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version5SchedulesKeepTheirExpenseDefaults() = runTest {
         ExportedSchema.create(context, name, 5).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 100)")

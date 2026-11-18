@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.settings
 
+import dev.qtremors.eonslate.core.settings.SmsSettings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,6 +38,13 @@ class SettingsViewModel @Inject constructor(
     fun setHaptics(on: Boolean) = update { it.copy(haptics = on) }
     fun setReduceMotion(on: Boolean) = update { it.copy(reduceMotion = on) }
     fun setBlockScreenshots(on: Boolean) = update { it.copy(blockScreenshots = on) }
+
+    val sms: StateFlow<SmsSettings?> = settings.sms
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun updateSms(change: (SmsSettings) -> SmsSettings) {
+        viewModelScope.launch { settings.updateSms(change) }
+    }
 
     /** Null until read, like [appearance]. */
     val tracking: StateFlow<Tracking?> = settings.tracking

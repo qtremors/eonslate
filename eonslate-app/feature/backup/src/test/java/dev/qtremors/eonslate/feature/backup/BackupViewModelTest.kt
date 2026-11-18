@@ -143,4 +143,14 @@ class BackupViewModelTest {
         assertEquals(DataCounts(2, 5), state.counts)
         assertFalse(state.message == BackupMessage.RESTORED)
     }
+
+    @Test
+    fun clearingDeletesEverythingAndCanBeUndone() = runTest {
+        vm.clearAll("2.1.7")
+        assertEquals(BackupMessage.CLEARED, state.message)
+        assertEquals(DataCounts(0, 0), state.counts)
+        assertEquals(42L, state.restorePoint)
+        vm.undoRestore()
+        assertEquals(DataCounts(2, 5), state.counts)
+    }
 }

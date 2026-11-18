@@ -1,5 +1,13 @@
 package dev.qtremors.eonslate.feature.settings
 
+import dev.qtremors.eonslate.core.settings.SmsSettings
+import androidx.compose.material.icons.rounded.DoneAll
+import androidx.compose.material.icons.rounded.Sms
+import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.content.pm.PackageManager
+import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Animation
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Payments
+import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
@@ -95,9 +104,11 @@ fun SettingsScreen(
     onBackup: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
+    onCategories: (() -> Unit)? = null,
 ) {
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
+    val sms by viewModel.sms.collectAsStateWithLifecycle()
     val actions = remember(viewModel) {
         object : SettingsActions {
             override fun setTheme(theme: ThemeChoice) = viewModel.setTheme(theme)
@@ -111,7 +122,11 @@ fun SettingsScreen(
             override fun setCurrency(code: String?) = viewModel.setCurrency(code)
         }
     }
-    SettingsContent(appearance, actions, onBack, onAbout, modifier, tracking = tracking, onBackup = onBackup)
+    SettingsContent(
+        appearance, actions, onBack, onAbout, modifier,
+        tracking = tracking, onBackup = onBackup, sms = sms, onSms = viewModel::updateSms,
+        onCategories = onCategories,
+    )
 }
 
 /**
@@ -129,7 +144,14 @@ fun SettingsContent(
     wallpaperAvailable: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     tracking: Tracking? = Tracking(),
     onBackup: () -> Unit = {},
+    sms: SmsSettings? = null,
+    onSms: ((SmsSettings) -> SmsSettings) -> Unit = {},
+    onCategories: (() -> Unit)? = null,
 ) {
+    val context = LocalContext.current
+    val askSms = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onSms { it.copy(detect = true) }
+    }
     var editCurrency by rememberSaveable { mutableStateOf(false) }
     if (editCurrency && tracking != null) {
         CurrencySheet(
@@ -242,7 +264,36 @@ fun SettingsContent(
                             badgeKey = "currency",
                             onClick = { editCurrency = true },
                         )
+                        if (onCategories != null) NavigationRow(
+                            title = stringResource(R.string.settings_categories),
+                            icon = Icons.Rounded.Label,
+                            badgeKey = "categories",
+                            onClick = onCategories,
+                        )
                     }
+                }
+            }
+            if (sms != null) item(key = "sms") {
+                SectionHeader(stringResource(R.string.settings_section_sms))
+                ConnectedGroup {
+                    ToggleRow(
+                        title = stringResource(R.string.settings_sms_detect),
+                        checked = sms.detect,
+                        onCheckedChange = { on ->
+                            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+                            if (!on) onSms { it.copy(detect = false) }
+                            else if (granted) onSms { it.copy(detect = true) }
+                            else askSms.launch(Manifest.permission.READ_SMS)
+                        },
+                        icon = Icons.Rounded.Sms,
+                    )
+                    ToggleRow(
+                        title = stringResource(R.string.settings_sms_auto),
+                        checked = sms.autoApprove,
+                        onCheckedChange = { on -> onSms { it.copy(autoApprove = on) } },
+                        icon = Icons.Rounded.DoneAll,
+                        enabled = sms.detect,
+                    )
                 }
             }
             item(key = "data") {

@@ -20,6 +20,17 @@ data class PaymentMessage(
     val key: String? = null,
 )
 
+/**
+ * The transaction for a found payment: on the account whose name ends with the card or account
+ * digits, else the first account in its currency, or null when none uses it.
+ */
+fun PaymentMessage.asTransaction(id: String, accounts: List<Account>, today: Long): Transaction? {
+    val matching = accounts.filter { it.currency == currency }
+    val account = accountEnding?.let { end -> matching.firstOrNull { it.name.trim().endsWith(end) } } ?: matching.firstOrNull() ?: return null
+    val note = listOfNotNull(merchant, reference?.let { "Ref $it" }).joinToString(" · ").take(Transaction.NOTE_LIMIT)
+    return Transaction(id, account.id, kind, minor, epochDay ?: today, note, null, category.orEmpty().take(Transaction.CATEGORY_LIMIT), key)
+}
+
 /** Turns one completed bank alert into a reviewable draft. */
 object PaymentMessages {
     const val MAX_LENGTH = 2_000

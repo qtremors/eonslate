@@ -30,4 +30,11 @@ class InMemorySettingsRepository(
 
     override val tracking: Flow<Tracking> = trackingState
     override suspend fun updateTracking(change: (Tracking) -> Tracking) = trackingState.update(change)
+
+    private val smsState = kotlinx.coroutines.flow.MutableStateFlow(SmsSettings())
+    override val sms: kotlinx.coroutines.flow.Flow<SmsSettings> = smsState
+
+    override suspend fun updateSms(change: (SmsSettings) -> SmsSettings) {
+        smsState.value = change(smsState.value)
+    }
 }

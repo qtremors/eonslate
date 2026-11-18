@@ -37,6 +37,7 @@ object OpenSource {
         OpenSourcePart("Kotlin", "JetBrains", LicenseKind.APACHE_2_0, "https://kotlinlang.org"),
         OpenSourcePart("Kotlin Coroutines", "JetBrains", LicenseKind.APACHE_2_0, "https://github.com/Kotlin/kotlinx.coroutines"),
         OpenSourcePart("Kotlin Serialization", "JetBrains", LicenseKind.APACHE_2_0, "https://github.com/Kotlin/kotlinx.serialization"),
+        OpenSourcePart("AndroidSVG", "Paul LeBeau, Cave Rock Software Ltd.", LicenseKind.APACHE_2_0, "https://bigbadaboom.github.io/androidsvg/"),
         OpenSourcePart("MaterialKolor", "Jordon de Hoog", LicenseKind.MIT, "https://github.com/jordond/MaterialKolor"),
         // Shipped inside MaterialKolor, generated from Google's source and kept under its license.
         OpenSourcePart("Material Color Utilities", "Google", LicenseKind.APACHE_2_0, "https://github.com/material-foundation/material-color-utilities"),

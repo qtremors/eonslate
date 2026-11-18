@@ -7,6 +7,7 @@ import java.time.YearMonth
 /** What a recurring payment costs in an average month, in minor units. */
 fun RecurringPayment.monthlyMinor(): Double {
     val perMonth = when (interval) {
+        PaymentInterval.HOURLY -> 30.0 * 24
         PaymentInterval.DAILY -> 365.25 / 12
         PaymentInterval.WEEKLY -> 365.25 / 12 / 7
         PaymentInterval.MONTHLY -> 1.0

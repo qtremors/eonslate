@@ -5,6 +5,9 @@ import dev.qtremors.eonslate.core.tracker.data.repository.RoomBackupRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.Categories
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
+import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
@@ -33,6 +36,57 @@ class RoomFinanceRepositoryTest {
     private val cash = Account("cash", "Cash", "INR", openingMinor = 500)
     private val yen = Account("yen", "Yen", "JPY")
     private val transfer = Transaction("transfer", bank.id, TransactionKind.TRANSFER, 2_525, 20_000, destinationId = cash.id)
+
+    @Test
+    fun renamingACategoryUpdatesEveryReferenceAndItsAppearanceTravelsInABackup() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertTrue(finance.saveAccount(bank))
+            assertTrue(finance.saveTransaction(Transaction("lunch", bank.id, TransactionKind.EXPENSE, 500, 20_000, category = "CAFÉ")))
+            assertTrue(finance.addRecurring(RecurringPayment("meal", bank.id, 500, "Meal", PaymentInterval.WEEKLY, 1, 20_010, category = "Café"), 20_000))
+            val budget = CategoryBudget("budget", bank.id, "café", 2500, PaymentInterval.WEEKLY, 1, 20_000, "Weekend", "Wallet", 0x123456)
+            assertTrue(finance.saveBudget(budget))
+            val original = Categories.all(finance.observeLedger().first()).single { it.key == "café" }
+            val renamed = original.copy(name = "Meals", icon = "Restaurant", color = 0xFF1122, kind = CategoryKind.BOTH)
+            assertTrue(finance.saveCategory(renamed, original))
+            assertFalse(finance.saveCategory(CategoryChoice("MEALS", CategoryKind.BOTH, "duplicate"), null))
+
+            val ledger = finance.observeLedger().first()
+            assertEquals("Meals", ledger.transactions.single().category)
+            assertEquals("Meals", ledger.recurring.single().category)
+            assertEquals(budget.copy(category = "Meals"), ledger.budgets.single())
+            assertTrue("Meals" in Categories.suggestions(ledger, TransactionKind.INCOME))
+            val backups = BackupManager(RoomBackupRepository(db, FakeClock()), folder.root, Dispatchers.Unconfined)
+            val snapshot = backups.open(backups.create(null, "2.1.8"), null)
+            assertEquals(renamed, snapshot.categories.single { it.id == renamed.id })
+            assertEquals(ledger.budgets, snapshot.budgets)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun hourlyCommitmentsKeepTheirTimeAndPostAtMostOncePerDay() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertTrue(finance.saveAccount(bank))
+            val due = RecurringPayment("coffee", bank.id, 500, "Coffee", PaymentInterval.HOURLY, 1, 20_000,
+                every = 2, nextMinute = 510)
+            assertTrue(finance.addRecurring(due, 20_000, 509))
+            assertTrue(finance.observeLedger().first().transactions.isEmpty())
+            finance.postDue(20_000, 510)
+            finance.postDue(20_000, 640)
+            val firstDay = finance.observeLedger().first()
+            assertEquals(1, firstDay.transactions.size)
+            assertEquals(750, firstDay.recurring.single().nextMinute)
+            finance.postDue(20_001, 35)
+            assertEquals(2, finance.observeLedger().first().transactions.size)
+        } finally {
+            db.close()
+        }
+    }
 
     @Test
     fun aTransferAndItsEditsAffectBothBalances() = runTest {

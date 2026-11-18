@@ -1,10 +1,26 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.2
+> **Version:** 2.1.3
 > **Last Updated:** 2026-11-18
 
 ---
+
+## [2.1.3] - 2026-11-18
+
+- **Payment SMS**: Found automatically when the app opens (Settings, off by default), with an option to add them without review.
+- **Review**: A Home banner shows how many were found; add all, review one by one, or discard. Discarded ones never come back.
+- **Subscription icons**: Pick from 113 services or use your own PNG, JPEG, WebP or SVG; images are kept in backups.
+- **Subscription details**: Start date and notes.
+- **Quick add**: + Income and − Expense on Home open the editor ready to go.
+- **Delete all data**: From Backup and restore, after a confirmation; undo brings it all back.
+- **Find things**: Filter transactions by category, sort by newest, oldest or largest, and search subscriptions.
+- **Select transactions**: Long-press to select, tap to add more, then delete them together.
+- **Charts**: Spending by category on Transactions, following the filters; monthly cost per subscription; budget limits side by side.
+- Export matching transactions in the selected sort order.
+- Name budgets and choose their icons and colors.
+- Add and rename categories, set their icons and colors, and choose income, expense, or both.
+- Schedule hourly subscriptions with a billing time.
 
 ## [2.1.2] - 2026-11-18
 

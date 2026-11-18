@@ -80,4 +80,14 @@ class ValueFormatTest {
     fun datesFollowTheLocale() {
         assertEquals("Nov 10, 2026", fmt(FieldConfig.Date, FieldValue.Date(java.time.LocalDate.of(2026, 11, 10).toEpochDay())))
     }
+
+    @Test
+    fun numberAndDateChoicesAreIndependent() {
+        val locale = Locale.forLanguageTag("en-IN")
+        assertEquals("12,34,567.89", ValueFormat.decimal(java.math.BigDecimal("1234567.89"), 2, locale))
+        val day = java.time.LocalDate.of(2026, 11, 9).toEpochDay()
+        assertEquals("09/11/2026", ValueFormat.date(day, us, "dd/MM/uuuu"))
+        assertEquals("11/09/2026", ValueFormat.date(day, us, "MM/dd/uuuu"))
+        assertEquals("2026-11-09", ValueFormat.date(day, us, "uuuu-MM-dd"))
+    }
 }
