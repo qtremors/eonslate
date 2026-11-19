@@ -62,6 +62,40 @@ class BackupTest {
         BackupManager(RoomBackupRepository(database, clock), folder.root, Dispatchers.Unconfined, iterations = 10_000)
 
     @Test
+    fun aLegacyFinanceRestoreKeepsTrackersAndCanBeUndone() = runTest {
+        fill(db)
+        val repository = RoomBackupRepository(db, clock)
+        val before = repository.snapshot("2.1.8")
+        val backups = manager(db)
+        val json = """
+            {"version":"2.0.0","exportDate":"2026-11-10T08:00:00Z",
+             "settings":{"currency":"INR","customCategories":[{"id":"food","name":"Café","type":"expense","icon":"Restaurant","color":"#A0583A"}]},
+             "transactions":[{"id":"tx","description":"Lunch","amount":-14.25,"category":"Café","date":"2026-11-10","type":"expense","notes":"Takeaway"}],
+             "budgets":[{"id":"budget","name":"Weekend","limit":250,"category":"Café","periodStartDate":"2026-11-01","icon":"Wallet","color":"#123456"}],
+             "subscriptions":[{"id":"rent","name":"Rent","amount":1000,"nextBilling":"2026-12-01T08:30:00","cycle":{"count":12,"unit":"hour"},"active":false,"isVariable":true,"icon":"Home","color":"#FFA500"}]}
+        """.trimIndent().toByteArray()
+        assertTrue(!backups.inspect(json).encrypted)
+        val incoming = backups.open(json, null)
+        assertEquals("2.0.0", incoming.appVersion)
+        backups.restore(incoming, "2.1.8")
+        val after = repository.snapshot("2.1.8")
+        assertEquals(before.trackers, after.trackers)
+        assertEquals(before.entries, after.entries)
+        assertEquals("INR", after.accounts.single().currency)
+        assertEquals(1425L, after.transactions.single().minor)
+        assertEquals("Lunch", after.transactions.single().note)
+        assertEquals("Takeaway", after.transactions.single().details)
+        assertEquals("Weekend", after.budgets.single().name)
+        assertEquals(0x123456, after.budgets.single().color)
+        assertEquals("Café", after.categories.single().name)
+        assertEquals("symbol:Home", after.recurring.single().icon)
+        assertEquals(510, after.recurring.single().nextMinute)
+        assertTrue(after.recurring.single().paused && after.recurring.single().variable)
+        backups.undoRestore()
+        assertEquals(before, repository.snapshot("2.1.8"))
+    }
+
+    @Test
     fun tagsSurviveSavingAndRestoringABackup() = runTest {
         val tags = listOf("Health", "Après work")
         val trackers = RoomTrackerRepository(db, clock)

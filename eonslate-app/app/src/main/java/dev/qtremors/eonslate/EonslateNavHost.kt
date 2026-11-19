@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -47,6 +48,7 @@ import dev.qtremors.eonslate.feature.settings.AboutScreen
 import dev.qtremors.eonslate.feature.settings.LicensesScreen
 import dev.qtremors.eonslate.feature.settings.PrivacyScreen
 import dev.qtremors.eonslate.feature.settings.SettingsScreen
+import dev.qtremors.eonslate.feature.settings.DisplaySettingsScreen
 import dev.qtremors.eonslate.feature.trackerdetail.TrackerDetailScreen
 import dev.qtremors.eonslate.feature.trackereditor.TemplateGalleryScreen
 import dev.qtremors.eonslate.feature.trackereditor.TrackerEditorScreen
@@ -63,8 +65,12 @@ fun EonslateNavHost(
     onLogOpened: () -> Unit = {},
     sharedMessage: String? = null,
     onMessageOpened: () -> Unit = {},
+    displayName: String = "",
 ) {
     val navController = rememberNavController()
+    val latestMessage by rememberUpdatedState(sharedMessage)
+    val messageOpened by rememberUpdatedState(onMessageOpened)
+    val homeName by rememberUpdatedState(displayName)
     LaunchedEffect(openLog) {
         openLog ?: return@LaunchedEffect
         navController.navigate(Destination.LogEntry(openLog))
@@ -123,6 +129,7 @@ fun EonslateNavHost(
                     openNew = kind
                     navController.navigateToTab(Destination.Transactions)
                 },
+                displayName = homeName,
             )
         }
         composable<Destination.Trackers> {
@@ -137,20 +144,27 @@ fun EonslateNavHost(
         }
         composable<Destination.Transactions> {
             FinanceScreen(
-                FinanceSection.TRANSACTIONS, sharedMessage = sharedMessage, onMessageOpened = onMessageOpened,
+                FinanceSection.TRANSACTIONS, sharedMessage = latestMessage, onMessageOpened = messageOpened,
                 openInbox = openInbox, onInboxOpened = { openInbox = false },
                 openNew = openNew, onNewOpened = { openNew = null },
                 onManageCategories = { navController.navigate(Destination.Categories) },
+                onSettings = { navController.navigate(Destination.Settings) },
             )
         }
-        composable<Destination.Subscriptions> { FinanceScreen(FinanceSection.SUBSCRIPTIONS) }
+        composable<Destination.Subscriptions> {
+            FinanceScreen(FinanceSection.SUBSCRIPTIONS, onSettings = { navController.navigate(Destination.Settings) })
+        }
         composable<Destination.Settings> {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onAbout = { navController.navigate(Destination.About) },
                 onBackup = { navController.navigate(Destination.Backup) },
                 onCategories = { navController.navigate(Destination.Categories) },
+                onDisplay = { navController.navigate(Destination.DisplaySettings) },
             )
+        }
+        composable<Destination.DisplaySettings> {
+            DisplaySettingsScreen(onBack = { navController.popBackStack() })
         }
         composable<Destination.Categories> {
             ManageCategoriesScreen(onBack = { navController.popBackStack() })

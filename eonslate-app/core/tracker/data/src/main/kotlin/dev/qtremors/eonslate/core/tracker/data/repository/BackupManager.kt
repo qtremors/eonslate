@@ -10,6 +10,7 @@ import dev.qtremors.eonslate.core.tracker.domain.backup.BackupRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupSnapshot
 import dev.qtremors.eonslate.core.tracker.domain.backup.Backups
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
+import dev.qtremors.eonslate.core.tracker.domain.backup.LegacyFinanceBackup
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,10 +50,13 @@ class BackupManager(
         withContext(work) { BackupArchive.encode(snapshot, password, iterations) }
     }
 
-    override fun inspect(bytes: ByteArray): ArchiveHeader = BackupArchive.inspect(bytes)
+    override fun inspect(bytes: ByteArray): ArchiveHeader =
+        if (LegacyFinanceBackup.looksLikeJson(bytes)) ArchiveHeader(formatVersion = 0, encrypted = false)
+        else BackupArchive.inspect(bytes)
 
     override suspend fun open(bytes: ByteArray, password: CharArray?): BackupSnapshot = withContext(work) {
-        BackupArchive.decode(bytes, password).also { BackupCheck.requireSound(it, repository.schema) }
+        if (LegacyFinanceBackup.looksLikeJson(bytes)) LegacyFinanceBackup.decode(bytes, repository.schema)
+        else BackupArchive.decode(bytes, password).also { BackupCheck.requireSound(it, repository.schema) }
     }
 
     override suspend fun counts(): DataCounts = repository.counts()
@@ -60,13 +64,15 @@ class BackupManager(
     override suspend fun restore(snapshot: BackupSnapshot, appVersion: String) = lock.withLock {
         BackupCheck.requireSound(snapshot, repository.schema)
         val current = withIcons(repository.snapshot(appVersion))
+        val replacement = snapshot.legacy?.applyTo(snapshot, current) ?: snapshot
+        BackupCheck.requireSound(replacement, repository.schema)
         withContext(work) {
-            writeIcons(snapshot)
+            writeIcons(replacement)
             directory.mkdirs()
             pending.writeBytes(BackupArchive.encode(current, password = null))
         }
         try {
-            repository.replaceAll(snapshot)
+            repository.replaceAll(replacement)
         } catch (e: Exception) {
             withContext(work) { pending.delete() }
             throw e
@@ -110,14 +116,13 @@ class BackupManager(
         snapshot.icons.forEach { (hash, data) ->
             if (!HASH.matches(hash)) return@forEach
             val bytes = runCatching { Base64.getDecoder().decode(data) }.getOrNull() ?: return@forEach
-            if (bytes.size <= MAX_ICON_BYTES) File(dir, "$hash.png").writeBytes(bytes)
+            if (bytes.size <= LegacyFinanceBackup.MAX_ICON_BYTES) File(dir, "$hash.png").writeBytes(bytes)
         }
     }
 
     companion object {
         private const val FILE_PREFIX = "file:"
         private val HASH = Regex("[0-9a-f]{64}")
-        private const val MAX_ICON_BYTES = 512 * 1024
         const val RESTORE_POINT = "before-restore.${BackupArchive.EXTENSION}"
     }
 }

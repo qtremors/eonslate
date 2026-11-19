@@ -44,10 +44,15 @@ data class Transaction(
     @SerialName("destination_id") val destinationId: String? = null,
     val category: String = "",
     @SerialName("sms_key") val smsKey: String? = null,
+    /** Longer notes, apart from [note], which names the transaction. */
+    val details: String = "",
+    /** When it was first saved, in epoch milliseconds; orders transactions on the same day. */
+    @SerialName("created_at") val createdAt: Long = 0,
 ) {
     fun isValid(accounts: Map<String, Account>): Boolean {
         val account = accounts[accountId] ?: return false
-        if (id.isBlank() || minor <= 0 || note.length > NOTE_LIMIT || epochDay !in DATES ||
+        if (id.isBlank() || minor <= 0 || note.length > NOTE_LIMIT || details.length > DETAILS_LIMIT ||
+            createdAt < 0 || epochDay !in DATES ||
             category.length > CATEGORY_LIMIT || (smsKey != null && !SMS_KEY.matches(smsKey))
         ) return false
         return if (kind == TransactionKind.TRANSFER) {
@@ -57,6 +62,7 @@ data class Transaction(
 
     companion object {
         const val NOTE_LIMIT = 1024
+        const val DETAILS_LIMIT = 2000
         const val CATEGORY_LIMIT = 100
         private val SMS_KEY = Regex("[0-9a-f]{64}")
         val DATES = LocalDate.of(1, 1, 1).toEpochDay()..LocalDate.of(9999, 12, 31).toEpochDay()
@@ -70,22 +76,29 @@ data class Ledger(
     val budgets: List<CategoryBudget> = emptyList(),
     val categories: List<CategoryChoice> = emptyList(),
 ) {
-    fun filteredTransactions(days: LongRange, category: String?, query: String, sort: TransactionSort): List<Transaction> {
-        val term = query.trim()
+    fun filteredTransactions(filter: TransactionFilter): List<Transaction> {
+        val term = filter.query.trim()
         val names = accounts.associate { it.id to it.name }
-        val order = when (sort) {
-            TransactionSort.NEWEST -> compareByDescending<Transaction> { it.epochDay }
-            TransactionSort.OLDEST -> compareBy<Transaction> { it.epochDay }
-            TransactionSort.LARGEST -> compareByDescending<Transaction> { it.minor }
+        val newest = compareByDescending<Transaction> { it.epochDay }.thenByDescending { it.createdAt }.thenBy { it.id }
+        val order = when (filter.sort) {
+            TransactionSort.NEWEST -> newest
+            TransactionSort.OLDEST -> compareBy<Transaction> { it.epochDay }.thenBy { it.createdAt }.thenBy { it.id }
+            TransactionSort.LARGEST -> compareByDescending<Transaction> { it.minor }.then(newest)
+            TransactionSort.SMALLEST -> compareBy<Transaction> { it.minor }.then(newest)
+            TransactionSort.CATEGORY -> compareBy<Transaction> { it.category.isBlank() }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.category.trim() }.then(newest)
         }
         return transactions.asSequence().filter { transaction ->
-            transaction.epochDay in days &&
-                (category == null || transaction.category.trim().equals(category, ignoreCase = true)) &&
+            transaction.epochDay in filter.days &&
+                (filter.kind == null || transaction.kind == filter.kind) &&
+                (filter.category == null || transaction.category.trim().equals(filter.category, ignoreCase = true)) &&
                 (term.isEmpty() || transaction.note.contains(term, ignoreCase = true) ||
+                    transaction.details.contains(term, ignoreCase = true) ||
                     transaction.category.contains(term, ignoreCase = true) ||
                     names[transaction.accountId]?.contains(term, ignoreCase = true) == true)
         }.sortedWith(order).toList()
     }
+
     /** Balances may exceed the range of a single transaction. Each account retains its own currency. */
     fun balances(): Map<String, BigInteger> {
         val balances = accounts.associate { it.id to BigInteger.valueOf(it.openingMinor) }.toMutableMap()
@@ -121,7 +134,16 @@ data class Ledger(
     }
 }
 
-enum class TransactionSort { NEWEST, OLDEST, LARGEST }
+enum class TransactionSort { NEWEST, OLDEST, LARGEST, SMALLEST, CATEGORY }
+
+/** What the transaction list shows: a day range, optionally one kind and one category, and a search. */
+data class TransactionFilter(
+    val days: LongRange = Transaction.DATES,
+    val kind: TransactionKind? = null,
+    val category: String? = null,
+    val query: String = "",
+    val sort: TransactionSort = TransactionSort.NEWEST,
+)
 
 interface FinanceRepository {
     fun observeLedger(): Flow<Ledger>
@@ -130,6 +152,8 @@ interface FinanceRepository {
     suspend fun saveTransaction(transaction: Transaction): Boolean
     suspend fun appendTransactions(transactions: List<Transaction>): Boolean
     suspend fun deleteTransaction(id: String)
+    /** Deletes all of [ids] in one database transaction, or none of them. */
+    suspend fun deleteTransactions(ids: Collection<String>)
     suspend fun addRecurring(payment: RecurringPayment, throughDay: Long, throughMinute: Int = 1439): Boolean
     suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long, throughMinute: Int = 1439): Boolean
     suspend fun deleteRecurring(id: String)

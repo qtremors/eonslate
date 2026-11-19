@@ -1,6 +1,20 @@
 package dev.qtremors.eonslate.feature.finance
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.rememberCoroutineScope
+import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionFilter
+import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.FileDownload
 import dev.qtremors.eonslate.core.tracker.domain.csv.CsvFiles
@@ -134,6 +148,7 @@ fun FinanceScreen(
     openNew: TransactionKind? = null,
     onNewOpened: () -> Unit = {},
     onManageCategories: (() -> Unit)? = null,
+    onSettings: (() -> Unit)? = null,
 ) {
     var newKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -152,6 +167,9 @@ fun FinanceScreen(
     var query by rememberSaveable { mutableStateOf("") }
     val today = viewModel.today()
     var period by rememberSaveable { mutableStateOf(TransactionPeriod.ALL) }
+    var kindFilter by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
+    var customFrom by rememberSaveable { mutableStateOf<Long?>(null) }
+    var customTo by rememberSaveable { mutableStateOf<Long?>(null) }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
     var sort by rememberSaveable { mutableStateOf(TransactionSort.NEWEST) }
     val startDay = when (period) {
@@ -159,10 +177,28 @@ fun FinanceScreen(
         TransactionPeriod.TODAY -> today.toEpochDay()
         TransactionPeriod.WEEK -> today.with(TemporalAdjusters.previousOrSame(firstDay)).toEpochDay()
         TransactionPeriod.MONTH -> today.withDayOfMonth(1).toEpochDay()
+        TransactionPeriod.DAYS_90 -> today.minusDays(89).toEpochDay()
+        TransactionPeriod.CUSTOM -> customFrom ?: Transaction.DATES.first
     }
-    val lastDay = if (period == TransactionPeriod.ALL) Transaction.DATES.last else today.toEpochDay()
-    val shown = remember(ledger, startDay, lastDay, query, category, sort) {
-        ledger?.filteredTransactions(startDay..lastDay, category, query, sort).orEmpty()
+    val lastDay = when (period) {
+        TransactionPeriod.ALL -> Transaction.DATES.last
+        TransactionPeriod.CUSTOM -> customTo ?: Transaction.DATES.last
+        else -> today.toEpochDay()
+    }
+    val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort)
+    val shown = remember(ledger, filter) { ledger?.filteredTransactions(filter).orEmpty() }
+    val scope = rememberCoroutineScope()
+    val deletedText = stringResource(R.string.finance_transaction_deleted)
+    val undoText = stringResource(R.string.finance_undo)
+    // A swiped-away transaction can come back from the snackbar, with its id and save time.
+    val deleteOne: (Transaction) -> Unit = { transaction ->
+        viewModel.delete(transaction) {
+            scope.launch {
+                if (snackbar.showSnackbar(deletedText, undoText, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {
+                    viewModel.save(transaction) {}
+                }
+            }
+        }
     }
     val exportTransactions: () -> Unit = {
         ledger?.let { data ->
@@ -243,6 +279,11 @@ fun FinanceScreen(
                 onManageCategories?.let { MenuAction(stringResource(R.string.finance_manage_categories), financeIcon("Tag"), onClick = it) },
                 MenuAction(stringResource(R.string.finance_new_account), Icons.Rounded.AccountBalance) { open(Editor.ACCOUNT, null) },
             )
+            onSettings?.let {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = it) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.finance_settings))
+                }
+            }
             FinanceCsvMenu(ledger, csv, exportTransactions, more)
         },
         floatingActionButton = {
@@ -258,6 +299,7 @@ fun FinanceScreen(
                         when (action) {
                             Editor.ACCOUNT -> R.string.finance_new_account
                             Editor.RECURRING -> R.string.finance_new_recurring
+                            Editor.SUBSCRIPTION_DETAILS -> R.string.finance_subscription_history
                             Editor.TRANSACTION -> R.string.finance_new_transaction
                             Editor.SMS -> R.string.finance_import_sms
                             Editor.BUDGET -> R.string.finance_new_budget
@@ -278,12 +320,26 @@ fun FinanceScreen(
                 LoadingState(Modifier.fillMaxSize().padding(padding))
             }
             else -> LedgerList(
-                data, padding, page, today, query, shown, period, sort, category,
+                data, padding, page, today, query, shown, filter, period,
+                custom = customFrom?.let { from -> customTo?.let { to -> from..to } },
                 onPeriod = { period = it },
+                onCustom = { from, to ->
+                    customFrom = from
+                    customTo = to
+                    period = TransactionPeriod.CUSTOM
+                },
+                onKind = { picked ->
+                    kindFilter = picked
+                    // A category of the other kind would hide everything.
+                    if (picked != null && category != null &&
+                        Categories.suggestions(data, picked).none { it.equals(category, ignoreCase = true) }
+                    ) category = null
+                },
                 onSort = { sort = it },
                 onCategory = { category = it },
                 open = open,
                 onDeleteMany = viewModel::deleteTransactions,
+                onDeleteOne = deleteOne,
             )
         }
     }
@@ -323,11 +379,11 @@ fun FinanceScreen(
                     busy = busy,
                     failed = failed,
                     onDismiss = { if (!busy) finishReview() },
-                    onSave = { account, kind, amount, day, note, destination, category, smsKey ->
+                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details ->
                         viewModel.save(
                             Transaction(
                                 transaction?.id ?: viewModel.newId(), account, kind, amount, day, note,
-                                destination, category, smsKey,
+                                destination, category, smsKey, details, transaction?.createdAt ?: 0,
                             ),
                             finishReview,
                         )
@@ -347,6 +403,17 @@ fun FinanceScreen(
                     onRecord = existing?.takeIf { !it.paused && it.nextEpochDay != null }?.let {
                         { open(Editor.DUE, it.id) }
                     },
+                )
+            }
+        }
+        Editor.SUBSCRIPTION_DETAILS -> {
+            val payment = data.recurring.firstOrNull { it.id == recordId }
+            val account = data.accounts.firstOrNull { it.id == payment?.accountId }
+            if (payment != null && account != null) key(payment.id) {
+                SubscriptionDetails(
+                    payment, account, data, today,
+                    onEdit = { open(Editor.RECURRING, payment.id) },
+                    onDismiss = dismiss,
                 )
             }
         }
@@ -389,11 +456,17 @@ fun FinanceScreen(
     }
 }
 
-private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SMS, BUDGET, DUE, INBOX }
+private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SUBSCRIPTION_DETAILS, SMS, BUDGET, DUE, INBOX }
 
 private enum class FinancePage { ACTIVITY, PLANS }
 
-private enum class TransactionPeriod { ALL, TODAY, WEEK, MONTH }
+private enum class TransactionPeriod { ALL, TODAY, WEEK, MONTH, DAYS_90, CUSTOM }
+
+/** Rows shown before "Show older"; each tap shows this many more. */
+private const val PAGE = 50
+
+/** Categories shown in the breakdown before "Show all". */
+private const val BREAKDOWN = 5
 
 @Composable
 private fun LedgerList(
@@ -403,17 +476,27 @@ private fun LedgerList(
     today: LocalDate,
     query: String,
     shown: List<Transaction>,
+    filter: TransactionFilter,
     period: TransactionPeriod,
-    sort: TransactionSort,
-    category: String?,
+    custom: LongRange?,
     onPeriod: (TransactionPeriod) -> Unit,
+    onCustom: (Long, Long) -> Unit,
+    onKind: (TransactionKind?) -> Unit,
     onSort: (TransactionSort) -> Unit,
     onCategory: (String?) -> Unit,
     open: (Editor, String?) -> Unit,
     onDeleteMany: (Set<String>, () -> Unit) -> Unit = { _, _ -> },
+    onDeleteOne: (Transaction) -> Unit = {},
 ) {
+    val sort = filter.sort
+    val category = filter.category
     // Long-press starts selecting; then a tap adds or removes, and the bar deletes them together.
     var selected by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    // Only what is on screen stays selected, so a filter change never deletes hidden rows.
+    val shownIds = remember(shown) { shown.mapTo(HashSet()) { it.id } }
+    LaunchedEffect(shownIds) { if (!shownIds.containsAll(selected)) selected = selected intersect shownIds }
+    var limit by rememberSaveable(filter) { mutableStateOf(PAGE) }
+    var allCategories by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     if (confirmDelete) {
         ConfirmDialog(
@@ -453,7 +536,7 @@ private fun LedgerList(
             }
             // What each subscription costs a month, largest first.
             val costs = active.filter { it.kind == TransactionKind.EXPENSE }.sortedByDescending { it.monthlyMinor() }
-            if (costs.size > 1) item(key = "costs") {
+            if (costs.isNotEmpty()) item(key = "costs") {
                 ChartCard(stringResource(R.string.finance_monthly_cost)) {
                     RankedBars(
                         costs.take(6).map { RankedBar(it.note.ifBlank { "?" }, ValueFormat.money(Math.round(it.monthlyMinor()), main, numberLocale), it.monthlyMinor().toFloat()) },
@@ -484,9 +567,9 @@ private fun LedgerList(
                     ConnectedRow(
                         title = name,
                         supporting = whenText,
-                        leading = { SubscriptionIcon(payment.icon, name) },
+                        leading = { SubscriptionIcon(payment.icon, name, color = payment.color) },
                         trailing = { Amount(payment.kind, ValueFormat.money(payment.minor, account.currency, numberLocale)) },
-                        onClick = { open(Editor.RECURRING, payment.id) },
+                        onClick = { open(Editor.SUBSCRIPTION_DETAILS, payment.id) },
                     )
                 }
             }
@@ -553,12 +636,22 @@ private fun LedgerList(
             }
         }
         if (ledger.transactions.isNotEmpty()) {
-            item(key = "periods") { PeriodChips(period, sort, onSort, onPeriod) }
-            val used = ledger.transactions.map { it.category.trim() }.filter { it.isNotEmpty() }
-                .groupingBy { it.lowercase() }.eachCount().entries.sortedByDescending { it.value }
-                .mapNotNull { (key, _) -> ledger.transactions.firstOrNull { it.category.trim().lowercase() == key }?.category?.trim() }
-            if (used.size > 1) item(key = "categories") {
-                CategoryChips(used, category) { picked -> onCategory(if (picked.equals(category, ignoreCase = true)) null else picked) }
+            item(key = "periods") { PeriodChips(period, custom, filter.kind, sort, onSort, onPeriod, onCustom, onKind) }
+            // Every category that suits the kind shown: used ones first, then the rest set up.
+            val choices = (filter.kind?.let(::listOf) ?: listOf(TransactionKind.EXPENSE, TransactionKind.INCOME))
+                .flatMap { Categories.suggestions(ledger, it) }
+                .let { names -> if (category != null && names.none { it.equals(category, ignoreCase = true) }) listOf(category) + names else names }
+                .distinctBy { it.lowercase() }
+            if (choices.isNotEmpty()) item(key = "categories") {
+                CategoryChips(choices, category) { picked -> onCategory(if (picked.equals(category, ignoreCase = true)) null else picked) }
+            }
+            item(key = "count") {
+                Text(
+                    pluralStringResource(R.plurals.finance_matching, shown.size, shown.size),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                )
             }
             val summaries = shown.groupBy { accounts.getValue(it.accountId).currency }
             summaries.forEach { (currency, transactions) ->
@@ -577,13 +670,30 @@ private fun LedgerList(
                     .groupBy { it.category.trim().ifBlank { "" } }
                     .map { (name, list) -> name to list.total(TransactionKind.EXPENSE) }
                     .sortedByDescending { it.second }
-                if (byCategory.size > 1) item(key = "breakdown-" + currency) {
+                if (byCategory.isNotEmpty()) item(key = "breakdown-" + currency) {
                     val none = stringResource(R.string.overview_uncategorized)
+                    val whole = transactions.total(TransactionKind.EXPENSE)
+                    val bars = if (allCategories) byCategory else byCategory.take(BREAKDOWN)
                     ChartCard(stringResource(R.string.overview_by_category)) {
+                        // Each bar gives its share of the shown spending; a tap filters to it.
                         RankedBars(
-                            byCategory.take(6).map { (name, total) -> RankedBar(name.ifBlank { none }, ValueFormat.money(total, currency, numberLocale), total.toFloat()) },
+                            bars.map { (name, total) ->
+                                RankedBar(name.ifBlank { none }, ValueFormat.money(total, currency, numberLocale) + " · " + share(total, whole), total.toFloat())
+                            },
                             MaterialTheme.colorScheme.primary,
+                            onClick = { index ->
+                                val picked = bars[index].first
+                                if (picked.isNotBlank()) onCategory(if (picked.equals(category, ignoreCase = true)) null else picked)
+                            },
                         )
+                        if (byCategory.size > BREAKDOWN) {
+                            TextButton(shapes = ButtonDefaults.shapes(), onClick = { allCategories = !allCategories }) {
+                                Text(
+                                    if (allCategories) stringResource(R.string.finance_show_fewer)
+                                    else stringResource(R.string.finance_show_all, byCategory.size),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -592,7 +702,9 @@ private fun LedgerList(
             item { Text(stringResource(if (ledger.transactions.isEmpty()) R.string.finance_empty_activity else R.string.finance_no_matches), modifier = Modifier.padding(12.dp)) }
         }
         // By size the order is the point, so one list; by date each day has its heading.
-        val groups = if (sort == TransactionSort.LARGEST) mapOf(Long.MIN_VALUE to shown) else shown.groupBy { it.epochDay }
+        val page = shown.take(limit)
+        val byDate = sort == TransactionSort.NEWEST || sort == TransactionSort.OLDEST
+        val groups = if (byDate) page.groupBy { it.epochDay } else mapOf(Long.MIN_VALUE to page)
         groups.forEach { (epochDay, day) ->
             if (epochDay != Long.MIN_VALUE) item(key = "day-$epochDay") { SectionHeader(dayLabel(epochDay, today)) }
             itemsIndexed(day, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
@@ -605,10 +717,14 @@ private fun LedgerList(
                 val details = listOfNotNull(
                     transaction.category.takeIf { it.isNotBlank() && it != title },
                     accountNames.takeIf { target != null || ledger.accounts.size > 1 },
+                    // Out of date order, each row says its own day.
+                    if (byDate) null else dayLabel(transaction.epochDay, today),
+                    transaction.details.lineSequence().firstOrNull { it.isNotBlank() }?.trim(),
                 ).joinToString(" · ").ifBlank { null }
                 val picked = transaction.id in selected
                 val toggle = { selected = if (picked) selected - transaction.id else selected + transaction.id }
                 ConnectedItem(index, day.size) {
+                    SwipeToDelete(enabled = selected.isEmpty(), onDelete = { onDeleteOne(transaction) }) {
                     ConnectedRow(
                         title = title,
                         supporting = details,
@@ -631,10 +747,46 @@ private fun LedgerList(
                         trailing = { Amount(transaction.kind, ValueFormat.money(transaction.minor, source.currency, numberLocale)) },
                         onClick = { if (selected.isNotEmpty()) toggle() else open(Editor.TRANSACTION, transaction.id) },
                     )
+                    }
                 }
             }
         }
+        if (shown.size > limit) item(key = "older") {
+            FilledTonalButton(
+                shapes = ButtonDefaults.shapes(),
+                onClick = { limit += PAGE },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            ) { Text(stringResource(R.string.finance_show_older, shown.size - limit)) }
+        }
     }
+}
+
+private fun share(part: BigInteger, whole: BigInteger): String {
+    if (whole.signum() == 0) return "0%"
+    val percent = part.toBigDecimal().multiply(java.math.BigDecimal(100))
+        .divide(whole.toBigDecimal(), 0, java.math.RoundingMode.HALF_UP)
+    return if (percent.signum() == 0 && part.signum() > 0) "<1%" else "$percent%"
+}
+
+/** Swiping a row toward the start deletes it; the caller offers Undo. */
+@Composable
+private fun SwipeToDelete(enabled: Boolean, onDelete: () -> Unit, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState()
+    val colors = MaterialTheme.colorScheme
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        gesturesEnabled = enabled,
+        onDismiss = { onDelete() },
+        backgroundContent = {
+            Box(
+                Modifier.fillMaxSize().background(colors.errorContainer).padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.finance_delete), tint = colors.onErrorContainer)
+            }
+        },
+    ) { content() }
 }
 
 @Composable
@@ -680,8 +832,29 @@ internal fun Amount(kind: TransactionKind, amount: String) {
 }
 
 @Composable
-private fun PeriodChips(period: TransactionPeriod, sort: TransactionSort, onSort: (TransactionSort) -> Unit, onPick: (TransactionPeriod) -> Unit) {
+private fun PeriodChips(
+    period: TransactionPeriod,
+    custom: LongRange?,
+    kind: TransactionKind?,
+    sort: TransactionSort,
+    onSort: (TransactionSort) -> Unit,
+    onPick: (TransactionPeriod) -> Unit,
+    onCustom: (Long, Long) -> Unit,
+    onKind: (TransactionKind?) -> Unit,
+) {
     var sorting by remember { mutableStateOf(false) }
+    var kinds by remember { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
+    val selectedColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.primary,
+        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
+    )
+    if (picking) DateRangeDialog(custom, onDismiss = { picking = false }) { from, to ->
+        picking = false
+        onCustom(from, to)
+    }
     Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box {
             FilterChip(
@@ -697,27 +870,80 @@ private fun PeriodChips(period: TransactionPeriod, sort: TransactionSort, onSort
                 groups = listOf(TransactionSort.entries.map { option -> MenuAction(option.label(), selected = option == sort) { onSort(option) } }),
             )
         }
+        Box {
+            FilterChip(
+                selected = kind != null,
+                onClick = { kinds = true },
+                label = { Text(kind?.label() ?: stringResource(R.string.finance_kind_all)) },
+                trailingIcon = { Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                shape = MaterialTheme.shapes.medium,
+                colors = selectedColors,
+            )
+            EonslateMenu(
+                expanded = kinds,
+                onDismissRequest = { kinds = false },
+                groups = listOf(
+                    listOf(null, TransactionKind.EXPENSE, TransactionKind.INCOME).map { option ->
+                        MenuAction(option?.label() ?: stringResource(R.string.finance_kind_all), selected = option == kind) { onKind(option) }
+                    },
+                ),
+            )
+        }
         TransactionPeriod.entries.forEach {
             FilterChip(
                 selected = it == period,
-                onClick = { onPick(it) },
+                onClick = { if (it == TransactionPeriod.CUSTOM) picking = true else onPick(it) },
                 label = {
-                    Text(stringResource(when (it) {
-                        TransactionPeriod.ALL -> R.string.finance_period_all
-                        TransactionPeriod.TODAY -> R.string.finance_period_today
-                        TransactionPeriod.WEEK -> R.string.finance_period_week
-                        TransactionPeriod.MONTH -> R.string.finance_period_month
-                    }))
+                    Text(
+                        if (it == TransactionPeriod.CUSTOM && custom != null) {
+                            displayDate(custom.first) + " – " + displayDate(custom.last)
+                        } else stringResource(
+                            when (it) {
+                                TransactionPeriod.ALL -> R.string.finance_period_all
+                                TransactionPeriod.TODAY -> R.string.finance_period_today
+                                TransactionPeriod.WEEK -> R.string.finance_period_week
+                                TransactionPeriod.MONTH -> R.string.finance_period_month
+                                TransactionPeriod.DAYS_90 -> R.string.finance_period_90
+                                TransactionPeriod.CUSTOM -> R.string.finance_period_custom
+                            }
+                        )
+                    )
                 },
+                leadingIcon = if (it == TransactionPeriod.CUSTOM) {
+                    { Icon(Icons.Rounded.DateRange, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                } else null,
                 shape = MaterialTheme.shapes.medium,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                colors = selectedColors,
             )
         }
     }
 }
+
+/** Picks the From and To days of the custom period; one day alone is a one-day period. */
+@Composable
+private fun DateRangeDialog(initial: LongRange?, onDismiss: () -> Unit, onPick: (Long, Long) -> Unit) {
+    val state = rememberDateRangePickerState(
+        initialSelectedStartDateMillis = initial?.first?.times(DAY_MS),
+        initialSelectedEndDateMillis = initial?.last?.times(DAY_MS),
+    )
+    val from = state.selectedStartDateMillis?.let { Math.floorDiv(it, DAY_MS) }
+    val to = state.selectedEndDateMillis?.let { Math.floorDiv(it, DAY_MS) } ?: from
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(shapes = ButtonDefaults.shapes(), enabled = from != null, onClick = { if (from != null && to != null) onPick(from, to) }) {
+                Text(stringResource(R.string.finance_apply))
+            }
+        },
+        dismissButton = {
+            TextButton(shapes = ButtonDefaults.shapes(), onClick = onDismiss) { Text(stringResource(R.string.finance_cancel)) }
+        },
+    ) {
+        DateRangePicker(state = state, modifier = Modifier.weight(1f))
+    }
+}
+
+private const val DAY_MS = 86_400_000L
 
 
 @Composable
@@ -726,6 +952,8 @@ private fun TransactionSort.label() = stringResource(
         TransactionSort.NEWEST -> R.string.finance_sort_newest
         TransactionSort.OLDEST -> R.string.finance_sort_oldest
         TransactionSort.LARGEST -> R.string.finance_sort_largest
+        TransactionSort.SMALLEST -> R.string.finance_sort_smallest
+        TransactionSort.CATEGORY -> R.string.finance_sort_category
     }
 )
 
@@ -881,9 +1109,10 @@ private fun TransactionEditor(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?) -> Unit,
+    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?, String) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
+    val suggest = LocalCategorySuggestions.current
     var kind by rememberSaveable { mutableStateOf(transaction?.kind ?: prefill?.kind ?: initialKind ?: TransactionKind.EXPENSE) }
     var accountId by rememberSaveable {
         val matching = accounts.filter { it.currency == prefill?.currency }
@@ -905,13 +1134,44 @@ private fun TransactionEditor(
     val reference = prefill?.reference?.let { stringResource(R.string.finance_sms_reference, it) }
     val smsKey by rememberSaveable { mutableStateOf(transaction?.smsKey ?: prefill?.key) }
     var note by rememberSaveable { mutableStateOf(transaction?.note ?: listOfNotNull(prefill?.merchant, reference).joinToString(" · ")) }
-    var category by rememberSaveable { mutableStateOf(transaction?.category ?: prefill?.category.orEmpty()) }
+    var details by rememberSaveable { mutableStateOf(transaction?.details.orEmpty()) }
+    // A new transaction starts in its kind's most used category, and follows the kind until changed.
+    var autoCategory by rememberSaveable {
+        mutableStateOf(if (transaction == null && prefill?.category.isNullOrBlank()) suggest(kind).firstOrNull() else null)
+    }
+    var category by rememberSaveable { mutableStateOf(transaction?.category ?: prefill?.category ?: autoCategory.orEmpty()) }
+    LaunchedEffect(kind) {
+        if (autoCategory != null && category == autoCategory) {
+            autoCategory = suggest(kind).firstOrNull()
+            category = autoCategory.orEmpty()
+        }
+    }
     val parsed = parseMoney(amount, account.currency)?.takeIf { it > 0 }
     val day = EpochDays.parse(date)?.takeIf { it in Transaction.DATES }
     val transfer = kind == TransactionKind.TRANSFER
     val title = stringResource(if (transaction == null) R.string.finance_new_transaction else R.string.finance_edit_transaction)
 
     EditorSheet(title, busy, failed, onDismiss) {
+        if (prefill != null) {
+            val payee = prefill.merchant ?: prefill.kind.label()
+            PressableCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    MonogramBadge(payee, payee)
+                    Column(Modifier.weight(1f)) {
+                        Text(payee, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+                        listOfNotNull(prefill.issuer?.takeUnless { it == payee }, reference).joinToString(" · ")
+                            .takeIf(String::isNotBlank)?.let {
+                                Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                    }
+                    Amount(prefill.kind, ValueFormat.money(prefill.minor, prefill.currency, LocalValueDisplay.current.numberLocale))
+                }
+            }
+        }
         // Transfers and the account picker exist only once there is a second account.
         val kinds = if (accounts.size > 1) TransactionKind.entries else TransactionKind.entries - TransactionKind.TRANSFER
         ConnectedChoices(kinds, kind, { it.label() }, { if (!busy) kind = it })
@@ -928,15 +1188,23 @@ private fun TransactionEditor(
             keyboardType = KeyboardType.Decimal, suffix = account.currency, maxLength = 24, enabled = !busy,
         )
         DateField(date, { date = it }, stringResource(R.string.finance_date), busy)
-        FormField(note, { note = it }, stringResource(R.string.finance_note), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
+        FormField(note, { note = it }, stringResource(R.string.finance_description), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
         if (!transfer) {
             CategoryPicker(category, { category = it }, kind, busy)
         }
+        FormField(
+            details, { details = it }, stringResource(R.string.finance_notes),
+            singleLine = false, minLines = 2, maxLength = Transaction.DETAILS_LIMIT, enabled = !busy,
+        )
         SaveRow(
-            canSave = !busy && parsed != null && day != null && (!transfer || destination != null),
+            // Income and expenses need a category, so every one is counted somewhere.
+            canSave = !busy && parsed != null && day != null && (if (transfer) destination != null else category.isNotBlank()),
             onSave = {
                 if (parsed != null && day != null) {
-                    onSave(account.id, kind, parsed, day, note.trim(), destination?.id?.takeIf { transfer }, if (transfer) "" else category.trim(), smsKey)
+                    onSave(
+                        account.id, kind, parsed, day, note.trim(), destination?.id?.takeIf { transfer },
+                        if (transfer) "" else category.trim(), smsKey, details.trim(),
+                    )
                 }
             },
             delete = onDelete?.let { Deletion(stringResource(R.string.finance_delete_transaction), R.string.finance_delete_transaction_message, it) },

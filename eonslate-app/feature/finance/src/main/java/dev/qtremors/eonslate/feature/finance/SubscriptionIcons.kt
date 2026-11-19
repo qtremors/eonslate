@@ -92,27 +92,31 @@ internal object CustomIcons {
                 }
                 out.toByteArray()
             } ?: return@runCatching null
-            // SVG is drawn once at the icon size; only the resulting pixels are kept.
-            val head = String(bytes, 0, minOf(bytes.size, 512), Charsets.UTF_8).trimStart()
-            if (head.startsWith("<svg") || (head.startsWith("<?xml") && "<svg" in String(bytes, Charsets.UTF_8))) {
-                val svg = SVG.getFromString(String(bytes, Charsets.UTF_8))
-                svg.setDocumentWidth(SIZE.toFloat())
-                svg.setDocumentHeight(SIZE.toFloat())
-                val drawn = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)
-                svg.renderToCanvas(Canvas(drawn))
-                return@runCatching save(context, drawn)
-            }
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
-            var sample = 1
-            while (minOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= SIZE) sample *= 2
-            val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
-                ?: return@runCatching null
-            val side = minOf(decoded.width, decoded.height)
-            val square = Bitmap.createBitmap(decoded, (decoded.width - side) / 2, (decoded.height - side) / 2, side, side)
-            save(context, Bitmap.createScaledBitmap(square, SIZE, SIZE, true))
+            decode(bytes)?.let { save(context, it) }
         }.getOrNull()
+    }
+
+    private fun decode(bytes: ByteArray): Bitmap? {
+        val head = String(bytes, 0, minOf(bytes.size, 512), Charsets.UTF_8).trimStart('\uFEFF', ' ', '\r', '\n', '\t')
+        if (head.startsWith("<svg") || head.startsWith("<?xml")) {
+            val source = bytes.toString(Charsets.UTF_8)
+            val lower = source.lowercase()
+            if ("<!doctype" in lower || "<!entity" in lower || "<script" in lower) return null
+            val svg = SVG.getFromString(source)
+            svg.setDocumentWidth(SIZE.toFloat())
+            svg.setDocumentHeight(SIZE.toFloat())
+            return Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888).also { svg.renderToCanvas(Canvas(it)) }
+        }
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= SIZE * 2) sample *= 2
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        val side = minOf(decoded.width, decoded.height)
+        val square = Bitmap.createBitmap(decoded, (decoded.width - side) / 2, (decoded.height - side) / 2, side, side)
+        return Bitmap.createScaledBitmap(square, SIZE, SIZE, true)
     }
 
     private fun save(context: Context, bitmap: Bitmap): String {
@@ -126,13 +130,13 @@ internal object CustomIcons {
     fun load(context: Context, icon: String): ImageBitmap? {
         val hash = icon.removePrefix(PREFIX).takeIf { Regex("[0-9a-f]{64}").matches(it) } ?: return null
         val file = File(dir(context), "$hash.png").takeIf { it.isFile } ?: return null
-        return BitmapFactory.decodeFile(file.path)?.asImageBitmap()
+        return runCatching { decode(file.readBytes())?.asImageBitmap() }.getOrNull()
     }
 }
 
 /** A subscription's tile: its own image, its service's color, or a letter tile. */
 @Composable
-internal fun SubscriptionIcon(icon: String?, name: String, size: Dp = 40.dp) {
+internal fun SubscriptionIcon(icon: String?, name: String, size: Dp = 40.dp, color: Int? = null) {
     val context = LocalContext.current
     if (icon != null && icon.startsWith(CustomIcons.PREFIX)) {
         val image by produceState<ImageBitmap?>(null, icon) { value = withContext(Dispatchers.IO) { CustomIcons.load(context, icon) } }
@@ -142,13 +146,20 @@ internal fun SubscriptionIcon(icon: String?, name: String, size: Dp = 40.dp) {
         }
     }
     val service = Services.byIcon(icon)
-    if (service != null) ServiceTile(service, size) else MonogramBadge(name.ifBlank { "?" }, name, size = size)
+    val symbol = icon?.removePrefix("symbol:")?.let(::financeIcon)
+    when {
+        symbol != null -> FinanceBadge(icon?.removePrefix("symbol:"), color, name, size = size)
+        service != null -> ServiceTile(service, size, color)
+        else -> MonogramBadge(name.ifBlank { "?" }, name, size = size, colors = color?.let { financeBadgeColors(it, name) })
+    }
 }
 
 @Composable
-private fun ServiceTile(service: Service, size: Dp) {
+private fun ServiceTile(service: Service, size: Dp, color: Int? = null) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val colors = remember(service.id, dark) { BadgePalette.forColor(Color(service.color), dark) }
+    val colors = remember(service.id, dark, color) {
+        BadgePalette.forColor(Color(color?.or(0xFF000000.toInt()) ?: service.color.toInt()), dark)
+    }
     Box(Modifier.size(size).background(colors.container, SlateTileShape), contentAlignment = Alignment.Center) {
         Text(service.name.take(1).uppercase(), style = MaterialTheme.typography.titleMedium.copy(fontFamily = EonslateDisplay), color = colors.content)
     }

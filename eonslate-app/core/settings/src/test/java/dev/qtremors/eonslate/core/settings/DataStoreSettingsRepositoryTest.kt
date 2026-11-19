@@ -71,6 +71,20 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun personalPreferencesSurviveReopeningTheStore() {
+        val file = newFile()
+        runTest(UnconfinedTestDispatcher()) {
+            val settings = DataStoreSettingsRepository(store(this, file))
+            settings.updateDisplay { it.copy(name = "  Asha  ") }
+            settings.updateDisplay { it.copy(numbers = NumberLocale.INDIA, dates = DateDisplay.YEAR_FIRST) }
+        }
+        runTest(UnconfinedTestDispatcher()) {
+            val settings = DataStoreSettingsRepository(store(this, file))
+            assertEquals(DisplayPreferences("Asha", NumberLocale.INDIA, DateDisplay.YEAR_FIRST), settings.display.first())
+        }
+    }
+
+    @Test
     fun theHomeTagSurvivesReopeningTheStore() {
         val file = newFile()
         runTest(UnconfinedTestDispatcher()) {

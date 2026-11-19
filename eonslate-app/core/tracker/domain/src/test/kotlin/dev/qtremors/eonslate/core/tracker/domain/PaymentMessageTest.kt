@@ -45,4 +45,55 @@ class PaymentMessageTest {
         assertNull(PaymentMessages.parse("INR 14.00 debited and USD 2.00 debited."))
         assertNull(PaymentMessages.parse("INR 1,2.00 debited."))
     }
+
+    @Test
+    fun legacySenderAndCardFormatsKeepThePayeeAndIgnoreTheCreditLimit() {
+        val parsed = PaymentMessages.parse(
+            "Rs.232.34 spent on credit card ending in •••• 4440 at Zomato on 16-AUG-26. Avail limit: Rs.45,000.00.",
+            "VD-HDFCBK-S",
+        )!!
+        assertEquals("HDFC Bank", parsed.issuer)
+        assertEquals("Zomato", parsed.merchant)
+        assertEquals("4440", parsed.accountEnding)
+        assertEquals(true, parsed.isCard)
+        assertEquals(23_234L, parsed.minor)
+        assertEquals(LocalDate.of(2026, 8, 16).toEpochDay(), parsed.epochDay)
+        assertEquals(1f, parsed.confidence)
+    }
+
+    @Test
+    fun indianUpiAlertsCanOmitTheCurrencyAndGiveTheReferenceBeforeThePayee() {
+        val parsed = PaymentMessages.parse(
+            "Dear UPI user AC No: XX 9876 debited by 320.0 on 18Aug26. Info: UPI/CR/654321/Uber Eats. Bal: INR 2000.",
+            "VDSBIUPI",
+        )!!
+        assertEquals(TransactionKind.EXPENSE, parsed.kind)
+        assertEquals("INR", parsed.currency)
+        assertEquals(32_000L, parsed.minor)
+        assertEquals("SBI", parsed.issuer)
+        assertEquals("9876", parsed.accountEnding)
+        assertEquals("654321", parsed.reference)
+        assertEquals("Uber Eats", parsed.merchant)
+        assertEquals("Food & Dining", parsed.category)
+        assertEquals(LocalDate.of(2026, 8, 18).toEpochDay(), parsed.epochDay)
+    }
+
+    @Test
+    fun senderFallbackKeepsTheCategoryAndMissingAccountLowersConfidence() {
+        val parsed = PaymentMessages.parse("Your payment of Rs 232.34 was successful. Ref: 4422.", "CP-ZOMATO-S")!!
+        assertEquals("Zomato", parsed.merchant)
+        assertEquals("Food & Dining", parsed.category)
+        assertEquals("4422", parsed.reference)
+        assertEquals(0.85f, parsed.confidence)
+    }
+
+    @Test
+    fun referenceAndMonthTokensAreNeverCurrencyCodes() {
+        val parsed = PaymentMessages.parse(
+            "Rs 232.34 spent on credit card ending 4440 at Zomato on 16-AUG-26. UPI Ref 4422.",
+        )!!
+        assertEquals("INR", parsed.currency)
+        assertEquals(23_234L, parsed.minor)
+        assertEquals("4422", parsed.reference)
+    }
 }

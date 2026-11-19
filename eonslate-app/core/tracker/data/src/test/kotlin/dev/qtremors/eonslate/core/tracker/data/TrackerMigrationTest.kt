@@ -41,6 +41,29 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version8TransactionsKeepTheirOrderAndStartWithoutNotes() = runTest {
+        ExportedSchema.create(context, name, 8).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 0)")
+            listOf("b-first", "a-second").forEach { id ->
+                it.execSQL(
+                    """INSERT INTO finance_transactions (id, account_id, kind, minor, epoch_day, note, category)
+                       VALUES ('$id', 'cash', 'EXPENSE', 100, 20000, 'Tea · with Sam', 'Food')"""
+                )
+            }
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().build()
+        try {
+            val transactions = RoomFinanceRepository(db).observeLedger().first().transactions
+            // Newest first within the day, so the later insert leads despite its id.
+            assertEquals(listOf("a-second", "b-first"), transactions.map { it.id })
+            assertEquals("Tea · with Sam", transactions.first().note)
+            assertEquals("", transactions.first().details)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version7BudgetsKeepTheirCategoryAndStartWithDefaultStyling() = runTest {
         ExportedSchema.create(context, name, 7).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 100)")

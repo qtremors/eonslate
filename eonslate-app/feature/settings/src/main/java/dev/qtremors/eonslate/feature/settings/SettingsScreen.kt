@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Animation
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Payments
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contrast
@@ -105,6 +106,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
     onCategories: (() -> Unit)? = null,
+    onDisplay: (() -> Unit)? = null,
 ) {
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
@@ -125,7 +127,7 @@ fun SettingsScreen(
     SettingsContent(
         appearance, actions, onBack, onAbout, modifier,
         tracking = tracking, onBackup = onBackup, sms = sms, onSms = viewModel::updateSms,
-        onCategories = onCategories,
+        onCategories = onCategories, onDisplay = onDisplay,
     )
 }
 
@@ -147,6 +149,7 @@ fun SettingsContent(
     sms: SmsSettings? = null,
     onSms: ((SmsSettings) -> SmsSettings) -> Unit = {},
     onCategories: (() -> Unit)? = null,
+    onDisplay: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val askSms = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -271,6 +274,16 @@ fun SettingsContent(
                             onClick = onCategories,
                         )
                     }
+                }
+            }
+            if (onDisplay != null) item(key = "display") {
+                ConnectedGroup {
+                    NavigationRow(
+                        title = stringResource(R.string.settings_display),
+                        icon = Icons.Rounded.Person,
+                        badgeKey = "display",
+                        onClick = onDisplay,
+                    )
                 }
             }
             if (sms != null) item(key = "sms") {

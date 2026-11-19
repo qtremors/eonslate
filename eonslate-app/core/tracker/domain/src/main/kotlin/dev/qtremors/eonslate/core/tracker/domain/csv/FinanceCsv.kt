@@ -12,8 +12,10 @@ import java.util.Locale
 
 object FinanceCsv {
     private val columns = listOf(
-        "date", "kind", "amount", "currency", "account", "account_id", "destination", "destination_id", "category", "note",
+        "date", "kind", "amount", "currency", "account", "account_id", "destination", "destination_id", "category", "note", "details",
     )
+    /** Exports from before transactions had separate notes. */
+    private val previousColumns = columns - "details"
     private val legacyColumns = listOf("date", "description", "category", "type", "amount", "notes")
 
     fun write(ledger: Ledger, output: Writer) {
@@ -27,7 +29,7 @@ object FinanceCsv {
                     EpochDays.format(entry.epochDay), entry.kind.name.lowercase(Locale.ROOT),
                     MoneyAmount.format(entry.minor, source.currency), source.currency, Csv.escapeText(source.name), Csv.escapeText(source.id),
                     Csv.escapeText(entry.destinationId?.let { accounts.getValue(it).name }.orEmpty()), Csv.escapeText(entry.destinationId.orEmpty()),
-                    Csv.escapeText(entry.category), Csv.escapeText(entry.note),
+                    Csv.escapeText(entry.category), Csv.escapeText(entry.note), Csv.escapeText(entry.details),
                 ),
             )
         }
@@ -38,9 +40,9 @@ object FinanceCsv {
         val rows = Csv.rows(source).iterator()
         if (!rows.hasNext()) throw CsvException(CsvProblem.COLUMNS)
         val header = rows.next().map { it.trim().lowercase(Locale.ROOT) }
-        val legacy = header.size == legacyColumns.size && header.toSet() == legacyColumns.toSet()
-        val expected = if (legacy) legacyColumns else columns
-        if (header.size != expected.size || header.toSet() != expected.toSet()) throw CsvException(CsvProblem.COLUMNS)
+        val expected = listOf(columns, previousColumns, legacyColumns)
+            .firstOrNull { header.size == it.size && header.toSet() == it.toSet() } ?: throw CsvException(CsvProblem.COLUMNS)
+        val legacy = expected === legacyColumns
         val order = expected.map(header::indexOf)
         val byId = accounts.associateBy { it.id }
         val byName = accounts.groupBy { it.currency to it.name.lowercase(Locale.ROOT) }
@@ -77,15 +79,15 @@ object FinanceCsv {
         return Transaction(
             ids.newId(), from.id, kind(kind, row), minor(amount, currency, row), day(date, row),
             Csv.unescapeText(fields[9]), to?.id, Csv.unescapeText(fields[8]),
+            details = fields.getOrNull(10)?.let(Csv::unescapeText).orEmpty(),
         )
     }
 
     private fun readLegacy(fields: List<String>, account: Account, ids: IdGenerator, row: Int): Transaction {
         val (date, description, category, kind, amount) = fields
-        val note = listOf(description, fields[5]).filter { it.isNotBlank() }.joinToString(" · ")
         return Transaction(
             ids.newId(), account.id, kind(kind, row), minor(amount, account.currency, row), day(date, row),
-            note = note, category = category,
+            note = description.trim(), category = category, details = fields[5].trim(),
         )
     }
 

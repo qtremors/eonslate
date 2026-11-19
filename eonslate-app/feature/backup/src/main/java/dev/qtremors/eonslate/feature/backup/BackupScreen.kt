@@ -59,8 +59,12 @@ import dev.qtremors.eonslate.core.ui.components.ToggleRow
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
 import java.text.DateFormat
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Date
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 
 /** Short enough to type on a phone, long enough that guessing takes real work. */
 const val MIN_PASSWORD = 8
@@ -353,6 +357,7 @@ private fun UnlockSheet(wrongPassword: Boolean, busy: Boolean, onUnlock: (CharAr
 @Composable
 private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, onDismiss: () -> Unit) {
     val backup: BackupSummary = review.backup
+    val legacy = backup.legacy
     val current: DataCounts = review.current
     val colors = MaterialTheme.colorScheme
     EonslateBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.backup_sheet_review)) {
@@ -360,7 +365,13 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
             Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        countText(backup.trackers, backup.entries, backup.accounts, backup.transactions),
+                        if (legacy == null) countText(backup.trackers, backup.entries, backup.accounts, backup.transactions)
+                        else listOfNotNull(
+                            if (legacy.transactions) pluralStringResource(R.plurals.backup_transactions, backup.transactions, backup.transactions) else null,
+                            if (legacy.budgets) pluralStringResource(R.plurals.backup_budgets, backup.budgets, backup.budgets) else null,
+                            if (legacy.subscriptions) pluralStringResource(R.plurals.backup_subscriptions, backup.subscriptions, backup.subscriptions) else null,
+                            if (legacy.categories) pluralStringResource(R.plurals.backup_categories, backup.categories, backup.categories) else null,
+                        ).joinToString(" · "),
                         style = MaterialTheme.typography.titleMedium,
                         color = colors.onSurface,
                     )
@@ -375,7 +386,8 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
                 }
             }
             Text(
-                stringResource(R.string.backup_review_replaces, countText(current.trackers, current.entries, current.accounts, current.transactions)),
+                if (legacy == null) stringResource(R.string.backup_review_replaces, countText(current.trackers, current.entries, current.accounts, current.transactions))
+                else stringResource(R.string.backup_review_legacy),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
             )
@@ -401,8 +413,15 @@ private fun countText(trackers: Int, entries: Int, accounts: Int, transactions: 
     return counts.joinToString(", ")
 }
 
-private fun dateTime(millis: Long): String =
-    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(millis))
+@Composable
+private fun dateTime(millis: Long): String {
+    val date = Date(millis)
+    if (LocalValueDisplay.current.datePattern == null) {
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(date)
+    }
+    val day = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().toEpochDay()
+    return displayDate(day) + " " + DateFormat.getTimeInstance(DateFormat.SHORT).format(date)
+}
 
 private fun BackupMessage.text(): Int = when (this) {
     BackupMessage.SAVED -> R.string.backup_saved

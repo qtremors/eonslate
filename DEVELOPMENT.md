@@ -1,8 +1,8 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.1.3
-> **Last Updated:** 2026-11-18
+> **Version:** 2.1.4
+> **Last Updated:** 2026-11-19
 
 ## Architecture
 
@@ -43,6 +43,8 @@ Planned modules follow the same pattern: pure Kotlin `domain` modules for models
 `Appearance` in `:core:settings` stores the theme, pure black, the color source, the preset, haptics and reduce motion, each by name so a value from a newer version falls back to its default. `Appearance.toThemeOptions()` in `:app` maps it onto `:core:ui`'s `ThemeOptions`, and `MainActivity` feeds it to `EonslateTheme`, so a change recolors the whole app at once. A near-grey preset seed uses Material's neutral scheme so it stays grey.
 
 `Tracking` holds the week's first day and the currency new money fields start with; `firstDayOfWeek()` and `currencyCode()` fall back to the device. Screens that build trackers from templates pass a builder to their view model, which calls it with the currency read from settings, so a template never starts with a stale default. `InMemorySettingsRepository` stands in for DataStore in tests and previews.
+
+`DisplayPreferences` stores the Home display name, number locale, and date pattern in DataStore. `MainActivity` supplies these choices to `ValueFormat` through `LocalValueDisplay`. Stored dates and CSV fields keep their portable formats.
 
 The screenshot setting applies Android's secure-window flag to the main app and the tracker picker.
 
@@ -93,7 +95,7 @@ Schema 6 adds transaction categories, category budgets, and custom recurring int
 
 Schema 8 stores budget names, icons, and colors and adds the finance category catalog. Category renames update transactions, recurring payments, and budgets in one Room transaction. The schema also keeps the next billing minute for hourly subscriptions. Automatic hourly postings keep one transaction per local day.
 
-Finance reviews payment SMS from pasted or shared text and can also scan the inbox in builds that include the SMS permission. Build an inbox-enabled APK with `./gradlew :app:assembleDebug -Peonslate.smsInbox=true`. The standard build reads pasted or shared text. The parser suggests a category, identifies the account ending and reference when present, and keeps a fingerprint for duplicate detection. Raw SMS stays in memory during import.
+Finance reviews payment SMS from pasted or shared text and can also scan the inbox in builds that include the SMS permission. Build an inbox-enabled APK with `./gradlew :app:assembleDebug -Peonslate.smsInbox=true`. The standard build reads pasted or shared text. The parser recognizes sender aliases, payees, account and card endings, and payment references. It suggests a category and keeps a fingerprint for duplicate detection. Auto-add uses high-confidence matches. Raw SMS stays in memory during import.
 
 ## CSV
 
@@ -122,6 +124,7 @@ Versions live in `eonslate-app/gradle/libs.versions.toml`.
 - `BackupArchive`: `EONSLATE` magic, format version, flags, then gzipped JSON. Encrypted files add salt, PBKDF2-HMAC-SHA256 iterations and a nonce, and seal the body with AES-256-GCM using the header as associated data. The iteration count is stored per file (default 210,000; Android's PBKDF2 is slow).
 - `BackupCheck` repeats the trigger rules before anything is touched. `RoomBackupRepository.replaceAll` clears and inserts in one transaction, with triggers on.
 - `BackupManager` keeps the current data as `files/backups/before-restore.eonslate` before each restore; it replaces the previous point only after a successful restore. Undo restores it and deletes it.
+- `LegacyFinanceBackup` converts v2.0.0 JSON into ledger rows. Restore replaces the finance sections present in the file, preserves tracker data, and uses the same Undo path.
 - A schema change must also upgrade older snapshots before restoring them.
 
 ## Reminders

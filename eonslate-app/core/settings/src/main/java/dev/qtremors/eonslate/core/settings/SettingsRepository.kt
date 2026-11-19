@@ -38,6 +38,10 @@ interface SettingsRepository {
 
     suspend fun updateTracking(change: (Tracking) -> Tracking)
 
+    val display: Flow<DisplayPreferences>
+
+    suspend fun updateDisplay(change: (DisplayPreferences) -> DisplayPreferences)
+
     val homeTag: Flow<String?>
 
     suspend fun setHomeTag(tag: String?)
@@ -95,6 +99,23 @@ class DataStoreSettingsRepository @Inject constructor(
         }
     }
 
+    override val display: Flow<DisplayPreferences> = store.data.map(::readDisplay).distinctUntilChanged()
+
+    override suspend fun updateDisplay(change: (DisplayPreferences) -> DisplayPreferences) {
+        store.edit { prefs ->
+            val next = change(readDisplay(prefs))
+            prefs[DISPLAY_NAME] = next.name.trim().take(DisplayPreferences.NAME_LIMIT)
+            prefs[NUMBER_LOCALE] = next.numbers.name
+            prefs[DATE_DISPLAY] = next.dates.name
+        }
+    }
+
+    private fun readDisplay(prefs: Preferences) = DisplayPreferences(
+        name = prefs[DISPLAY_NAME].orEmpty(),
+        numbers = enumOrDefault(prefs[NUMBER_LOCALE], NumberLocale.DEVICE),
+        dates = enumOrDefault(prefs[DATE_DISPLAY], DateDisplay.DEVICE),
+    )
+
     override val homeTag: Flow<String?> = store.data.map { it[HOME_TAG] }.distinctUntilChanged()
 
     override suspend fun setHomeTag(tag: String?) {
@@ -151,6 +172,9 @@ class DataStoreSettingsRepository @Inject constructor(
         private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
         private val WEEK_START = stringPreferencesKey("week_start")
         private val CURRENCY = stringPreferencesKey("currency")
+        private val DISPLAY_NAME = stringPreferencesKey("display_name")
+        private val NUMBER_LOCALE = stringPreferencesKey("number_locale")
+        private val DATE_DISPLAY = stringPreferencesKey("date_display")
         private val SMS_DETECT = booleanPreferencesKey("sms_detect")
         private val SMS_AUTO = booleanPreferencesKey("sms_auto_approve")
         private val SMS_DISCARDED = stringSetPreferencesKey("sms_discarded")

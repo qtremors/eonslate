@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.Icons
@@ -38,7 +40,7 @@ import dev.qtremors.eonslate.core.ui.components.ConnectedItem
 import dev.qtremors.eonslate.core.ui.components.ConnectedRow
 import dev.qtremors.eonslate.core.ui.components.EonslateBottomSheet
 import dev.qtremors.eonslate.core.ui.components.LoadingState
-import java.util.Locale
+import dev.qtremors.eonslate.core.ui.components.MonogramBadge
 
 @Composable
 internal fun PaymentInboxSheet(
@@ -101,23 +103,30 @@ internal fun PaymentInboxSheet(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 itemsIndexed(messages, key = { index, item -> item.key ?: index }) { index, item ->
-                    val date = item.epochDay?.let { ValueFormat.date(it, Locale.getDefault()) }
-                    val account = item.accountEnding?.let { stringResource(R.string.finance_sms_ending, it) }
+                    val date = item.epochDay?.let { displayDate(it) }
+                    val account = item.accountEnding?.let {
+                        stringResource(if (item.isCard) R.string.finance_sms_card_ending else R.string.finance_sms_ending, it)
+                    }
                     val reference = item.reference?.let { stringResource(R.string.finance_sms_reference, it) }
-                    val amount = ValueFormat.money(item.minor, item.currency, Locale.getDefault())
+                    val amount = ValueFormat.money(item.minor, item.currency, LocalValueDisplay.current.numberLocale)
                     val eligible = ledger.accounts.any { it.currency == item.currency }
+                    val title = item.merchant ?: item.issuer ?: item.sender ?: item.kind.label()
                     val supporting = listOfNotNull(
-                        item.merchant, item.sender, item.category, account, reference, date,
+                        (item.issuer ?: item.sender)?.takeUnless { it == title }, item.category, account, reference, date,
                         if (eligible) null else stringResource(R.string.finance_sms_account, item.currency),
                     ).joinToString(" · ")
                     ConnectedItem(index, messages.size) {
                         ConnectedRow(
-                            stringResource(R.string.finance_transaction_title, item.kind.label(), amount),
+                            title,
                             supporting = supporting,
+                            leading = { MonogramBadge(title, title) },
                             enabled = eligible,
                             trailing = {
-                                IconButton(shapes = IconButtonDefaults.shapes(), onClick = { scope.launch { viewModel.detection.discard(listOf(item)) } }) {
-                                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.sms_discard))
+                                Row {
+                                    Amount(item.kind, amount)
+                                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = { scope.launch { viewModel.detection.discard(listOf(item)) } }) {
+                                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.sms_discard))
+                                    }
                                 }
                             },
                             onClick = {

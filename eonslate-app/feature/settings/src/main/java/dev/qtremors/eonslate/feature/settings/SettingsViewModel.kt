@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.qtremors.eonslate.core.settings.AccentChoice
 import dev.qtremors.eonslate.core.settings.Appearance
+import dev.qtremors.eonslate.core.settings.DisplayPreferences
 import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.settings.ThemeChoice
 import dev.qtremors.eonslate.core.settings.Tracking
@@ -52,6 +53,13 @@ class SettingsViewModel @Inject constructor(
 
     fun setWeekStart(start: WeekStart) {
         viewModelScope.launch { settings.updateTracking { it.copy(weekStart = start) } }
+    }
+
+    val display: StateFlow<DisplayPreferences?> = settings.display
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun updateDisplay(change: (DisplayPreferences) -> DisplayPreferences) {
+        viewModelScope.launch { settings.updateDisplay(change) }
     }
 
     /** A known three-letter code, or null to follow the device again. */

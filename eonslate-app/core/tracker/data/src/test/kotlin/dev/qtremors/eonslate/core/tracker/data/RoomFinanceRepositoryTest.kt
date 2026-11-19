@@ -119,6 +119,30 @@ class RoomFinanceRepositoryTest {
     }
 
     @Test
+    fun editsKeepTheirSaveTimeAndSelectedEntriesDeleteTogether() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertTrue(finance.saveAccount(bank))
+            val tea = Transaction("tea", bank.id, TransactionKind.EXPENSE, 100, 20_000, note = "Tea", details = "Long notes")
+            assertTrue(finance.saveTransaction(tea))
+            assertTrue(finance.saveTransaction(tea.copy(id = "bun", note = "Bun")))
+            assertTrue(finance.saveTransaction(tea.copy(id = "jam", note = "Jam")))
+            val saved = finance.observeLedger().first().transactions.single { it.id == "tea" }
+            assertTrue(saved.createdAt > 0)
+            assertEquals("Long notes", saved.details)
+
+            assertTrue(finance.saveTransaction(saved.copy(minor = 150, createdAt = 0)))
+            assertEquals(saved.createdAt, finance.observeLedger().first().transactions.single { it.id == "tea" }.createdAt)
+
+            finance.deleteTransactions(listOf("tea", "bun", "missing"))
+            assertEquals(listOf("jam"), finance.observeLedger().first().transactions.map { it.id })
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun financeSurvivesBackupRestoreAndUndo() = runTest {
         val source = inMemoryDatabase()
         val target = inMemoryDatabase()

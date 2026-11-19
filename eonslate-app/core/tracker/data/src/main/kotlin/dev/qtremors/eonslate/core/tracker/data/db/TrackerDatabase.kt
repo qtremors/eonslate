@@ -36,7 +36,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 8
+        const val VERSION = 9
         const val NAME = "eonslate.db"
 
         /**
@@ -171,7 +171,18 @@ object TrackerMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+    /** Transactions get notes apart from their name, and a save time to order a day by. */
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_transactions ADD COLUMN details TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE finance_transactions ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0")
+            // The row id follows insertion, so older entries keep the order they were added in.
+            db.execSQL("UPDATE finance_transactions SET created_at = rowid")
+        }
+    }
+
+    val ALL: Array<Migration> =
+        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
 }
 
 /**

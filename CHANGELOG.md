@@ -1,10 +1,33 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.3
-> **Last Updated:** 2026-11-18
+> **Version:** 2.1.4
+> **Last Updated:** 2026-11-19
 
 ---
+
+## [2.1.4] - 2026-11-19
+
+- Recognize more payment SMS formats, including masked accounts and cards, merchants, and UPI references.
+- Open shared payment messages from Home while Eonslate is running.
+- Auto-add high-confidence payments and review the rest.
+- Set a display name for Home and choose number and date formats.
+- Restore Earnslate 2.0.0 JSON backups with Undo.
+- Match system bar icon contrast to the app theme.
+- See the black Eonslate logo on white on the launcher, splash screen, and About page. The launcher icon also includes a monochrome layer for Android theming.
+- **Filters**: Show only income or expenses, the last 90 days, or any range of dates.
+- **Sort**: Smallest first, or by category.
+- **Categories**: Every category can be picked as a filter, not just the ones already used.
+- **Spending by category**: Lists every category with its share, even when there is only one. Tap one to filter.
+- **Notes**: Transactions have a description and separate notes, shown under each row.
+- New income and expenses start in the most used category, and need one to save.
+- Transactions on the same day stay in the order they were added.
+- See how many transactions match, and load older ones 50 at a time.
+- Swipe a transaction away to delete it, with Undo.
+- Deleting selected transactions happens all at once or not at all.
+- Selection drops transactions a new filter hides.
+- Open Settings from Transactions and Subscriptions.
+- **Subscription history**: Open a subscription to see recorded payments, monthly history, and a 12-month forecast.
 
 ## [2.1.3] - 2026-11-18
 

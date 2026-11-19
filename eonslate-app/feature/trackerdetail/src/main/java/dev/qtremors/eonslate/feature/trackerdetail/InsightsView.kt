@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.trackerdetail
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -264,7 +266,7 @@ private fun FieldInsightCard(
     buckets: List<Bucket>,
     period: Period,
 ) {
-    val locale = Locale.getDefault()
+    val locale = LocalValueDisplay.current.numberLocale
     val stats = remember(field, entries) { FieldInsights.stats(field, entries) }
     val leading: @Composable () -> Unit = { IconBadge(icon = FieldTypes.icon(field.type), key = field.type.storageKey, size = 32.dp, iconSize = 18.dp) }
 
@@ -327,7 +329,7 @@ private fun FieldInsightCard(
                             text = stringResource(
                                 if (sums) R.string.insights_record_day else R.string.insights_record,
                                 ValueFormat.amount(field, record.value, words, locale, decimals),
-                                record.day.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)),
+                                displayDate(record.day.toEpochDay()),
                             ),
                         )
                     }

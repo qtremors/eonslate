@@ -1,6 +1,6 @@
 package dev.qtremors.eonslate.feature.entry
 
-import android.text.format.DateFormat
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +19,6 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -30,9 +29,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,7 +37,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -57,7 +53,7 @@ import dev.qtremors.eonslate.core.ui.components.SectionHeader
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
+import dev.qtremors.eonslate.core.ui.components.EonslateTimePicker
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -202,13 +198,12 @@ fun LogEntryScreen(
 @Composable
 private fun WhenRow(state: LogState, viewModel: LogEntryViewModel) {
     val occurred = state.occurred ?: return
-    val context = LocalContext.current
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
     val dayLabel = when (DayLabel.of(occurred.toLocalDate(), LocalDate.now(occurred.zone))) {
         DayLabel.TODAY -> stringResource(R.string.log_today)
         DayLabel.YESTERDAY -> stringResource(R.string.log_yesterday)
-        DayLabel.DATE -> occurred.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+        DayLabel.DATE -> displayDate(occurred.toLocalDate().toEpochDay())
     }
     val timeLabel = occurred.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
 
@@ -242,22 +237,14 @@ private fun WhenRow(state: LogState, viewModel: LogEntryViewModel) {
         ) { DatePicker(state = pickerState) }
     }
     if (pickTime) {
-        val timeState = rememberTimePickerState(
-            initialHour = occurred.hour,
-            initialMinute = occurred.minute,
-            is24Hour = DateFormat.is24HourFormat(context),
-        )
-        AlertDialog(
-            onDismissRequest = { pickTime = false },
-            title = { Text(stringResource(R.string.log_pick_time)) },
-            text = { TimePicker(state = timeState) },
-            confirmButton = {
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = {
-                    viewModel.setTime(LocalTime.of(timeState.hour, timeState.minute))
-                    pickTime = false
-                }) { Text(stringResource(R.string.log_ok)) }
+        EonslateTimePicker(
+            title = stringResource(R.string.log_pick_time),
+            initial = occurred.toLocalTime(),
+            onConfirm = {
+                viewModel.setTime(it)
+                pickTime = false
             },
-            dismissButton = { TextButton(shapes = ButtonDefaults.shapes(), onClick = { pickTime = false }) { Text(stringResource(R.string.log_cancel)) } },
+            onDismiss = { pickTime = false },
         )
     }
 }

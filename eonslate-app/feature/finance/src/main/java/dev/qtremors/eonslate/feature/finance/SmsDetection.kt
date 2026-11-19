@@ -56,14 +56,13 @@ class SmsDetection @Inject constructor(
         val fresh = found.filter { m ->
             m.key != null && m.key !in known && m.key !in sms.discarded && ledger.accounts.any { it.currency == m.currency }
         }
-        if (fresh.isEmpty()) return
-        if (sms.autoApprove) {
-            val today = Instant.ofEpochMilli(clock.nowMillis()).atZone(zone).toLocalDate().toEpochDay()
-            val transactions = fresh.mapNotNull { it.asTransaction(ids.newId(), ledger.accounts, today) }
-            if (finance.appendTransactions(transactions)) _added.value = transactions.size
-        } else {
-            _pending.value = fresh
-        }
+        val (approved, review) = fresh.partition { sms.autoApprove && it.confidence >= 1f }
+        _pending.value = review
+        if (approved.isEmpty()) return
+        val today = Instant.ofEpochMilli(clock.nowMillis()).atZone(zone).toLocalDate().toEpochDay()
+        val transactions = approved.mapNotNull { it.asTransaction(ids.newId(), ledger.accounts, today) }
+        if (finance.appendTransactions(transactions)) _added.value = transactions.size
+        else _pending.value = fresh
     }
 
     /** Adds every held payment. */

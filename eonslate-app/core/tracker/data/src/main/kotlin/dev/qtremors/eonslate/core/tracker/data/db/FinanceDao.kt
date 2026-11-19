@@ -51,8 +51,11 @@ data class TransactionEntity(
     @ColumnInfo(name = "destination_id") val destinationId: String?,
     @ColumnInfo(defaultValue = "''") val category: String,
     @ColumnInfo(name = "sms_key") val smsKey: String?,
+    @ColumnInfo(defaultValue = "''") val details: String = "",
+    @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long = 0,
 ) {
-    fun toDomain() = LedgerTransaction(id, accountId, TransactionKind.valueOf(kind), minor, epochDay, note, destinationId, category, smsKey)
+    fun toDomain() =
+        LedgerTransaction(id, accountId, TransactionKind.valueOf(kind), minor, epochDay, note, destinationId, category, smsKey, details, createdAt)
 }
 
 @Entity(
@@ -131,7 +134,7 @@ internal fun CategoryBudget.toEntity() = CategoryBudgetEntity(id, accountId, cat
 internal fun CategoryChoice.toEntity() = CategoryEntity(id, name, key, kind.name, icon, color)
 
 internal fun LedgerTransaction.toEntity() =
-    TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey)
+    TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey, details, createdAt)
 
 data class AccountWithTransactions(
     @Embedded val account: AccountEntity,
@@ -149,7 +152,7 @@ interface FinanceDao {
     @Query("SELECT * FROM finance_accounts ORDER BY id")
     suspend fun accounts(): List<AccountEntity>
 
-    @Query("SELECT * FROM finance_transactions ORDER BY epoch_day DESC, id")
+    @Query("SELECT * FROM finance_transactions ORDER BY epoch_day DESC, created_at DESC, id")
     suspend fun transactions(): List<TransactionEntity>
 
     @Query("SELECT COUNT(*) FROM finance_accounts")
@@ -177,6 +180,12 @@ interface FinanceDao {
 
     @Query("DELETE FROM finance_transactions WHERE id = :id")
     suspend fun deleteTransaction(id: String)
+
+    @Query("DELETE FROM finance_transactions WHERE id IN (:ids)")
+    suspend fun deleteTransactions(ids: List<String>)
+
+    @Query("SELECT created_at FROM finance_transactions WHERE id = :id")
+    suspend fun createdAt(id: String): Long?
 
     @Query("DELETE FROM finance_transactions")
     suspend fun clearTransactions()

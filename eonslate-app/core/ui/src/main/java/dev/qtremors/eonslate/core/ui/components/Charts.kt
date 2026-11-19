@@ -2,6 +2,7 @@ package dev.qtremors.eonslate.core.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -300,12 +301,21 @@ data class RankedBar(val label: String, val valueText: String, val value: Float)
  * largest first, all on one baseline and in one hue, with the name above and the amount beside.
  */
 @Composable
-fun RankedBars(bars: List<RankedBar>, color: Color, modifier: Modifier = Modifier) {
+fun RankedBars(
+    bars: List<RankedBar>,
+    color: Color,
+    modifier: Modifier = Modifier,
+    /** Makes each bar a button, as when picking a bar filters a list. */
+    onClick: ((Int) -> Unit)? = null,
+) {
     val max = bars.maxOfOrNull { it.value }?.takeIf { it > 0f } ?: return
     val colors = MaterialTheme.colorScheme
     androidx.compose.foundation.layout.Column(modifier, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
-        bars.forEach { bar ->
-            androidx.compose.foundation.layout.Column(Modifier.semantics(mergeDescendants = true) {}) {
+        bars.forEachIndexed { index, bar ->
+            val tap = onClick?.let { click ->
+                Modifier.clip(SlateTileShape).clickable(role = androidx.compose.ui.semantics.Role.Button) { click(index) }
+            } ?: Modifier
+            androidx.compose.foundation.layout.Column(tap.semantics(mergeDescendants = true) {}) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(bar.label, style = MaterialTheme.typography.bodyMedium, color = colors.onSurface, modifier = Modifier.weight(1f), maxLines = 1)
                     Text(bar.valueText, style = dev.qtremors.eonslate.core.ui.theme.ValueTextStyle, color = colors.onSurfaceVariant)

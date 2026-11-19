@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.entry
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -37,14 +39,12 @@ import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.value.MoneyAmount
 import dev.qtremors.eonslate.core.tracker.ui.FieldTypes
-import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
 import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
 import dev.qtremors.eonslate.core.ui.components.FormField
 import dev.qtremors.eonslate.core.ui.components.IconBadge
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
 import java.util.Currency
-import java.util.Locale
 
 private const val DAY_MILLIS = 86_400_000L
 
@@ -187,7 +187,7 @@ private fun DateInput(day: Long?, onPick: (Long) -> Unit) {
     FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { open = true }) {
         Icon(Icons.Rounded.CalendarToday, contentDescription = null)
         Spacer(Modifier.padding(start = 8.dp))
-        Text(day?.let { ValueFormat.date(it, Locale.getDefault()) } ?: stringResource(R.string.log_pick_date))
+        Text(day?.let { displayDate(it) } ?: stringResource(R.string.log_pick_date))
     }
     if (open) {
         val state = rememberDatePickerState(initialSelectedDateMillis = day?.times(DAY_MILLIS))
@@ -206,5 +206,8 @@ private fun DateInput(day: Long?, onPick: (Long) -> Unit) {
     }
 }
 
-private fun currencySymbol(code: String): String =
-    runCatching { Currency.getInstance(code).getSymbol(Locale.getDefault()) }.getOrDefault(code)
+@Composable
+private fun currencySymbol(code: String): String {
+    val locale = LocalValueDisplay.current.numberLocale
+    return runCatching { Currency.getInstance(code).getSymbol(locale) }.getOrDefault(code)
+}

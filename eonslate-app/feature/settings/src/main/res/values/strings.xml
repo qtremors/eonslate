@@ -80,6 +80,14 @@
     <string name="privacy_source">Eonslate\'s source code is public, so anyone can check how it handles your data.</string>
     <string name="settings_section_sms">SMS</string>
     <string name="settings_sms_detect">Detect payment SMS</string>
-    <string name="settings_sms_auto">Add without review</string>
+    <string name="settings_sms_auto">Auto-add high-confidence payments</string>
     <string name="settings_categories">Manage categories</string>
+    <string name="settings_display">Personalization</string>
+    <string name="settings_display_name">Display name</string>
+    <string name="settings_number_format">Number format</string>
+    <string name="settings_date_format">Date format</string>
+    <string name="settings_format_device">Device</string>
+    <string name="settings_date_day_first">Day first</string>
+    <string name="settings_date_month_first">Month first</string>
+    <string name="settings_date_year_first">Year first</string>
 </resources>

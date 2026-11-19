@@ -69,9 +69,9 @@ object DetailModels {
      * One line saying what an entry holds, in field order, such as "72.5 kg · Morning".
      * Up to [limit] values are shown; an entry with only a note shows the note.
      */
-    fun summary(entry: Entry, tracker: Tracker, words: ValueWords, locale: Locale = Locale.getDefault(), limit: Int = 3): String {
+    fun summary(entry: Entry, tracker: Tracker, words: ValueWords, locale: Locale = Locale.getDefault(), limit: Int = 3, datePattern: String? = null, dateLocale: Locale = locale): String {
         val values = tracker.fields.mapNotNull { field ->
-            entry.values[field.id]?.let { ValueFormat.format(field, it, words, locale) }
+            entry.values[field.id]?.let { ValueFormat.format(field, it, words, locale, datePattern, dateLocale) }
         }
         return values.take(limit).joinToString(" · ").ifEmpty { entry.note.lineSequence().firstOrNull().orEmpty() }
     }

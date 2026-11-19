@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/Eonslate.svg" alt="Eonslate logo" width="128" height="128">
+</p>
+
 <h1 align="center">Eonslate</h1>
 
 <p align="center">

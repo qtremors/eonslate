@@ -9,6 +9,7 @@ class InMemorySettingsRepository(
     appearance: Appearance = Appearance(),
     tracking: Tracking = Tracking(),
     welcomeSeen: Boolean = false,
+    display: DisplayPreferences = DisplayPreferences(),
 ) : SettingsRepository {
     val appearanceState = MutableStateFlow(appearance)
     val trackingState = MutableStateFlow(tracking)
@@ -30,6 +31,13 @@ class InMemorySettingsRepository(
 
     override val tracking: Flow<Tracking> = trackingState
     override suspend fun updateTracking(change: (Tracking) -> Tracking) = trackingState.update(change)
+
+    private val displayState = MutableStateFlow(display)
+    override val display: Flow<DisplayPreferences> = displayState
+    override suspend fun updateDisplay(change: (DisplayPreferences) -> DisplayPreferences) = displayState.update {
+        val next = change(it)
+        next.copy(name = next.name.trim().take(DisplayPreferences.NAME_LIMIT))
+    }
 
     private val smsState = kotlinx.coroutines.flow.MutableStateFlow(SmsSettings())
     override val sms: kotlinx.coroutines.flow.Flow<SmsSettings> = smsState

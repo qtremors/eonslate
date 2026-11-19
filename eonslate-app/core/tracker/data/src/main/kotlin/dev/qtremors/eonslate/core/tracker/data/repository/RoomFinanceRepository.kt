@@ -31,7 +31,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         return Ledger(
             accounts = rows.map { it.account.toDomain() },
             transactions = rows.flatMap { group -> group.transactions.map { it.toDomain() } }
-                .sortedWith(compareByDescending<Transaction> { it.epochDay }.thenBy { it.id }),
+                .sortedWith(compareByDescending<Transaction> { it.epochDay }.thenByDescending { it.createdAt }.thenBy { it.id }),
             recurring = rows.flatMap { group -> group.recurring.map { it.toDomain() } }
                 .sortedWith(compareBy<RecurringPayment> { it.nextEpochDay ?: Long.MAX_VALUE }
                     .thenBy { it.nextMinute ?: 0 }.thenBy { it.id }),
@@ -56,17 +56,29 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         if (!transaction.isValid(accounts)) return@withTransaction false
         val alreadyImported = transaction.smsKey?.let { dao.importedSms(it) }
         if (alreadyImported != null && alreadyImported != transaction.id) return@withTransaction false
-        dao.upsert(transaction.toEntity())
+        // An edit keeps its first save time, so it stays where it was within its day.
+        val created = dao.createdAt(transaction.id) ?: transaction.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
+        dao.upsert(transaction.copy(createdAt = created).toEntity())
         true
     }
 
     override suspend fun deleteTransaction(id: String) = dao.deleteTransaction(id)
 
+    override suspend fun deleteTransactions(ids: Collection<String>) = database.withTransaction {
+        ids.distinct().chunked(500).forEach { dao.deleteTransactions(it) }
+    }
+
     override suspend fun appendTransactions(transactions: List<Transaction>): Boolean = database.withTransaction {
         val accounts = dao.accounts().associate { it.id to it.toDomain() }
         if (transactions.any { !it.isValid(accounts) }) return@withTransaction false
-        dao.insertTransactions(transactions.map { it.toEntity() })
+        dao.insertTransactions(stamped(transactions).map { it.toEntity() })
         true
+    }
+
+    /** Gives entries without a save time one, a millisecond apart so their order survives. */
+    private fun stamped(transactions: List<Transaction>): List<Transaction> {
+        val now = System.currentTimeMillis()
+        return transactions.mapIndexed { index, entry -> if (entry.createdAt > 0) entry else entry.copy(createdAt = now + index) }
     }
 
     override suspend fun addRecurring(payment: RecurringPayment, throughDay: Long, throughMinute: Int): Boolean = database.withTransaction {
@@ -97,7 +109,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
             dao.recurring(expected.id)?.toDomain() != expected
         ) return@withTransaction false
         val transaction = expected.transactionOn(due.toLocalDate().toEpochDay(), expected.nextMinute).copy(minor = minor, epochDay = day)
-        dao.insertTransactions(listOf(transaction.toEntity()))
+        dao.insertTransactions(stamped(listOf(transaction)).map { it.toEntity() })
         advance(expected, expected.after(due))
         true
     }
@@ -153,7 +165,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
                 next = payment.after(next, through)
                 remaining--
             }
-            dao.insertDue(entries.map { it.toEntity() })
+            dao.insertDue(stamped(entries).map { it.toEntity() })
             advance(payment, next)
             if (remaining == 0) return true
         }

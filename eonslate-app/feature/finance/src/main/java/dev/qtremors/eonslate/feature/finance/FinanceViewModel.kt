@@ -91,7 +91,7 @@ class FinanceViewModel @Inject constructor(
     fun delete(account: Account, onDone: () -> Unit) = write(onDone) { finance.deleteAccount(account.id) }
     /** Deletes several transactions in one go, as selection mode asks. */
     fun deleteTransactions(ids: Collection<String>, onDone: () -> Unit) = write(onDone) {
-        ids.forEach { finance.deleteTransaction(it) }
+        finance.deleteTransactions(ids)
         true
     }
 

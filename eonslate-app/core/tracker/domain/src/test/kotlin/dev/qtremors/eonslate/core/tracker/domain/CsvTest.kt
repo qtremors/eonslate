@@ -8,6 +8,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionFilter
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionSort
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -63,7 +64,7 @@ class CsvTest {
                 dinner,
             ),
         )
-        val matching = ledger.filteredTransactions(20_000L..20_005L, "food", " cafe ", TransactionSort.LARGEST)
+        val matching = ledger.filteredTransactions(TransactionFilter(20_000L..20_005L, category = "food", query = " cafe ", sort = TransactionSort.LARGEST))
         val file = StringWriter()
         FinanceCsv.write(ledger.copy(transactions = matching), file)
         val exported = FinanceCsv.read(file.toString(), ledger.accounts, bank) { "new" }
@@ -79,5 +80,22 @@ class CsvTest {
         assertEquals("Coffee", entry.note)
         assertEquals("Food", entry.category)
         assertEquals(account.id, entry.accountId)
+    }
+
+    @Test
+    fun notesTravelInTheirOwnColumnAndOlderExportsStillOpen() {
+        val bank = Account("bank", "Bank", "INR")
+        val lunch = Transaction("lunch", bank.id, TransactionKind.EXPENSE, 500, 20_001, note = "Lunch", category = "Food", details = "With Sam, \"split\"\nlater")
+        val file = StringWriter()
+        FinanceCsv.write(Ledger(accounts = listOf(bank), transactions = listOf(lunch)), file)
+        val read = FinanceCsv.read(file.toString(), listOf(bank), bank) { "new" }.single()
+        assertEquals("Lunch", read.note)
+        assertEquals(lunch.details, read.details)
+
+        val older = "date,kind,amount,currency,account,account_id,destination,destination_id,category,note\r\n" +
+            "2026-11-11,expense,5.00,INR,Bank,bank,,,Food,Lunch\r\n"
+        val entry = FinanceCsv.read(older, listOf(bank), bank) { "new" }.single()
+        assertEquals("Lunch", entry.note)
+        assertEquals("", entry.details)
     }
 }

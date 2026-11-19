@@ -74,4 +74,17 @@
     <string name="backup_clear_message">Everything is removed. It can be undone from this page until the next restore.</string>
     <string name="backup_clear_action">Delete all</string>
     <string name="backup_cleared">All data deleted</string>
+    <string name="backup_review_legacy">Replaces the finance sections shown. You can undo it.</string>
+    <plurals name="backup_budgets">
+        <item quantity="one">%d budget</item>
+        <item quantity="other">%d budgets</item>
+    </plurals>
+    <plurals name="backup_subscriptions">
+        <item quantity="one">%d subscription</item>
+        <item quantity="other">%d subscriptions</item>
+    </plurals>
+    <plurals name="backup_categories">
+        <item quantity="one">%d category</item>
+        <item quantity="other">%d categories</item>
+    </plurals>
 </resources>

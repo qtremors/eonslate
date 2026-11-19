@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.domain.finance
 
+import java.util.Locale
+
 internal val paymentCategoryKeywords = mapOf(
     "Food & Dining" to listOf(
         "swiggy", "zomato", "starbucks", "mcdonald", "kfc", "burger king", "domino", "subway",
@@ -59,3 +61,68 @@ internal val paymentCategoryKeywords = mapOf(
         "rent received", "cashback credited"
     )
 )
+
+private val paymentSenders = mapOf(
+    "HDFCBN" to "HDFC Bank",
+    "HDFCBK" to "HDFC Bank",
+    "HDFCB" to "HDFC Bank",
+    "HDFC" to "HDFC Bank",
+    "ICICIB" to "ICICI Bank",
+    "ICICI" to "ICICI Bank",
+    "SBINB" to "SBI",
+    "SBIPSG" to "SBI",
+    "SBIINB" to "SBI",
+    "SBIUPI" to "SBI",
+    "SBISMS" to "SBI",
+    "SBI" to "SBI",
+    "AXISBK" to "Axis Bank",
+    "AXIS" to "Axis Bank",
+    "KOTAKB" to "Kotak Bank",
+    "KOTAK" to "Kotak Bank",
+    "PNBSMS" to "PNB",
+    "PNB" to "PNB",
+    "BOISMS" to "Bank of India",
+    "BOI" to "Bank of India",
+    "CANBNK" to "Canara Bank",
+    "CANARA" to "Canara Bank",
+    "UNIONB" to "Union Bank",
+    "UBI" to "Union Bank",
+    "YESBNK" to "Yes Bank",
+    "YES" to "Yes Bank",
+    "IDFCFB" to "IDFC First Bank",
+    "IDFC" to "IDFC First Bank",
+    "INDUSB" to "IndusInd Bank",
+    "INDUS" to "IndusInd Bank",
+    "FEDBNK" to "Federal Bank",
+    "RBLBNK" to "RBL Bank",
+    "AUBLTD" to "AU Small Finance Bank",
+    "PAYTM" to "Paytm",
+    "PYTM" to "Paytm",
+    "AIRTEL" to "Airtel Payments Bank",
+    "ATMBK" to "Airtel Payments Bank",
+    "JIOBNK" to "Jio Payments Bank",
+    "SWIGGY" to "Swiggy",
+    "ZOMATO" to "Zomato",
+    "ZEPTO" to "Zepto",
+    "BLINKT" to "Blinkit",
+    "AMAZON" to "Amazon",
+    "AMZN" to "Amazon",
+    "FLPKRT" to "Flipkart",
+    "UBERIN" to "Uber",
+    "UBER" to "Uber",
+    "OLACAB" to "Ola",
+    "OLA" to "Ola",
+    "CREDIN" to "CRED",
+    "CRED" to "CRED",
+    "MYNTRA" to "Myntra",
+    "BIGBSK" to "BigBasket",
+    "DUNZO" to "Dunzo",
+    "IRCTCI" to "IRCTC",
+    "MMTRIP" to "MakeMyTrip"
+)
+
+internal fun paymentSenderName(sender: String?): String? {
+    val parts = sender?.uppercase(Locale.ROOT)?.trim()?.split('-') ?: return null
+    val code = if (parts.size > 1 && parts.first().length == 2) parts[1] else parts.first()
+    return paymentSenders[code] ?: paymentSenders[code.drop(2)]
+}

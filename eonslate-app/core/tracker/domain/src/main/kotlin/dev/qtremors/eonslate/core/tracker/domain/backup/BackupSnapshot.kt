@@ -7,6 +7,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * Everything a backup holds: every tracker (archived ones too), field, entry and value, as the
@@ -36,6 +37,7 @@ data class BackupSnapshot(
     val icons: Map<String, String> = emptyMap(),
     @SerialName("category_budgets") val budgets: List<CategoryBudget> = emptyList(),
     val categories: List<CategoryChoice> = emptyList(),
+    @Transient val legacy: LegacyFinance? = null,
 ) {
     /** What a person is shown before they choose to restore it. */
     val summary: BackupSummary
@@ -47,6 +49,10 @@ data class BackupSnapshot(
             entries = entries.size,
             accounts = accounts.size,
             transactions = transactions.size,
+            budgets = budgets.size,
+            subscriptions = recurring.size,
+            categories = categories.size,
+            legacy = legacy,
         )
 }
 
@@ -59,6 +65,10 @@ data class BackupSummary(
     val entries: Int,
     val accounts: Int = 0,
     val transactions: Int = 0,
+    val budgets: Int = 0,
+    val subscriptions: Int = 0,
+    val categories: Int = 0,
+    val legacy: LegacyFinance? = null,
 )
 
 @Serializable

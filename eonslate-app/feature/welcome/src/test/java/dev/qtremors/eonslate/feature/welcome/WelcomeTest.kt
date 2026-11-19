@@ -149,7 +149,7 @@ class WelcomeTest {
         override suspend fun deleteTracker(id: String) = Unit
     }
 
-    private class Settings : SettingsRepository {
+    private class Settings : SettingsRepository by dev.qtremors.eonslate.core.settings.InMemorySettingsRepository() {
         override val homeTag: Flow<String?> = MutableStateFlow(null)
         override suspend fun setHomeTag(tag: String?) = Unit
 

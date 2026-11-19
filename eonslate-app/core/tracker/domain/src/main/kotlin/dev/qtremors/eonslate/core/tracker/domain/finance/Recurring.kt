@@ -42,6 +42,8 @@ data class RecurringPayment(
     val nextOccurrence: LocalDateTime?
         get() = nextEpochDay?.let { LocalDate.ofEpochDay(it).atStartOfDay().plusMinutes((nextMinute ?: 0).toLong()) }
 
+    internal val transactionIdPrefix: String get() = "recurring:${id.length}:$id:"
+
     fun isValid(accountIds: Set<String>): Boolean = id.isNotBlank() && accountId in accountIds &&
         minor > 0 && note.length <= Transaction.NOTE_LIMIT && anchorDay in 1..31 &&
         kind != TransactionKind.TRANSFER && every in 1..MAX_INTERVAL && category.length <= Transaction.CATEGORY_LIMIT &&
@@ -53,7 +55,7 @@ data class RecurringPayment(
 
     fun transactionOn(epochDay: Long, minute: Int? = null): Transaction {
         val occurrence = if (minute == null) "$epochDay" else "$epochDay:$minute"
-        return Transaction("recurring:${id.length}:$id:$occurrence", accountId, kind, minor, epochDay, note, category = category)
+        return Transaction(transactionIdPrefix + occurrence, accountId, kind, minor, epochDay, note, category = category)
     }
 
     /** Keep the original day after a short month, for example Jan 31 → Feb 28 → Mar 31. */

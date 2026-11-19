@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.trackerdetail
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +53,9 @@ internal fun EntrySheet(
     val words = rememberValueWords()
     val colors = MaterialTheme.colorScheme
     val zoned = entry.zoned()
-    val whenText = zoned.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL, FormatStyle.SHORT))
+    val display = LocalValueDisplay.current
+    val whenText = if (display.datePattern == null) zoned.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL, FormatStyle.SHORT))
+        else displayDate(zoned.toLocalDate().toEpochDay()) + " · " + zoned.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
     val zoneNote = if (zoned.zone.normalized() != deviceZone.normalized()) zoned.zone.id else null
     val filled = tracker.fields.mapNotNull { field -> entry.values[field.id]?.let { field to it } }
 
@@ -80,7 +84,7 @@ internal fun EntrySheet(
                                     Text(field.name, style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
                                     SelectionContainer {
                                         Text(
-                                            ValueFormat.format(field, value, words, Locale.getDefault()),
+                                            ValueFormat.format(field, value, words, display.numberLocale, display.datePattern, Locale.getDefault()),
                                             style = ValueTextStyle.copy(fontSize = MaterialTheme.typography.bodyLarge.fontSize),
                                             color = colors.onSurface,
                                         )

@@ -27,9 +27,10 @@ fun HomeTab(
     onSettings: () -> Unit,
     onReviewSms: () -> Unit,
     onAdd: (TransactionKind) -> Unit,
+    displayName: String = "",
 ) {
     EonslateScaffold(
-        title = stringResource(R.string.app_title),
+        title = displayName.ifBlank { stringResource(R.string.app_title) },
         actions = {
             IconButton(shapes = IconButtonDefaults.shapes(), onClick = onSettings) {
                 Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.tab_settings))

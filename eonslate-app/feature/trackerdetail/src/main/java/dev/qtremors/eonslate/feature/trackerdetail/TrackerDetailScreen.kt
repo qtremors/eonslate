@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.trackerdetail
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -303,12 +305,13 @@ private fun Total(label: String, value: Int, modifier: Modifier) {
 @Composable
 private fun EntryRow(entry: Entry, tracker: Tracker, onOpen: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val words = rememberValueWords()
+    val display = LocalValueDisplay.current
     var menu by rememberSaveable { mutableStateOf(false) }
     val time = entry.zoned().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
     val note = entry.note.lineSequence().firstOrNull()?.takeIf { it.isNotBlank() && entry.values.isNotEmpty() }
     Box {
         ConnectedRow(
-            title = DetailModels.summary(entry, tracker, words).ifEmpty { stringResource(R.string.detail_entry_empty) },
+            title = DetailModels.summary(entry, tracker, words, display.numberLocale, datePattern = display.datePattern, dateLocale = java.util.Locale.getDefault()).ifEmpty { stringResource(R.string.detail_entry_empty) },
             supporting = listOfNotNull(time, note).joinToString(" · "),
             onClick = onOpen,
             onLongClick = { menu = true },
@@ -329,7 +332,7 @@ private fun dayTitle(day: LocalDate, today: LocalDate): String = when (day) {
     today -> stringResource(R.string.detail_today)
     today.minusDays(1) -> stringResource(R.string.detail_yesterday)
     // The locale's own order for weekday, day and month, with the year only when it differs.
-    else -> day.format(
+    else -> if (LocalValueDisplay.current.datePattern != null) displayDate(day.toEpochDay()) else day.format(
         if (day.year == today.year) {
             DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMM"))
         } else DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
