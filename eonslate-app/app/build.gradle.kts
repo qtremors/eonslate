@@ -16,8 +16,8 @@ android {
         applicationId = "dev.qtremors.eonslate"
         minSdk = 26
         targetSdk = 37
-        versionCode = 214
-        versionName = "2.1.4"
+        versionCode = 215
+        versionName = "2.1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -41,6 +41,47 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version10VariablePaymentsKeepWaitingForAnAmount() = runTest {
+        ExportedSchema.create(context, name, 10).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 0)")
+            it.execSQL(
+                """INSERT INTO finance_recurring (id, account_id, minor, note, interval, anchor_day, next_epoch_day, kind, every, paused, variable, category, details)
+                   VALUES ('power', 'cash', 4000, 'Power', 'MONTHLY', 5, 20000, 'EXPENSE', 1, 0, 1, 'Bills', '')"""
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().build()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertEquals(false, finance.observeLedger().first().recurring.single().autoEstimate)
+            finance.postDue(20_100)
+            assertTrue(finance.observeLedger().first().transactions.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun version9BudgetsStayWithTheirOwnAccount() = runTest {
+        ExportedSchema.create(context, name, 9).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 0)")
+            it.execSQL(
+                """INSERT INTO finance_budgets (id, account_id, category, minor, interval, every, start_epoch_day, name)
+                   VALUES ('food', 'cash', 'Food', 8500, 'MONTHLY', 1, 20000, '')"""
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().build()
+        try {
+            val finance = RoomFinanceRepository(db)
+            val budget = finance.observeLedger().first().budgets.single()
+            assertEquals(false, budget.allAccounts)
+            assertTrue(finance.saveBudget(budget.copy(allAccounts = true)))
+            assertEquals(true, finance.observeLedger().first().budgets.single().allAccounts)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version8TransactionsKeepTheirOrderAndStartWithoutNotes() = runTest {
         ExportedSchema.create(context, name, 8).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 0)")

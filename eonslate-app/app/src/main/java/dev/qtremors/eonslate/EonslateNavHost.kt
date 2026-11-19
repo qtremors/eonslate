@@ -85,6 +85,7 @@ fun EonslateNavHost(
     val shell = remember { ShellHost() }
     var openInbox by remember { mutableStateOf(false) }
     var openNew by remember { mutableStateOf<TransactionKind?>(null) }
+    var openBudget by remember { mutableStateOf(false) }
     val reduceMotion = LocalReduceMotion.current
     val tabs = listOf(
         TabItem(Icons.Rounded.SpaceDashboard, stringResource(R.string.tab_home)),
@@ -129,6 +130,10 @@ fun EonslateNavHost(
                     openNew = kind
                     navController.navigateToTab(Destination.Transactions)
                 },
+                onAddBudget = {
+                    openBudget = true
+                    navController.navigateToTab(Destination.Transactions)
+                },
                 displayName = homeName,
             )
         }
@@ -147,6 +152,7 @@ fun EonslateNavHost(
                 FinanceSection.TRANSACTIONS, sharedMessage = latestMessage, onMessageOpened = messageOpened,
                 openInbox = openInbox, onInboxOpened = { openInbox = false },
                 openNew = openNew, onNewOpened = { openNew = null },
+                openBudget = openBudget, onBudgetOpened = { openBudget = false },
                 onManageCategories = { navController.navigate(Destination.Categories) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )

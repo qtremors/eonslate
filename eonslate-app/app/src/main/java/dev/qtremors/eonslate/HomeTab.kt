@@ -27,6 +27,7 @@ fun HomeTab(
     onSettings: () -> Unit,
     onReviewSms: () -> Unit,
     onAdd: (TransactionKind) -> Unit,
+    onAddBudget: () -> Unit,
     displayName: String = "",
 ) {
     EonslateScaffold(
@@ -38,7 +39,7 @@ fun HomeTab(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onReviewSms = onReviewSms, onSubscriptions = onSubscriptions, onAdd = onAdd) }
+            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onReviewSms = onReviewSms, onSubscriptions = onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget) }
             item(key = "today") { TodayStrip(onLog = onLog, onAll = onTrackers) }
         }
     }

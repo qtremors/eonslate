@@ -38,7 +38,12 @@ data class RecurringPayment(
     val icon: String? = null,
     val color: Int? = null,
     @SerialName("next_minute") val nextMinute: Int? = null,
+    /** For a [variable] amount: post [minor] as an estimate when due, rather than waiting to be told. */
+    @SerialName("auto_estimate") val autoEstimate: Boolean = false,
 ) {
+    /** Fixed amounts post when due, and so do variable ones set to post their estimate. */
+    val postsAutomatically: Boolean get() = !variable || autoEstimate
+
     val nextOccurrence: LocalDateTime?
         get() = nextEpochDay?.let { LocalDate.ofEpochDay(it).atStartOfDay().plusMinutes((nextMinute ?: 0).toLong()) }
 
@@ -74,7 +79,7 @@ data class RecurringPayment(
 
     companion object {
         const val MAX_INTERVAL = 10_000
-        const val DETAILS_LIMIT = 500
+        const val DETAILS_LIMIT = 2000
     }
 }
 

@@ -1,10 +1,33 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.4
+> **Version:** 2.1.5
 > **Last Updated:** 2026-11-19
 
 ---
+
+## [2.1.5] - 2026-11-19
+
+- **Budget spending**: A chart of what each budget has spent this period, per currency.
+- **Budget rows**: How often each renews, what is left or over, and the share used.
+- **All accounts**: A category budget can count every account in its currency.
+- **Hourly budgets**: Counted by whole days.
+- New budgets start today.
+- Export budgets as CSV, with spent, remaining and utilization.
+- Home warns from 80% of a budget, shows a Manage budgets button, and offers Add budget when there are none.
+- Recent transactions on Home show their category.
+- **Filter subscriptions**: All, Expenses, or Income.
+- **Per month**: Income, expenses and net for each currency.
+- **Chart**: Every active subscription and income matching the search, by its monthly amount. Tap one to open it.
+- **Rows**: The exact next date, the full interval ("Every 3 months"), whether the amount varies, and the start of the notes.
+- **Long press** a subscription to pause, resume, edit or delete it. Resuming skips what fell due while paused.
+- **Varying amounts**: Choose to add the estimate when due, or wait for the real amount.
+- Payments already entered by hand with the same name, day and type are not added again.
+- Missed payments are caught up whenever the app returns, after a restore, and all at once on save.
+- Export subscriptions as CSV, with the monthly equivalent.
+- Pick a subscription color apart from its icon. Income shows income templates.
+- New subscriptions can start paused, need a name, and take notes of up to 2,000 characters.
+- Hourly payments show that they are added at most once a day.
 
 ## [2.1.4] - 2026-11-19
 

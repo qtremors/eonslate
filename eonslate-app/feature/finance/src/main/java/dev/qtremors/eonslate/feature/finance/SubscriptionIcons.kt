@@ -54,6 +54,10 @@ import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.Service
 import dev.qtremors.eonslate.core.tracker.domain.finance.Services
 import dev.qtremors.eonslate.core.ui.components.BadgePalette
+import dev.qtremors.eonslate.core.ui.components.BadgePigmentPicker
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.graphics.toArgb
+import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import dev.qtremors.eonslate.core.ui.components.EonslateBottomSheet
 import dev.qtremors.eonslate.core.ui.components.InlineSearchField
 import dev.qtremors.eonslate.core.ui.components.MonogramBadge
@@ -167,7 +171,7 @@ private fun ServiceTile(service: Service, size: Dp, color: Int? = null) {
 
 /** The icon row of the subscription editor, and the sheet to change it. */
 @Composable
-internal fun IconChoice(icon: String?, name: String, onPick: (icon: String?, service: Service?) -> Unit, busy: Boolean) {
+internal fun IconChoice(icon: String?, name: String, kind: TransactionKind, onPick: (icon: String?, service: Service?) -> Unit, busy: Boolean) {
     var open by rememberSaveable { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         SubscriptionIcon(icon, name, 48.dp)
@@ -177,14 +181,14 @@ internal fun IconChoice(icon: String?, name: String, onPick: (icon: String?, ser
         }
         FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { open = true }) { Text(stringResource(R.string.finance_icon_change)) }
     }
-    if (open) IconSheet(onDismiss = { open = false }) { picked, service ->
+    if (open) IconSheet(kind, onDismiss = { open = false }) { picked, service ->
         onPick(picked, service)
         open = false
     }
 }
 
 @Composable
-private fun IconSheet(onDismiss: () -> Unit, onPick: (String?, Service?) -> Unit) {
+private fun IconSheet(kind: TransactionKind, onDismiss: () -> Unit, onPick: (String?, Service?) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
@@ -207,7 +211,8 @@ private fun IconSheet(onDismiss: () -> Unit, onPick: (String?, Service?) -> Unit
             if (failed) Text(stringResource(R.string.finance_icon_failed), color = MaterialTheme.colorScheme.error)
             InlineSearchField(query, { query = it }, stringResource(R.string.finance_icon_search))
             LazyVerticalGrid(GridCells.Adaptive(88.dp), modifier = Modifier.fillMaxWidth().height(360.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(Services.search(query), key = { it.id }) { service ->
+                // Income gets payers such as Salary; expenses get the services they pay.
+                items(Services.search(query).filter { (it.category == Services.INCOME) == (kind == TransactionKind.INCOME) }, key = { it.id }) { service ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.width(88.dp).clip(SlateTileShape).clickable { onPick(Services.PREFIX + service.id, service) }.padding(4.dp),
@@ -216,6 +221,32 @@ private fun IconSheet(onDismiss: () -> Unit, onPick: (String?, Service?) -> Unit
                         Text(service.name, style = MaterialTheme.typography.labelSmall, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The tile color, picked apart from the icon; "Automatic" goes back to the service or letter color. */
+@Composable
+internal fun ColorChoice(color: Int?, icon: String?, name: String, busy: Boolean, onPick: (Int?) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SubscriptionIcon(icon, name, 48.dp, color = color)
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(stringResource(R.string.finance_color), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(if (color == null) R.string.finance_color_automatic else R.string.finance_color_custom), style = MaterialTheme.typography.bodyLarge)
+        }
+        FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { open = true }) { Text(stringResource(R.string.finance_icon_change)) }
+    }
+    if (open) EonslateBottomSheet(onDismissRequest = { open = false }, title = stringResource(R.string.finance_color)) {
+        val selected = (0 until BadgePalette.size).firstOrNull { (BadgePalette.pigment(it).toArgb() and 0xFFFFFF) == color }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            BadgePigmentPicker(selected, stringArrayResource(R.array.finance_style_colors)) {
+                onPick(BadgePalette.pigment(it).toArgb() and 0xFFFFFF)
+                open = false
+            }
+            TextButton(shapes = ButtonDefaults.shapes(), onClick = { onPick(null); open = false }) {
+                Text(stringResource(R.string.finance_color_automatic))
             }
         }
     }

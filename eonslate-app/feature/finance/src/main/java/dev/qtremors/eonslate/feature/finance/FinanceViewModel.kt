@@ -13,6 +13,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessage
+import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
@@ -108,6 +109,22 @@ class FinanceViewModel @Inject constructor(
         else finance.updateRecurring(expected, payment, day, minute)
     }
 
+    /**
+     * Pauses, or resumes from the next occurrence on or after today: payments that fell due while
+     * it was paused are skipped, not posted.
+     */
+    fun setPaused(payment: RecurringPayment, paused: Boolean) = write({}) {
+        val now = now()
+        val today = now.toLocalDate().atStartOfDay()
+        var next = payment.nextOccurrence
+        var steps = 0
+        while (!paused && next != null && next < today && steps++ < MAX_SKIPS) next = payment.after(next)
+        val minute = next?.takeIf { payment.interval == PaymentInterval.HOURLY }?.let { it.hour * 60 + it.minute }
+        val resumed = if (paused) payment.copy(paused = true)
+        else payment.copy(paused = false, nextEpochDay = next?.toLocalDate()?.toEpochDay(), nextMinute = minute)
+        finance.updateRecurring(payment, resumed, now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
+    }
+
     fun delete(payment: RecurringPayment, onDone: () -> Unit) = write(onDone) {
         finance.deleteRecurring(payment.id)
         true
@@ -177,6 +194,9 @@ class FinanceViewModel @Inject constructor(
         }
     }
 }
+
+/** Occurrences a resume will skip before giving up, so a decades-old hourly schedule cannot stall. */
+private const val MAX_SKIPS = 100_000
 
 internal data class InboxState(
     val scanning: Boolean = false,

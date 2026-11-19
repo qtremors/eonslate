@@ -46,8 +46,19 @@ object TrackerDatabaseModule {
 
     @Provides
     @Singleton
-    fun provideBackups(@ApplicationContext context: Context, repository: RoomBackupRepository): Backups =
-        BackupManager(repository, File(context.filesDir, "backups"), Dispatchers.Default, icons = File(context.filesDir, "icons"))
+    fun provideBackups(
+        @ApplicationContext context: Context,
+        repository: RoomBackupRepository,
+        finance: RoomFinanceRepository,
+        clock: AppClock,
+    ): Backups = BackupManager(
+        repository, File(context.filesDir, "backups"), Dispatchers.Default, icons = File(context.filesDir, "icons"),
+        // A restored ledger catches up on payments that fell due, as at launch.
+        afterReplace = {
+            val now = java.time.Instant.ofEpochMilli(clock.nowMillis()).atZone(java.time.ZoneId.of(clock.zoneId()))
+            finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
+        },
+    )
 
     @Provides
     fun provideIdGenerator(): IdGenerator = UuidIdGenerator

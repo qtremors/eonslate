@@ -94,8 +94,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
+    // Every return to the app catches up on payments that fell due meanwhile.
+    override fun onResume() {
+        super.onResume()
         val now = LocalDateTime.now()
         lifecycleScope.launch { finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute) }
     }

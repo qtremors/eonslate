@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.Writer
 import javax.inject.Inject
 
 internal data class FinanceCsvState(
@@ -73,19 +74,23 @@ internal class FinanceCsvViewModel @Inject constructor(
     val state = _state.asStateFlow()
     private var pending: List<Transaction>? = null
     private var exportSnapshot: Ledger? = null
+    private var exportWriter: (Ledger, Writer) -> Unit = FinanceCsv::write
 
-    fun prepareExport(ledger: Ledger) {
+    /** Holds [ledger] until a file is picked; [write] turns it into CSV, transactions by default. */
+    fun prepareExport(ledger: Ledger, write: (Ledger, Writer) -> Unit = FinanceCsv::write) {
         exportSnapshot = ledger
+        exportWriter = write
     }
 
     fun finishExport(uri: Uri?) {
         val ledger = exportSnapshot
+        val write = exportWriter
         exportSnapshot = null
         if (uri == null) return
         work {
             checkNotNull(ledger)
             withContext(Dispatchers.IO) {
-                checkNotNull(resolver.openOutputStream(uri, "wt")).bufferedWriter().use { FinanceCsv.write(ledger, it) }
+                checkNotNull(resolver.openOutputStream(uri, "wt")).bufferedWriter().use { write(ledger, it) }
             }
             _state.value = FinanceCsvState(notice = FinanceCsvNotice.Exported)
         }
@@ -140,6 +145,7 @@ internal class FinanceCsvViewModel @Inject constructor(
 @Composable
 internal fun FinanceCsvMenu(
     ledger: Ledger?, viewModel: FinanceCsvViewModel, onExport: () -> Unit, more: List<MenuAction> = emptyList(),
+    exportLabel: String = stringResource(R.string.finance_csv_export),
 ) {
     val accounts = ledger?.accounts.orEmpty()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -158,7 +164,7 @@ internal fun FinanceCsvMenu(
             expanded,
             onDismissRequest = { expanded = false },
             groups = listOf(more, listOf(
-                MenuAction(stringResource(R.string.finance_csv_export), Icons.Rounded.FileDownload, enabled = ledger != null, onClick = onExport),
+                MenuAction(exportLabel, Icons.Rounded.FileDownload, enabled = ledger != null, onClick = onExport),
                 MenuAction(stringResource(R.string.finance_csv_import), Icons.Rounded.FileUpload, enabled = accounts.isNotEmpty()) {
                     chooseAccount = true
                 },

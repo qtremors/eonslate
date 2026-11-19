@@ -72,6 +72,7 @@ fun MoneyOverview(
     onAdd: (TransactionKind) -> Unit = {},
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
+    onAddBudget: () -> Unit = {},
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -102,7 +103,7 @@ fun MoneyOverview(
                 onDismiss = { viewModel.detection.addedShown() },
             )
         }
-        MoneyOverviewContent(summary, onTransactions, onSubscriptions, onAdd = onAdd)
+        MoneyOverviewContent(summary, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget)
     }
 }
 
@@ -113,6 +114,7 @@ fun MoneyOverviewContent(
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
     onAdd: (TransactionKind) -> Unit = {},
+    onAddBudget: () -> Unit = {},
 ) {
     val locale = LocalValueDisplay.current.numberLocale
     val money = { minor: BigInteger -> ValueFormat.money(minor, summary.currency, locale) }
@@ -165,8 +167,18 @@ fun MoneyOverviewContent(
             RankedBars(bars, MaterialTheme.colorScheme.primary)
         }
 
-        if (summary.budgets.isNotEmpty()) Card(onClick = onTransactions) {
-            Label(stringResource(R.string.overview_budgets))
+        // Budgets always show: their meters, or a way to set the first one.
+        val hasBudgets = summary.budgets.isNotEmpty()
+        Card(onClick = if (hasBudgets) onTransactions else onAddBudget) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Label(stringResource(R.string.overview_budgets), Modifier.weight(1f))
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = if (hasBudgets) onTransactions else onAddBudget) {
+                    Text(stringResource(if (hasBudgets) R.string.overview_manage_budgets else R.string.overview_add_budget))
+                }
+            }
+            if (!hasBudgets) {
+                Text(stringResource(R.string.overview_no_budgets), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             summary.budgets.forEach { BudgetLine(it, money) }
         }
 
@@ -188,11 +200,13 @@ fun MoneyOverviewContent(
             summary.recent.forEach { t ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
+                        val title = t.note.ifBlank { t.category.ifBlank { stringResource(R.string.overview_uncategorized) } }
+                        Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                        // The category under the name, then the day.
                         Text(
-                            t.note.ifBlank { t.category.ifBlank { stringResource(R.string.overview_uncategorized) } },
-                            style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
+                            listOfNotNull(t.category.trim().takeIf { it.isNotEmpty() && it != title }, displayDate(t.epochDay)).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
                         )
-                        Text(displayDate(t.epochDay), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Amount(t.kind, money(BigInteger.valueOf(t.minor)))
                 }
@@ -258,20 +272,29 @@ private fun DuePaymentLine(payment: RecurringPayment, detail: String, amount: St
 @Composable
 private fun BudgetLine(health: BudgetHealth, money: (BigInteger) -> String) {
     val colors = MaterialTheme.colorScheme
+    val signals = LocalSignals.current
     val budget = health.budget
-    val color: Color = if (health.over) colors.error
-        else budget.color?.let { financeBadgeColors(it, budget.title).content } ?: LocalSignals.current.positive
+    // Red past the limit, amber from 80%, otherwise the budget color.
+    val color: Color = when {
+        health.over -> colors.error
+        health.warning -> signals.warning
+        else -> budget?.color?.let { financeBadgeColors(it, health.title).content } ?: signals.positive
+    }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FinanceBadge(budget.icon, budget.color, budget.title, budget.category, size = 32.dp, fallback = "Wallet")
-            Text(budget.title, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface, modifier = Modifier.weight(1f).padding(start = 8.dp))
-            if (health.over) {
-                Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.error, modifier = Modifier.size(16.dp).padding(end = 2.dp))
-                Text(stringResource(R.string.finance_over_budget), style = MaterialTheme.typography.labelMedium, color = colors.error)
+            FinanceBadge(budget?.icon, budget?.color, health.title, budget?.category.orEmpty(), size = 32.dp, fallback = "Wallet")
+            Text(health.title, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface, modifier = Modifier.weight(1f).padding(start = 8.dp))
+            if (health.over || health.warning) {
+                Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = color, modifier = Modifier.size(16.dp).padding(end = 2.dp))
+                Text(
+                    if (health.over) stringResource(R.string.finance_over_budget) + " · " + health.percent + "%"
+                    else stringResource(R.string.overview_budget_used, health.percent),
+                    style = MaterialTheme.typography.labelMedium, color = color,
+                )
             } else {
                 Text(money(health.spent) + " / " + money(health.limit), style = ValueTextStyle, color = colors.onSurfaceVariant)
             }
         }
-        Meter(health.fraction, color, contentDescription = budget.title + " " + money(health.spent) + " / " + money(health.limit))
+        Meter(health.fraction, color, contentDescription = health.title + " " + money(health.spent) + " / " + money(health.limit))
     }
 }

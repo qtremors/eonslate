@@ -37,6 +37,8 @@ class BackupManager(
     private val iterations: Int = BackupArchive.DEFAULT_ITERATIONS,
     /** Where custom icons live; their files travel inside every backup. */
     private val icons: File? = null,
+    /** Runs after the data is replaced, as when payments that fell due must be posted. */
+    private val afterReplace: suspend () -> Unit = {},
 ) : Backups {
     private val lock = Mutex()
     private val point = File(directory, RESTORE_POINT)
@@ -85,6 +87,17 @@ class BackupManager(
             }
         }
         _restorePoint.value = point.takeIf(File::isFile)?.lastModified()
+        caughtUp()
+    }
+
+    /** The data is already in place, so a failed catch-up leaves it for the next launch. */
+    private suspend fun caughtUp() {
+        try {
+            afterReplace()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
     }
 
     override suspend fun undoRestore() = lock.withLock {
@@ -96,6 +109,7 @@ class BackupManager(
         repository.replaceAll(snapshot)
         withContext(work) { point.delete() }
         _restorePoint.value = null
+        caughtUp()
     }
 
     private suspend fun withIcons(snapshot: BackupSnapshot): BackupSnapshot = withContext(work) {

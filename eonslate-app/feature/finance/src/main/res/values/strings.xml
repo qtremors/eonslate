@@ -124,7 +124,6 @@
     <string name="finance_default_account">Main</string>
     <string name="finance_yesterday">Yesterday</string>
     <string name="finance_per_month">Recurring per month</string>
-    <string name="finance_coming_in">coming in</string>
     <string name="finance_no_budgets">No budgets</string>
     <string name="finance_due_today">Due today</string>
     <string name="finance_due_tomorrow">Due tomorrow</string>
@@ -169,8 +168,6 @@
         <item quantity="one">Delete %d transaction?</item>
         <item quantity="other">Delete %d transactions?</item>
     </plurals>
-    <string name="finance_monthly_cost">Monthly cost</string>
-    <string name="finance_allocation">Budget limits</string>
     <string name="finance_budget_name">Budget name</string>
     <string name="finance_manage_categories">Manage categories</string>
     <string name="finance_add_category">Add category</string>
@@ -244,4 +241,51 @@
         <item quantity="one">%1$d transaction</item>
         <item quantity="other">%1$d transactions</item>
     </plurals>
+    <string name="finance_budget_spending">Spent this period</string>
+    <string name="finance_export_budgets">Export budgets</string>
+    <string name="finance_all_accounts">All accounts</string>
+    <string name="finance_all_accounts_detail">Count this category in every %1$s account</string>
+    <string name="finance_budget_hourly">Counted by day, so hours round up to whole days.</string>
+    <string name="finance_budget_left">%1$s left · %2$d%%</string>
+    <string name="finance_budget_over_by">%1$s over · %2$d%%</string>
+    <string name="overview_budget_used">%1$d%%</string>
+    <string name="overview_manage_budgets">Manage budgets</string>
+    <string name="overview_no_budgets">No budgets active</string>
+    <string name="overview_add_budget">Add budget</string>
+    <plurals name="finance_every_hours">
+        <item quantity="one">Every hour</item>
+        <item quantity="other">Every %1$d hours</item>
+    </plurals>
+    <plurals name="finance_every_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="finance_every_weeks">
+        <item quantity="one">Every week</item>
+        <item quantity="other">Every %1$d weeks</item>
+    </plurals>
+    <plurals name="finance_every_months">
+        <item quantity="one">Every month</item>
+        <item quantity="other">Every %1$d months</item>
+    </plurals>
+    <plurals name="finance_every_years">
+        <item quantity="one">Every year</item>
+        <item quantity="other">Every %1$d years</item>
+    </plurals>
+    <string name="finance_monthly_amounts">Per month, each</string>
+    <string name="finance_kind_all_plans">All</string>
+    <string name="finance_expenses">Expenses</string>
+    <string name="finance_incomes">Income</string>
+    <string name="finance_variable_badge">Varies</string>
+    <string name="finance_variable_estimated">Varies, estimate added</string>
+    <string name="finance_posts_daily">Added at most once a day</string>
+    <string name="finance_pause">Pause</string>
+    <string name="finance_resume">Resume</string>
+    <string name="finance_edit">Edit</string>
+    <string name="finance_export_subscriptions">Export subscriptions</string>
+    <string name="finance_auto_estimate">Add the estimate when due</string>
+    <string name="finance_auto_estimate_on">Added automatically; edit it once the real amount is known.</string>
+    <string name="finance_auto_estimate_off">Waits for you to enter the amount.</string>
+    <string name="finance_color_automatic">Automatic</string>
+    <string name="finance_color_custom">Custom</string>
 </resources>

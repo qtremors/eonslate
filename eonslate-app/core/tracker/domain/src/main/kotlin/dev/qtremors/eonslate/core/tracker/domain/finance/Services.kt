@@ -129,6 +129,9 @@ YouTube Creator Payout|FF0000|Income
 
     private val byId = all.associateBy { it.id }
 
+    /** The group of payers that bring money in. */
+    const val INCOME = "Income"
+
     fun byIcon(icon: String?): Service? = icon?.takeIf { it.startsWith(PREFIX) }?.let { byId[it.removePrefix(PREFIX)] }
 
     /** Services whose name or category contains [query], ignoring case. */

@@ -14,6 +14,9 @@ import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.rememberCoroutineScope
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionFilter
+import dev.qtremors.eonslate.core.tracker.domain.finance.BudgetHealth
+import dev.qtremors.eonslate.core.tracker.domain.csv.BudgetCsv
+import dev.qtremors.eonslate.core.tracker.domain.csv.RecurringCsv
 import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.FileDownload
@@ -33,7 +36,6 @@ import dev.qtremors.eonslate.core.ui.components.PressableCard
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.AccountBalance
-import dev.qtremors.eonslate.core.tracker.domain.finance.monthlyMinor
 import dev.qtremors.eonslate.core.ui.theme.HeroTextStyle
 import dev.qtremors.eonslate.core.ui.components.Meter
 import dev.qtremors.eonslate.core.ui.components.MonogramBadge
@@ -97,7 +99,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.qtremors.eonslate.core.settings.Tracking
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
-import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessage
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessages
@@ -126,7 +127,6 @@ import dev.qtremors.eonslate.core.ui.components.SectionHeader
 import java.math.BigInteger
 import java.text.DecimalFormatSymbols
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.temporal.TemporalAdjusters
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -149,6 +149,9 @@ fun FinanceScreen(
     onNewOpened: () -> Unit = {},
     onManageCategories: (() -> Unit)? = null,
     onSettings: (() -> Unit)? = null,
+    /** Opens the new budget editor, as Home's empty budgets card asks. */
+    openBudget: Boolean = false,
+    onBudgetOpened: () -> Unit = {},
 ) {
     var newKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -186,6 +189,8 @@ fun FinanceScreen(
         else -> today.toEpochDay()
     }
     val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort)
+    var planKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
+    val plans = remember(ledger, query, planKind) { ledger?.plans(query, planKind).orEmpty() }
     val shown = remember(ledger, filter) { ledger?.filteredTransactions(filter).orEmpty() }
     val scope = rememberCoroutineScope()
     val deletedText = stringResource(R.string.finance_transaction_deleted)
@@ -200,10 +205,16 @@ fun FinanceScreen(
             }
         }
     }
-    val exportTransactions: () -> Unit = {
+    // Each page exports what it shows: the matching transactions, or the matching subscriptions.
+    val exportShown: () -> Unit = {
         ledger?.let { data ->
-            csv.prepareExport(if (page == FinancePage.ACTIVITY) data.copy(transactions = shown) else data)
-            export.launch("eonslate-transactions.csv")
+            if (page == FinancePage.ACTIVITY) {
+                csv.prepareExport(data.copy(transactions = shown))
+                export.launch("eonslate-transactions.csv")
+            } else {
+                csv.prepareExport(data) { ledger, out -> RecurringCsv.write(ledger, plans, out) }
+                export.launch("eonslate-subscriptions.csv")
+            }
         }
     }
     var message by remember { mutableStateOf("") }
@@ -237,6 +248,12 @@ fun FinanceScreen(
             onNewOpened()
         }
     }
+    LaunchedEffect(openBudget) {
+        if (openBudget) {
+            open(Editor.BUDGET, null)
+            onBudgetOpened()
+        }
+    }
     LaunchedEffect(openInbox) {
         if (openInbox) {
             open(Editor.INBOX, null)
@@ -263,10 +280,11 @@ fun FinanceScreen(
                 query, { query = it },
                 stringResource(if (page == FinancePage.PLANS) R.string.finance_search_subscriptions else R.string.finance_search),
                 actions = {
-                    if (page == FinancePage.ACTIVITY) {
-                        IconButton(shapes = IconButtonDefaults.shapes(), enabled = !csvState.busy, onClick = exportTransactions) {
-                            Icon(Icons.Rounded.FileDownload, stringResource(R.string.finance_csv_export_matches))
-                        }
+                    IconButton(shapes = IconButtonDefaults.shapes(), enabled = !csvState.busy, onClick = exportShown) {
+                        Icon(
+                            Icons.Rounded.FileDownload,
+                            stringResource(if (page == FinancePage.ACTIVITY) R.string.finance_csv_export_matches else R.string.finance_export_subscriptions),
+                        )
                     }
                 },
             )
@@ -276,6 +294,12 @@ fun FinanceScreen(
             val more = listOfNotNull(
                 MenuAction(stringResource(R.string.finance_import_sms), Icons.Rounded.Sms) { open(Editor.SMS, null) },
                 if (page == FinancePage.ACTIVITY) MenuAction(stringResource(R.string.finance_new_budget), Icons.Rounded.Savings) { open(Editor.BUDGET, null) } else null,
+                ledger?.takeIf { page == FinancePage.ACTIVITY && it.budgetHealth(today).isNotEmpty() }?.let { data ->
+                    MenuAction(stringResource(R.string.finance_export_budgets), Icons.Rounded.FileDownload) {
+                        csv.prepareExport(data) { ledger, out -> BudgetCsv.write(ledger, today, out) }
+                        export.launch("eonslate-budgets.csv")
+                    }
+                },
                 onManageCategories?.let { MenuAction(stringResource(R.string.finance_manage_categories), financeIcon("Tag"), onClick = it) },
                 MenuAction(stringResource(R.string.finance_new_account), Icons.Rounded.AccountBalance) { open(Editor.ACCOUNT, null) },
             )
@@ -284,7 +308,10 @@ fun FinanceScreen(
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.finance_settings))
                 }
             }
-            FinanceCsvMenu(ledger, csv, exportTransactions, more)
+            FinanceCsvMenu(
+                ledger, csv, exportShown, more,
+                exportLabel = stringResource(if (page == FinancePage.ACTIVITY) R.string.finance_csv_export else R.string.finance_export_subscriptions),
+            )
         },
         floatingActionButton = {
             ledger?.let { data ->
@@ -340,6 +367,15 @@ fun FinanceScreen(
                 open = open,
                 onDeleteMany = viewModel::deleteTransactions,
                 onDeleteOne = deleteOne,
+                plans = plans,
+                planKind = planKind,
+                onPlanKind = { planKind = it },
+                planActions = PlanActions(
+                    open = { open(Editor.SUBSCRIPTION_DETAILS, it.id) },
+                    edit = { open(Editor.RECURRING, it.id) },
+                    setPaused = { payment, paused -> viewModel.setPaused(payment, paused) },
+                    delete = { viewModel.delete(it) {} },
+                ),
             )
         }
     }
@@ -487,6 +523,10 @@ private fun LedgerList(
     open: (Editor, String?) -> Unit,
     onDeleteMany: (Set<String>, () -> Unit) -> Unit = { _, _ -> },
     onDeleteOne: (Transaction) -> Unit = {},
+    plans: List<RecurringPayment> = emptyList(),
+    planKind: TransactionKind? = null,
+    onPlanKind: (TransactionKind?) -> Unit = {},
+    planActions: PlanActions = PlanActions({}, {}, { _, _ -> }, {}),
 ) {
     val sort = filter.sort
     val category = filter.category
@@ -514,65 +554,14 @@ private fun LedgerList(
     val numberLocale = LocalValueDisplay.current.numberLocale
     val balances = remember(ledger) { ledger.balances() }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
-    var monthOffset by rememberSaveable { mutableStateOf(0L) }
-    val month = YearMonth.from(today).plusMonths(monthOffset)
-    val spending = remember(ledger, month) { ledger.monthlySpending(month) }
+    val budgetHealth = remember(ledger, today) { ledger.budgetHealth(today) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         if (page == FinancePage.PLANS) {
-            val term = query.trim()
-            val main = ledger.accounts.first().currency
-            val ids = ledger.accounts.filter { it.currency == main }.mapTo(HashSet()) { it.id }
-            val active = ledger.recurring.filter { !it.paused && it.accountId in ids }
-            item(key = "commitments") {
-                PlansHero(
-                    out = active.filter { it.kind == TransactionKind.EXPENSE }.sumOf { it.monthlyMinor() },
-                    into = active.filter { it.kind == TransactionKind.INCOME }.sumOf { it.monthlyMinor() },
-                    currency = main,
-                )
-            }
-            // What each subscription costs a month, largest first.
-            val costs = active.filter { it.kind == TransactionKind.EXPENSE }.sortedByDescending { it.monthlyMinor() }
-            if (costs.isNotEmpty()) item(key = "costs") {
-                ChartCard(stringResource(R.string.finance_monthly_cost)) {
-                    RankedBars(
-                        costs.take(6).map { RankedBar(it.note.ifBlank { "?" }, ValueFormat.money(Math.round(it.monthlyMinor()), main, numberLocale), it.monthlyMinor().toFloat()) },
-                        MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            if (ledger.recurring.isEmpty()) {
-                item { Text(stringResource(R.string.finance_no_recurring), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
-            }
-            val ordered = ledger.recurring.sortedWith(compareBy({ it.paused }, { it.nextEpochDay ?: Long.MAX_VALUE })).filter {
-                term.isBlank() || listOf(it.note, it.category, it.details).any { text -> text.contains(term, ignoreCase = true) }
-            }
-            itemsIndexed(ordered, key = { _, payment -> "recurring-" + payment.id }) { index, payment ->
-                val account = accounts.getValue(payment.accountId)
-                val name = payment.note.ifBlank { account.name }
-                val due = payment.nextEpochDay
-                val time = payment.nextOccurrence?.takeIf { payment.nextMinute != null }
-                    ?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
-                val since = payment.startEpochDay?.let { stringResource(R.string.finance_since, LocalDate.ofEpochDay(it).format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.getDefault()))) }
-                val whenText = listOfNotNull(
-                    if (payment.paused) stringResource(R.string.finance_paused) else payment.interval.label(),
-                    if (!payment.paused && due != null) dueLabel(due - today.toEpochDay()) else null,
-                    time.takeUnless { payment.paused },
-                    since,
-                ).joinToString(" · ")
-                ConnectedItem(index, ordered.size) {
-                    ConnectedRow(
-                        title = name,
-                        supporting = whenText,
-                        leading = { SubscriptionIcon(payment.icon, name, color = payment.color) },
-                        trailing = { Amount(payment.kind, ValueFormat.money(payment.minor, account.currency, numberLocale)) },
-                        onClick = { open(Editor.SUBSCRIPTION_DETAILS, payment.id) },
-                    )
-                }
-            }
+            planItems(ledger, plans, planKind, onPlanKind, today, planActions)
             return@LazyColumn
         }
         // One account is the whole balance; the list matters only once there are several.
@@ -588,38 +577,29 @@ private fun LedgerList(
             }
         }
         // Budgets lead the page, as meters for this month; there is no heading when there are none.
-        if (ledger.budgets.isNotEmpty() || ledger.accounts.any { it.monthlyBudgetMinor != null }) {
+        if (budgetHealth.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.finance_budgets)) }
-            // How the limits are shared out, when there is more than one.
-            val limits = ledger.budgets.map { it.title to it.minor } + ledger.accounts.mapNotNull { a -> a.monthlyBudgetMinor?.let { a.name to it } }
-            if (limits.size > 1) item(key = "allocation") {
-                val currency = ledger.accounts.first().currency
-                ChartCard(stringResource(R.string.finance_allocation)) {
-                    RankedBars(
-                        limits.sortedByDescending { it.second }.map { (name, minor) -> RankedBar(name, ValueFormat.money(minor, currency, numberLocale), minor.toFloat()) },
-                        MaterialTheme.colorScheme.primary,
-                    )
+            val openBudget = { health: BudgetHealth ->
+                health.budget?.let { open(Editor.BUDGET, it.id) } ?: health.account?.let { open(Editor.ACCOUNT, it.id) }
+            }
+            // What each budget has spent this period, one chart per currency so amounts compare.
+            budgetHealth.groupBy { it.currency }.forEach { (currency, group) ->
+                item(key = "budget-spending-$currency") {
+                    val ranked = group.sortedByDescending { it.spent }
+                    ChartCard(stringResource(R.string.finance_budget_spending)) {
+                        RankedBars(
+                            ranked.map {
+                                RankedBar(it.title, ValueFormat.money(it.spent, currency, numberLocale) + " · " + it.percent + "%", it.spent.toFloat())
+                            },
+                            MaterialTheme.colorScheme.primary,
+                            onClick = { openBudget(ranked[it]) },
+                        )
+                    }
                 }
             }
-        items(ledger.accounts.filter { it.monthlyBudgetMinor != null }, key = { "budget-" + it.id }) { account ->
-            BudgetCard(
-                name = account.name,
-                spent = spending.getOrDefault(account.id, BigInteger.ZERO),
-                limit = BigInteger.valueOf(account.monthlyBudgetMinor!!),
-                currency = account.currency,
-                onClick = { open(Editor.ACCOUNT, account.id) },
-            )
-        }
-        items(ledger.budgets, key = { "category-" + it.id }) { budget ->
-            BudgetCard(
-                name = budget.title,
-                spent = remember(ledger, budget, today) { ledger.spendingFor(budget, today) },
-                limit = BigInteger.valueOf(budget.minor),
-                currency = accounts.getValue(budget.accountId).currency,
-                budget = budget,
-                onClick = { open(Editor.BUDGET, budget.id) },
-            )
-        }
+            items(budgetHealth, key = { "budget-" + (it.budget?.id ?: "account-" + it.account?.id) }) { health ->
+                BudgetCard(health, onClick = { openBudget(health) })
+            }
         }
         if (selected.isNotEmpty()) item(key = "selection") {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -790,7 +770,7 @@ private fun SwipeToDelete(enabled: Boolean, onDelete: () -> Unit, content: @Comp
 }
 
 @Composable
-private fun ChartCard(title: String, content: @Composable () -> Unit) {
+internal fun ChartCard(title: String, content: @Composable () -> Unit) {
     PressableCard(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -801,19 +781,22 @@ private fun ChartCard(title: String, content: @Composable () -> Unit) {
 
 /** In, out and net for the shown period. In is green and out red, each with its sign too. */
 @Composable
-private fun Totals(income: String, expenses: String, net: String) {
+internal fun Totals(income: String, expenses: String, net: String, title: String? = null) {
     val colors = MaterialTheme.colorScheme
     val signals = LocalSignals.current
     Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Row(Modifier.padding(20.dp)) {
-            listOf(
-                Triple(R.string.overview_in, "+$income", signals.positive),
-                Triple(R.string.overview_out, "−$expenses", colors.error),
-                Triple(R.string.overview_net, net, colors.onSurface),
-            ).forEach { (label, value, color) ->
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-                    Text(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color, maxLines = 1)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            title?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant) }
+            Row {
+                listOf(
+                    Triple(R.string.overview_in, "+$income", signals.positive),
+                    Triple(R.string.overview_out, "−$expenses", colors.error),
+                    Triple(R.string.overview_net, net, colors.onSurface),
+                ).forEach { (label, value, color) ->
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+                        Text(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color, maxLines = 1)
+                    }
                 }
             }
         }
@@ -989,62 +972,79 @@ private fun dayLabel(epochDay: Long, today: LocalDate): String {
     }
 }
 
-/** What recurring payments cost in an average month: going out, and coming in when there is any. */
+/**
+ * One budget: its name and how it renews, spent of the limit, what is left (or over) and the
+ * share used, with a meter that turns amber near the limit and red past it.
+ */
 @Composable
-private fun PlansHero(out: Double, into: Double, currency: String) {
+private fun BudgetCard(health: BudgetHealth, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val budget = health.budget
+    val name = health.title
     val locale = LocalValueDisplay.current.numberLocale
-    Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.finance_per_month), style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
-            Text(ValueFormat.money(Math.round(out), currency, locale), style = HeroTextStyle.copy(fontSize = MetricTextStyle.fontSize * 1.4f), color = colors.onSurface, maxLines = 1)
-            if (into > 0) {
-                Text("+" + ValueFormat.money(Math.round(into), currency, locale) + " " + stringResource(R.string.finance_coming_in), style = MaterialTheme.typography.bodyMedium, color = LocalSignals.current.positive)
-            }
-        }
-    }
-}
-
-/** One budget: its name, how much is spent of the limit, and a meter that turns red past it. */
-@Composable
-private fun BudgetCard(
-    name: String, spent: BigInteger, limit: BigInteger, currency: String,
-    budget: CategoryBudget? = null, onClick: () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val over = spent > limit
-    val fraction = if (limit.signum() == 0) 0f else spent.toFloat() / limit.toFloat()
-    val locale = LocalValueDisplay.current.numberLocale
-    val spentText = ValueFormat.money(spent, currency, locale)
-    val limitText = ValueFormat.money(limit, currency, locale)
+    val money = { minor: BigInteger -> ValueFormat.money(minor, health.currency, locale) }
+    val spentText = money(health.spent)
+    val limitText = money(health.limit)
+    val renews = budget?.let { intervalLabel(it.interval, it.every) } ?: PaymentInterval.MONTHLY.label()
+    val about = listOfNotNull(
+        budget?.category?.takeUnless { it == name },
+        renews,
+        if (budget?.allAccounts == true) stringResource(R.string.finance_all_accounts) else null,
+    ).joinToString(" · ")
     PressableCard(Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = onClick) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FinanceBadge(budget?.icon, budget?.color, name, budget?.category.orEmpty(), fallback = "Wallet")
                 Column(Modifier.weight(1f)) {
                     Text(name, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                    budget?.category?.takeUnless { it == name }?.let {
-                        Text(it, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-                    }
+                    Text(about, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
                 }
-                if (over) {
+                if (health.over) {
                     Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.error, modifier = Modifier.padding(end = 4.dp))
                     Text(stringResource(R.string.finance_over_budget), style = MaterialTheme.typography.labelLarge, color = colors.error)
                 }
             }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(spentText, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize), color = colors.onSurface)
-                Text(" / " + limitText, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Text(" / " + limitText, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
+                Text(
+                    if (health.over) stringResource(R.string.finance_budget_over_by, money(health.remaining.negate()), health.percent)
+                    else stringResource(R.string.finance_budget_left, money(health.remaining), health.percent),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = when {
+                        health.over -> colors.error
+                        health.warning -> LocalSignals.current.warning
+                        else -> colors.onSurfaceVariant
+                    },
+                )
             }
-            val progressColor = if (over) colors.error
-                else budget?.color?.let { financeBadgeColors(it, name).content } ?: LocalSignals.current.positive
-            Meter(fraction, progressColor, "$name $spentText / $limitText")
+            val progressColor = when {
+                health.over -> colors.error
+                health.warning -> LocalSignals.current.warning
+                else -> budget?.color?.let { financeBadgeColors(it, name).content } ?: LocalSignals.current.positive
+            }
+            Meter(health.fraction, progressColor, "$name $spentText / $limitText")
         }
     }
 }
 
+/** How often something renews, as people say it: "Monthly", or "Every 3 months". */
 @Composable
-private fun dueLabel(days: Long): String = when {
+internal fun intervalLabel(interval: PaymentInterval, every: Int): String =
+    if (every <= 1) interval.label()
+    else pluralStringResource(
+        when (interval) {
+            PaymentInterval.HOURLY -> R.plurals.finance_every_hours
+            PaymentInterval.DAILY -> R.plurals.finance_every_days
+            PaymentInterval.WEEKLY -> R.plurals.finance_every_weeks
+            PaymentInterval.MONTHLY -> R.plurals.finance_every_months
+            PaymentInterval.YEARLY -> R.plurals.finance_every_years
+        },
+        every, every,
+    )
+
+@Composable
+internal fun dueLabel(days: Long): String = when {
     days <= 0L -> stringResource(R.string.finance_due_today)
     days == 1L -> stringResource(R.string.finance_due_tomorrow)
     else -> stringResource(R.string.finance_due_in, days)

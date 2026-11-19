@@ -86,7 +86,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         val nextDay = payment.nextEpochDay ?: return@withTransaction false
         if (!payment.isValid(setOf(account.id))) return@withTransaction false
         dao.insertRecurring(listOf(payment.toEntity()))
-        if (!payment.paused && !payment.variable && nextDay <= throughDay) postBatch(throughDay, throughMinute)
+        if (!payment.paused && payment.postsAutomatically && nextDay <= throughDay) postAll(throughDay, throughMinute)
         true
     }
 
@@ -97,7 +97,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
             if (!payment.isValid(setOf(account.id))) return@withTransaction false
             dao.upsert(payment.toEntity())
             val nextDay = payment.nextEpochDay
-            if (!payment.paused && !payment.variable && nextDay != null && nextDay <= throughDay) postBatch(throughDay, throughMinute)
+            if (!payment.paused && payment.postsAutomatically && nextDay != null && nextDay <= throughDay) postAll(throughDay, throughMinute)
             true
         }
 
@@ -152,7 +152,15 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         while (database.withTransaction { postBatch(throughDay, throughMinute) }) yield()
     }
 
-    /** Posts one bounded batch. The entries and the next due dates commit together. */
+    /** Every elapsed occurrence, as a save asks: nothing due is left for a later catch-up. */
+    private suspend fun postAll(throughDay: Long, throughMinute: Int) {
+        while (postBatch(throughDay, throughMinute)) Unit
+    }
+
+    /**
+     * Posts one bounded batch. The entries and the next due dates commit together. An occurrence
+     * already in the ledger by name, day and kind, as when it was entered by hand, is not repeated.
+     */
     private suspend fun postBatch(throughDay: Long, throughMinute: Int): Boolean {
         val through = LocalDate.ofEpochDay(throughDay).atStartOfDay().plusMinutes(throughMinute.toLong())
         var remaining = 128
@@ -165,7 +173,10 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
                 next = payment.after(next, through)
                 remaining--
             }
-            dao.insertDue(stamped(entries).map { it.toEntity() })
+            val fresh = entries.filter { entry ->
+                entry.note.isBlank() || dao.matching(entry.note, entry.epochDay, entry.kind.name, entry.id) == 0
+            }
+            dao.insertDue(stamped(fresh).map { it.toEntity() })
             advance(payment, next)
             if (remaining == 0) return true
         }

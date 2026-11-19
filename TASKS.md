@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.4
+> **Version:** 2.1.5
 > **Last Updated:** 2026-11-19
 
 ## Roadmap
@@ -30,8 +30,8 @@ Each step is planned as one release commit.
 | 18 | 2.1.3 | Transaction selection, finance charts, filtered CSV, budget styling, category management, hourly billing | Done |
 | 19 | 2.1.4 | Payment SMS parity, personalization, and v2.0.0 JSON restore | Done |
 | 20 | 2.1.4 | Transactions parity: filters, sorts, notes, full breakdown, atomic delete | Done |
-| 21 | 2.1.5 | Budgets parity: spent chart, CSV, details, scope, early warnings | Planned |
-| 22 | 2.1.5 | Subscriptions parity: filters, net flow, full chart, CSV, quick actions, variable posting | Planned |
+| 21 | 2.1.5 | Budgets parity: spent chart, CSV, details, scope, early warnings | Done |
+| 22 | 2.1.5 | Subscriptions parity: filters, net flow, full chart, CSV, quick actions, variable posting | Done |
 | 23 | 2.1.6 | Home cash flow: ranges, period details, interactive categories | Planned |
 | 24 | 2.1.6 | SMS parity: rescans, inline review, feedback, duplicates, provenance | Planned |
 | 25 | 2.1.6 | Categories, settings and data: delete, full reset, wide nav, icons | Planned |
@@ -55,28 +55,28 @@ From the v2.0.0 comparison on 2026-11-13. Upgrade and legacy-import paths are ou
 - [x] Settings shortcut on finance tabs
 
 ### 2.1.5 Budgets
-- [ ] Chart compares actual spending, grouped by currency, shown for one budget too
-- [ ] Budget CSV: name, category, limit, spent, period, utilization
-- [ ] Rows show period, remaining and percentage used
-- [ ] Hourly periods
-- [ ] New budgets start today
-- [ ] Optional all-accounts scope for a category
-- [ ] Home warns from 80% with the percentage
-- [ ] Home budget card opens budgets; empty state with an add action
+- [x] Chart compares actual spending, grouped by currency, shown for one budget too
+- [x] Budget CSV: name, category, limit, spent, period, utilization
+- [x] Rows show period, remaining and percentage used
+- [x] Hourly periods
+- [x] New budgets start today
+- [x] Optional all-accounts scope for a category
+- [x] Home warns from 80% with the percentage
+- [x] Home budget card opens budgets; empty state with an add action
 
 ### 2.1.5 Subscriptions
-- [ ] Type filter: All, Expenses, Incomes
-- [ ] Monthly income, expenses and net per currency
-- [ ] Chart covers every active item matching search and type, income included
-- [ ] Recurring CSV: name, amount, cycle, next billing, active, monthly equivalent
-- [ ] Row actions: pause/resume, edit, delete; create a schedule paused
-- [ ] Rows show exact next date, full interval ("every 3 months"), Variable badge, note preview
-- [ ] Color picker; income templates; template fills only an empty name
-- [ ] Name required; notes up to 2,000 chars
-- [ ] Variable schedules: "Add estimate automatically" or "Ask each time"
-- [ ] Skip posting when a matching transaction (name, date, type) exists
-- [ ] Catch up on resume, after restore, and every elapsed cycle on save
-- [ ] Label nominal hourly rates apart from expected postings
+- [x] Type filter: All, Expenses, Incomes
+- [x] Monthly income, expenses and net per currency
+- [x] Chart covers every active item matching search and type, income included
+- [x] Recurring CSV: name, amount, cycle, next billing, active, monthly equivalent
+- [x] Row actions: pause/resume, edit, delete; create a schedule paused
+- [x] Rows show exact next date, full interval ("every 3 months"), Variable badge, note preview
+- [x] Color picker; income templates; template fills only an empty name
+- [x] Name required; notes up to 2,000 chars
+- [x] Variable schedules: "Add estimate automatically" or "Ask each time"
+- [x] Skip posting when a matching transaction (name, date, type) exists
+- [x] Catch up on resume, after restore, and every elapsed cycle on save
+- [x] Label nominal hourly rates apart from expected postings
 
 ### 2.1.6 Home cash flow
 - [ ] Ranges: 7 days, 30 days, 6 months, 1 year, all time

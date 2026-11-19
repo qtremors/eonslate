@@ -111,6 +111,22 @@ data class Ledger(
         return balances
     }
 
+    /** Every budget on [day]: category budgets, then accounts' monthly limits, each in its own currency. */
+    fun budgetHealth(day: LocalDate): List<BudgetHealth> {
+        val byId = accounts.associateBy { it.id }
+        val month = YearMonth.from(day)
+        val spent = monthlySpending(month)
+        val monthDays = month.atDay(1).toEpochDay()..month.atEndOfMonth().toEpochDay()
+        return budgets.mapNotNull { budget ->
+            val account = byId[budget.accountId] ?: return@mapNotNull null
+            BudgetHealth(budget.title, account.currency, spendingFor(budget, day), BigInteger.valueOf(budget.minor), budget, budget.periodOn(day))
+        } + accounts.mapNotNull { account ->
+            account.monthlyBudgetMinor?.let {
+                BudgetHealth(account.name, account.currency, spent.getOrDefault(account.id, BigInteger.ZERO), BigInteger.valueOf(it), period = monthDays, account = account)
+            }
+        }
+    }
+
     fun monthlySpending(month: YearMonth): Map<String, BigInteger> {
         val days = month.atDay(1).toEpochDay()..month.atEndOfMonth().toEpochDay()
         val spent = mutableMapOf<String, BigInteger>()
@@ -125,9 +141,12 @@ data class Ledger(
 
     fun spendingFor(budget: CategoryBudget, day: LocalDate): BigInteger {
         val period = budget.periodOn(day) ?: return BigInteger.ZERO
+        val currency = accounts.firstOrNull { it.id == budget.accountId }?.currency
+        val counted = if (budget.allAccounts) accounts.filter { it.currency == currency }.mapTo(HashSet()) { it.id }
+        else setOf(budget.accountId)
         return transactions.asSequence()
             .filter {
-                it.kind == TransactionKind.EXPENSE && it.accountId == budget.accountId &&
+                it.kind == TransactionKind.EXPENSE && it.accountId in counted &&
                     it.category.equals(budget.category, ignoreCase = true) && it.epochDay in period
             }
             .fold(BigInteger.ZERO) { sum, entry -> sum + BigInteger.valueOf(entry.minor) }

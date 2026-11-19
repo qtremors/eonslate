@@ -171,6 +171,48 @@ class RoomFinanceRepositoryTest {
     }
 
     @Test
+    fun estimatesPostWhenAskedAndAPaymentEnteredByHandIsNotRepeated() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val first = LocalDate.of(2026, 1, 5).toEpochDay()
+            val power = RecurringPayment("power", bank.id, 4_000, "Power", PaymentInterval.MONTHLY, 5, first, variable = true)
+            assertTrue(finance.addRecurring(power, first - 1))
+            assertTrue(finance.addRecurring(power.copy(id = "water", note = "Water", autoEstimate = true), first - 1))
+            // February's water bill was entered by hand, in another case.
+            val february = LocalDate.of(2026, 2, 5).toEpochDay()
+            assertTrue(finance.saveTransaction(Transaction("manual", bank.id, TransactionKind.EXPENSE, 3_900, february, note = "WATER")))
+
+            finance.postDue(LocalDate.of(2026, 3, 5).toEpochDay())
+            val ledger = finance.observeLedger().first()
+            // The estimate posts in January and March; the variable bill without it waits.
+            assertEquals(listOf(3_900L, 4_000L, 4_000L), ledger.transactions.map { it.minor }.sorted())
+            assertEquals(first, ledger.recurring.single { it.id == "power" }.nextEpochDay)
+            assertEquals(LocalDate.of(2026, 4, 5).toEpochDay(), ledger.recurring.single { it.id == "water" }.nextEpochDay)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun savingAScheduleCatchesUpEveryElapsedOccurrence() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val start = LocalDate.of(2026, 1, 1).toEpochDay()
+            // Far more than one posting batch of daily charges.
+            assertTrue(finance.addRecurring(RecurringPayment("tea", bank.id, 10, "Tea", PaymentInterval.DAILY, 1, start), start + 299))
+            val ledger = finance.observeLedger().first()
+            assertEquals(300, ledger.transactions.size)
+            assertEquals(start + 300, ledger.recurring.single().nextEpochDay)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun missedPaymentsPostOnceAndCountTowardTheBudget() = runTest {
         val db = inMemoryDatabase()
         try {

@@ -7,7 +7,7 @@ import java.time.YearMonth
 /** What a recurring payment costs in an average month, in minor units. */
 fun RecurringPayment.monthlyMinor(): Double {
     val perMonth = when (interval) {
-        PaymentInterval.HOURLY -> 30.0 * 24
+        PaymentInterval.HOURLY -> 365.25 / 12 * 24
         PaymentInterval.DAILY -> 365.25 / 12
         PaymentInterval.WEEKLY -> 365.25 / 12 / 7
         PaymentInterval.MONTHLY -> 1.0
@@ -16,10 +16,35 @@ fun RecurringPayment.monthlyMinor(): Double {
     return minor * perMonth / every.coerceAtLeast(1)
 }
 
-/** A budget measured on one day: what was spent in its current period against its limit. */
-data class BudgetHealth(val budget: CategoryBudget, val spent: BigInteger, val limit: BigInteger) {
+/**
+ * What a recurring payment adds to the ledger in an average month. Equal to [monthlyMinor] except
+ * for hourly ones, which post at most once a day.
+ */
+fun RecurringPayment.monthlyPostedMinor(): Double =
+    if (interval != PaymentInterval.HOURLY) monthlyMinor()
+    else minor * (365.25 / 12) * 24.0 / maxOf(every, 24)
+
+/**
+ * A budget measured on one day: what was spent in its current [period] against its limit, in
+ * [currency]. It is a category [budget], or an [account]'s monthly limit.
+ */
+data class BudgetHealth(
+    val title: String,
+    val currency: String,
+    val spent: BigInteger,
+    val limit: BigInteger,
+    val budget: CategoryBudget? = null,
+    val period: LongRange? = null,
+    val account: Account? = null,
+) {
     val over: Boolean get() = spent > limit
     val fraction: Float get() = if (limit.signum() == 0) 0f else spent.toFloat() / limit.toFloat()
+    /** Close to the limit but not past it. */
+    val warning: Boolean get() = !over && fraction >= CategoryBudget.WARNING
+    val remaining: BigInteger get() = limit - spent
+    /** Whole percent of the limit spent, rounded down so 99.9% never reads as 100%. */
+    val percent: Int get() =
+        if (limit.signum() == 0) 0 else spent.multiply(BigInteger.valueOf(100)).divide(limit).min(BigInteger.valueOf(999_999)).toInt()
 }
 
 /**
@@ -71,14 +96,14 @@ data class MoneySummary(
                     .groupBy { it.category.trim() }
                     .map { (name, list) -> name to sum(list.asSequence()) }
                     .sortedByDescending { it.second },
-                budgets = ledger.budgets.filter { it.accountId in ids }.map {
-                    BudgetHealth(it, ledger.spendingFor(it, today), BigInteger.valueOf(it.minor))
-                }.sortedByDescending { it.fraction },
+                budgets = ledger.budgetHealth(today).filter { it.currency == code }.sortedByDescending { it.fraction },
                 dueSoon = ledger.recurring.filter {
                     !it.paused && it.accountId in ids && it.nextEpochDay != null &&
                         it.nextEpochDay in today.toEpochDay()..today.toEpochDay() + DUE_DAYS
                 }.sortedBy { it.nextEpochDay },
-                recent = mine.sortedWith(compareByDescending<Transaction> { it.epochDay }.thenByDescending { it.id }).take(RECENT),
+                recent = mine.sortedWith(
+                    compareByDescending<Transaction> { it.epochDay }.thenByDescending { it.createdAt }.thenBy { it.id },
+                ).take(RECENT),
             )
         }
     }

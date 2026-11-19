@@ -83,10 +83,11 @@ data class RecurringEntity(
     val icon: String? = null,
     val color: Int? = null,
     @ColumnInfo(name = "next_minute") val nextMinute: Int? = null,
+    @ColumnInfo(name = "auto_estimate", defaultValue = "0") val autoEstimate: Boolean = false,
 ) {
     fun toDomain() = RecurringPayment(
         id, accountId, minor, note, PaymentInterval.valueOf(interval), anchorDay, nextEpochDay,
-        TransactionKind.valueOf(kind), every, paused, variable, category, startEpochDay, details, icon, color, nextMinute,
+        TransactionKind.valueOf(kind), every, paused, variable, category, startEpochDay, details, icon, color, nextMinute, autoEstimate,
     )
 }
 
@@ -108,8 +109,10 @@ data class CategoryBudgetEntity(
     @ColumnInfo(defaultValue = "''") val name: String,
     val icon: String?,
     val color: Int?,
+    @ColumnInfo(name = "all_accounts", defaultValue = "0") val allAccounts: Boolean = false,
 ) {
-    fun toDomain() = CategoryBudget(id, accountId, category, minor, PaymentInterval.valueOf(interval), every, startEpochDay, name, icon, color)
+    fun toDomain() =
+        CategoryBudget(id, accountId, category, minor, PaymentInterval.valueOf(interval), every, startEpochDay, name, icon, color, allAccounts)
 }
 
 @Entity(tableName = "finance_categories", indices = [Index(value = ["name_key"], unique = true)])
@@ -127,9 +130,13 @@ data class CategoryEntity(
 internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor)
 
 internal fun RecurringPayment.toEntity() =
-    RecurringEntity(id, accountId, minor, note, interval.name, anchorDay, nextEpochDay, kind.name, every, paused, variable, category, startEpochDay, details, icon, color, nextMinute)
+    RecurringEntity(
+        id, accountId, minor, note, interval.name, anchorDay, nextEpochDay, kind.name, every, paused, variable, category,
+        startEpochDay, details, icon, color, nextMinute, autoEstimate,
+    )
 
-internal fun CategoryBudget.toEntity() = CategoryBudgetEntity(id, accountId, category, minor, interval.name, every, startEpochDay, name, icon, color)
+internal fun CategoryBudget.toEntity() =
+    CategoryBudgetEntity(id, accountId, category, minor, interval.name, every, startEpochDay, name, icon, color, allAccounts)
 
 internal fun CategoryChoice.toEntity() = CategoryEntity(id, name, key, kind.name, icon, color)
 
@@ -209,7 +216,7 @@ interface FinanceDao {
     suspend fun recurring(): List<RecurringEntity>
 
     @Query("""
-        SELECT * FROM finance_recurring WHERE paused = 0 AND variable = 0
+        SELECT * FROM finance_recurring WHERE paused = 0 AND (variable = 0 OR auto_estimate = 1)
           AND (next_epoch_day < :throughDay OR (next_epoch_day = :throughDay AND COALESCE(next_minute, 0) <= :throughMinute))
         ORDER BY next_epoch_day, next_minute, id
     """)
@@ -229,6 +236,13 @@ interface FinanceDao {
 
     @Upsert
     suspend fun upsert(payment: RecurringEntity)
+
+    /** Transactions already in the ledger that a posting would repeat: same name, day and kind. */
+    @Query("""
+        SELECT COUNT(*) FROM finance_transactions
+        WHERE epoch_day = :day AND kind = :kind AND note = :note COLLATE NOCASE AND id != :id
+    """)
+    suspend fun matching(note: String, day: Long, kind: String, id: String): Int
 
     @Query("SELECT id FROM finance_transactions WHERE sms_key = :key")
     suspend fun importedSms(key: String): String?

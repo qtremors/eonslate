@@ -65,6 +65,8 @@ internal fun RecurringEditor(
     var kind by rememberSaveable { mutableStateOf(existing?.kind ?: TransactionKind.EXPENSE) }
     var paused by rememberSaveable { mutableStateOf(existing?.paused ?: false) }
     var variable by rememberSaveable { mutableStateOf(existing?.variable ?: false) }
+    var autoEstimate by rememberSaveable { mutableStateOf(existing?.autoEstimate ?: false) }
+    var color by rememberSaveable { mutableStateOf(existing?.color) }
     var date by rememberSaveable { mutableStateOf(existing?.nextEpochDay?.let(EpochDays::format) ?: today.toString()) }
     var started by rememberSaveable { mutableStateOf(existing?.startEpochDay?.let(EpochDays::format) ?: today.toString()) }
     var details by rememberSaveable { mutableStateOf(existing?.details.orEmpty()) }
@@ -82,12 +84,14 @@ internal fun RecurringEditor(
             if (it.currency != account.currency) amount = ""
             accountId = it.id
         }
-        IconChoice(icon, note, onPick = { picked, service ->
+        IconChoice(icon, note, kind, onPick = { picked, service ->
             icon = picked
-            // Picking a service fills in what it already knows.
+            // A service fills in what it knows, never over what was typed; its own color returns.
             if (service != null && note.isBlank()) note = service.name
             if (service != null && category.isBlank()) category = service.category
+            if (service != null) color = null
         }, busy = busy)
+        ColorChoice(color, icon, note, busy) { color = it }
         AmountField(amount, { amount = it }, account.currency, busy)
         FormField(note, { note = it }, stringResource(R.string.finance_payment_name), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
         CategoryPicker(category, { category = it }, kind, busy)
@@ -114,14 +118,24 @@ internal fun RecurringEditor(
         if (existing != null) DateField(started, { started = it }, stringResource(R.string.finance_started), busy)
         FormField(details, { details = it }, stringResource(R.string.finance_notes), singleLine = false, minLines = 2, maxLength = RecurringPayment.DETAILS_LIMIT, enabled = !busy)
         ToggleRow(stringResource(R.string.finance_variable), variable, { variable = it }, enabled = !busy)
-        if (existing != null) ToggleRow(stringResource(R.string.finance_paused), paused, { paused = it }, enabled = !busy)
+        // A varying amount either posts its estimate when due, or waits to be told the real one.
+        if (variable) {
+            ToggleRow(
+                title = stringResource(R.string.finance_auto_estimate),
+                supporting = stringResource(if (autoEstimate) R.string.finance_auto_estimate_on else R.string.finance_auto_estimate_off),
+                checked = autoEstimate,
+                onCheckedChange = { autoEstimate = it },
+                enabled = !busy,
+            )
+        }
+        ToggleRow(stringResource(R.string.finance_paused), paused, { paused = it }, enabled = !busy)
         if (onRecord != null) {
             TextButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = onRecord) {
                 Text(stringResource(R.string.finance_record_due))
             }
         }
         SaveRow(
-            canSave = !busy && parsed != null && day != null && repeat != null,
+            canSave = !busy && parsed != null && day != null && repeat != null && note.isNotBlank(),
             onSave = {
                 if (parsed != null && day != null && repeat != null) {
                     val anchor = existing?.takeIf { it.nextEpochDay == day }?.anchorDay ?: LocalDate.ofEpochDay(day).dayOfMonth
@@ -131,8 +145,9 @@ internal fun RecurringEditor(
                         RecurringPayment(
                             "", account.id, parsed, note.trim(), interval, anchor, day, kind, repeat, paused, variable, category.trim(),
                             startEpochDay = start, details = details.trim(), icon = icon,
-                            color = existing?.color?.takeIf { existing.icon == icon },
+                            color = color,
                             nextMinute = minute.takeIf { interval == PaymentInterval.HOURLY },
+                            autoEstimate = variable && autoEstimate,
                         )
                     )
                 }
@@ -165,7 +180,9 @@ internal fun CategoryBudgetEditor(
     var category by rememberSaveable { mutableStateOf(existing?.category.orEmpty()) }
     var interval by rememberSaveable { mutableStateOf(existing?.interval ?: PaymentInterval.MONTHLY) }
     var every by rememberSaveable { mutableStateOf((existing?.every ?: 1).toString()) }
-    var date by rememberSaveable { mutableStateOf(existing?.startEpochDay?.let(EpochDays::format) ?: today.withDayOfMonth(1).toString()) }
+    // A new budget starts today, so spending from before it was made never counts against it.
+    var date by rememberSaveable { mutableStateOf(existing?.startEpochDay?.let(EpochDays::format) ?: today.toString()) }
+    var allAccounts by rememberSaveable { mutableStateOf(existing?.allAccounts ?: false) }
     val parsed = parseMoney(amount, account.currency)?.takeIf { it > 0 }
     val day = parseDay(date)
     val repeat = parseInterval(every)
@@ -178,14 +195,27 @@ internal fun CategoryBudgetEditor(
         }
         CategoryPicker(category, { category = it }, TransactionKind.EXPENSE, busy)
         AmountField(amount, { amount = it }, account.currency, busy)
-        PeriodFields(interval, { interval = it }, every, { every = it }, busy)
+        PeriodFields(interval, { interval = it }, every, { every = it }, busy, allowHourly = true)
+        if (interval == PaymentInterval.HOURLY) {
+            Text(stringResource(R.string.finance_budget_hourly), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         DateField(date, { date = it }, stringResource(R.string.finance_budget_start), busy)
+        // Only worth asking once another account shares this currency.
+        if (accounts.count { it.currency == account.currency } > 1) {
+            ToggleRow(
+                title = stringResource(R.string.finance_all_accounts),
+                supporting = stringResource(R.string.finance_all_accounts_detail, account.currency),
+                checked = allAccounts,
+                onCheckedChange = { allAccounts = it },
+                enabled = !busy,
+            )
+        }
         FinanceStyleField(icon, color, name, category, "Wallet", busy, { icon = it }, { color = it })
         SaveRow(
             canSave = !busy && parsed != null && day != null && repeat != null && category.isNotBlank() && name.isNotBlank(),
             onSave = {
                 if (parsed != null && day != null && repeat != null) {
-                    onSave(CategoryBudget("", account.id, category.trim(), parsed, interval, repeat, day, name.trim(), icon, color))
+                    onSave(CategoryBudget("", account.id, category.trim(), parsed, interval, repeat, day, name.trim(), icon, color, allAccounts))
                 }
             },
             delete = onDelete?.let {
