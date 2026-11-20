@@ -79,15 +79,18 @@ class RoomBackupRepository @Inject constructor(
     }
 
     override suspend fun counts(): DataCounts = database.withTransaction {
-        DataCounts(dao.trackerCount(), dao.entryCount(), finance.accountCount(), finance.transactionCount())
+        DataCounts(
+            dao.trackerCount(), dao.entryCount(), finance.accountCount(), finance.transactionCount(),
+            finance.recurringCount(), finance.budgetCount(),
+        )
     }
 }
 
 private fun TrackerEntity.toRow() =
-    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.decode(tags))
+    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.decode(tags), scheduleDays, timesPerWeek)
 
 private fun TrackerRow.toEntity() =
-    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.encode(tags))
+    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.encode(tags), scheduleDays, timesPerWeek)
 
 private fun TrackerFieldEntity.toRow() = FieldRow(id, trackerId, name, type, configJson, required, position)
 

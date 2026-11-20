@@ -26,6 +26,10 @@ data class TrackerEntity(
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
     /** A JSON array of tag strings; added in schema 3. */
     @ColumnInfo(name = "tags", defaultValue = "[]") val tags: String = "[]",
+    /** The weekdays it is due as a bit mask, Monday lowest; added in schema 13. */
+    @ColumnInfo(name = "schedule_days", defaultValue = "127") val scheduleDays: Int = 127,
+    /** Days a week to log on any days, or 0 to follow [scheduleDays]; added in schema 13. */
+    @ColumnInfo(name = "times_per_week", defaultValue = "0") val timesPerWeek: Int = 0,
 )
 
 /**

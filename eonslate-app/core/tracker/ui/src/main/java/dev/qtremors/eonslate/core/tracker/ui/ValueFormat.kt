@@ -110,7 +110,8 @@ object ValueFormat {
         runCatching { format.currency = Currency.getInstance(currencyCode) }
         format.minimumFractionDigits = digits
         format.maximumFractionDigits = digits
-        return localizedNumber(BigDecimal(minor, digits), format, locale)
+        // A true minus, as the signed amounts beside it use, never a hyphen.
+        return localizedNumber(BigDecimal(minor, digits), format, locale).replace('-', '\u2212')
     }
 
     private fun localizedNumber(value: BigDecimal, format: NumberFormat, locale: Locale): String {

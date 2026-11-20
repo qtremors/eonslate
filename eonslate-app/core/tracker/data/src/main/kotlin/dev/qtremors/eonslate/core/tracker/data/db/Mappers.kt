@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
 import dev.qtremors.eonslate.core.tracker.domain.backup.storedAsLong
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
@@ -79,6 +80,8 @@ internal fun Tracker.toEntity(): TrackerEntity = TrackerEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     tags = TagColumn.encode(Tags.normalize(tags)),
+    scheduleDays = schedule.daysMask,
+    timesPerWeek = schedule.timesPerWeek,
 )
 
 /** Tags are kept as a JSON array of strings in one column. */
@@ -134,6 +137,7 @@ internal fun TrackerEntity.toDomain(fields: List<TrackerFieldEntity>): Tracker =
     createdAt = createdAt,
     updatedAt = updatedAt,
     tags = TagColumn.decode(tags),
+    schedule = Schedule.of(scheduleDays, timesPerWeek),
 )
 
 internal fun TrackerWithFields.toDomain(): Tracker = tracker.toDomain(fields)

@@ -35,7 +35,8 @@ class ValueFormatTest {
     @Test
     fun moneyUsesTheCurrencysDigitsAndSymbol() {
         assertEquals("$12.34", fmt(FieldConfig.Money("USD"), FieldValue.Money(1_234)))
-        assertEquals("-$0.05", fmt(FieldConfig.Money("USD"), FieldValue.Money(-5)))
+        // A true minus sign, matching the signed amounts beside it.
+        assertEquals("−$0.05", fmt(FieldConfig.Money("USD"), FieldValue.Money(-5)))
         assertEquals("¥1,234", fmt(FieldConfig.Money("JPY"), FieldValue.Money(1_234), Locale.JAPAN).replace('￥', '¥'))
         assertEquals("KWD1.234", fmt(FieldConfig.Money("KWD"), FieldValue.Money(1_234)).replace(" ", ""))
     }

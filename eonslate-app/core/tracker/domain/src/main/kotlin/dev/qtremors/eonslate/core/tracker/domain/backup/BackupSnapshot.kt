@@ -5,6 +5,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -87,6 +88,9 @@ data class TrackerRow(
     @SerialName("updated_at") val updatedAt: Long,
     /** Added in schema 3. */
     val tags: List<String> = emptyList(),
+    /** Added in schema 13; older files are due every day. */
+    @SerialName("schedule_days") val scheduleDays: Int = Schedule.ALL_DAYS_MASK,
+    @SerialName("times_per_week") val timesPerWeek: Int = 0,
 )
 
 @Serializable

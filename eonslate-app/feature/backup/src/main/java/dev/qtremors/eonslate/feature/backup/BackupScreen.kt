@@ -190,7 +190,7 @@ fun BackupContent(
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     state.counts?.let { counts ->
                         Text(
-                            stringResource(R.string.backup_on_phone, countText(counts.trackers, counts.entries, counts.accounts, counts.transactions)),
+                            stringResource(R.string.backup_on_phone, countText(counts.trackers, counts.entries, counts.accounts, counts.transactions, counts.subscriptions, counts.budgets)),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -365,7 +365,7 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
             Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        if (legacy == null) countText(backup.trackers, backup.entries, backup.accounts, backup.transactions)
+                        if (legacy == null) countText(backup.trackers, backup.entries, backup.accounts, backup.transactions, backup.subscriptions, backup.budgets)
                         else listOfNotNull(
                             if (legacy.transactions) pluralStringResource(R.plurals.backup_transactions, backup.transactions, backup.transactions) else null,
                             if (legacy.budgets) pluralStringResource(R.plurals.backup_budgets, backup.budgets, backup.budgets) else null,
@@ -386,7 +386,7 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
                 }
             }
             Text(
-                if (legacy == null) stringResource(R.string.backup_review_replaces, countText(current.trackers, current.entries, current.accounts, current.transactions))
+                if (legacy == null) stringResource(R.string.backup_review_replaces, countText(current.trackers, current.entries, current.accounts, current.transactions, current.subscriptions, current.budgets))
                 else stringResource(R.string.backup_review_legacy),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
@@ -401,15 +401,18 @@ private fun ReviewSheet(review: Review, busy: Boolean, onRestore: () -> Unit, on
 }
 
 @Composable
-private fun countText(trackers: Int, entries: Int, accounts: Int, transactions: Int): String {
-    val counts = mutableListOf(
-        pluralStringResource(R.plurals.backup_trackers, trackers, trackers),
-        pluralStringResource(R.plurals.backup_entries, entries, entries),
-    )
+private fun countText(trackers: Int, entries: Int, accounts: Int, transactions: Int, subscriptions: Int, budgets: Int): String {
+    // Grouped digits, so 3,147 transactions read at a glance.
+    val numbers = java.text.NumberFormat.getIntegerInstance(LocalValueDisplay.current.numberLocale)
+    @Composable
+    fun count(id: Int, n: Int) = pluralStringResource(id, n, numbers.format(n))
+    val counts = mutableListOf(count(R.plurals.backup_trackers, trackers), count(R.plurals.backup_entries, entries))
     if (accounts > 0 || transactions > 0) {
-        counts += pluralStringResource(R.plurals.backup_accounts, accounts, accounts)
-        counts += pluralStringResource(R.plurals.backup_transactions, transactions, transactions)
+        counts += count(R.plurals.backup_accounts, accounts)
+        counts += count(R.plurals.backup_transactions, transactions)
     }
+    if (subscriptions > 0) counts += count(R.plurals.backup_subscriptions, subscriptions)
+    if (budgets > 0) counts += count(R.plurals.backup_budgets, budgets)
     return counts.joinToString(", ")
 }
 

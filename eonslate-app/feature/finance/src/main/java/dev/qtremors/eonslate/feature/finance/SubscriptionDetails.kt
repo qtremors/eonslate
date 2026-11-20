@@ -81,7 +81,7 @@ internal fun SubscriptionDetails(
             PressableCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(if (income) R.string.finance_subscription_received else R.string.finance_subscription_spent))
-                    Text(money(report.recorded), style = HeroTextStyle, color = accent)
+                    Text(money(report.recorded), style = HeroTextStyle, color = if (report.recorded.signum() == 0) MaterialTheme.colorScheme.onSurface else accent)
                     if (report.paymentCount == 0) {
                         Text(stringResource(R.string.finance_subscription_no_payments), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

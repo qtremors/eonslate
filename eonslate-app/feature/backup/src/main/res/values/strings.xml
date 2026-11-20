@@ -52,36 +52,36 @@
     <string name="backup_error_restore">Restore failed. Nothing changed.</string>
 
     <plurals name="backup_trackers">
-        <item quantity="one">%d tracker</item>
-        <item quantity="other">%d trackers</item>
+        <item quantity="one">%s tracker</item>
+        <item quantity="other">%s trackers</item>
     </plurals>
     <plurals name="backup_entries">
-        <item quantity="one">%d entry</item>
-        <item quantity="other">%d entries</item>
+        <item quantity="one">%s entry</item>
+        <item quantity="other">%s entries</item>
     </plurals>
     <plurals name="backup_accounts">
-        <item quantity="one">%d account</item>
-        <item quantity="other">%d accounts</item>
+        <item quantity="one">%s account</item>
+        <item quantity="other">%s accounts</item>
     </plurals>
     <plurals name="backup_transactions">
-        <item quantity="one">%d transaction</item>
-        <item quantity="other">%d transactions</item>
+        <item quantity="one">%s transaction</item>
+        <item quantity="other">%s transactions</item>
     </plurals>
     <string name="backup_section_danger">Everything</string>
     <string name="backup_clear">Delete all data</string>
-    <string name="backup_clear_hint">Trackers, entries, accounts and transactions. Settings stay.</string>
+    <string name="backup_clear_hint">Trackers, money, settings and subscription images.</string>
     <string name="backup_clear_dialog">Delete all data?</string>
     <string name="backup_clear_message">Everything is removed. It can be undone from this page until the next restore.</string>
     <string name="backup_clear_action">Delete all</string>
     <string name="backup_cleared">All data deleted</string>
     <string name="backup_review_legacy">Replaces the finance sections shown. You can undo it.</string>
     <plurals name="backup_budgets">
-        <item quantity="one">%d budget</item>
-        <item quantity="other">%d budgets</item>
+        <item quantity="one">%s budget</item>
+        <item quantity="other">%s budgets</item>
     </plurals>
     <plurals name="backup_subscriptions">
-        <item quantity="one">%d subscription</item>
-        <item quantity="other">%d subscriptions</item>
+        <item quantity="one">%s subscription</item>
+        <item quantity="other">%s subscriptions</item>
     </plurals>
     <plurals name="backup_categories">
         <item quantity="one">%d category</item>

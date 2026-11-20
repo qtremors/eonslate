@@ -122,14 +122,18 @@ fun EonslateScaffold(
             }
         }
     ) { inner ->
-        content(
-            PaddingValues(
-                start = inner.calculateStartPadding(layoutDirection) + spacing.screenGutter,
-                end = inner.calculateEndPadding(layoutDirection) + spacing.screenGutter,
-                top = inner.calculateTopPadding(),
-                bottom = inner.calculateBottomPadding() + spacing.toolbarClearance
+        androidx.compose.foundation.layout.BoxWithConstraints {
+            // Past a readable width the content stays centred rather than stretching edge to edge.
+            val extra = ((maxWidth - MAX_CONTENT_WIDTH) / 2).coerceAtLeast(0.dp)
+            content(
+                PaddingValues(
+                    start = inner.calculateStartPadding(layoutDirection) + spacing.screenGutter + extra,
+                    end = inner.calculateEndPadding(layoutDirection) + spacing.screenGutter + extra,
+                    top = inner.calculateTopPadding(),
+                    bottom = inner.calculateBottomPadding() + spacing.toolbarClearance
+                )
             )
-        )
+        }
     }
 }
 
@@ -205,3 +209,5 @@ private fun FilterTopBar(filter: FilterTop, onClose: () -> Unit, requestFocus: B
         colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceContainer)
     )
 }
+
+private val MAX_CONTENT_WIDTH = 760.dp

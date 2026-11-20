@@ -47,6 +47,13 @@ import dev.qtremors.eonslate.core.ui.theme.SlateTileShape
  */
 
 private val BarGap = 2.dp
+/** Space between pill bars, and between a bar and the baseline it rises from. */
+internal val PillGap = 6.dp
+/** The gap between a progress value and the rest of its track. */
+internal val TrackGap = 4.dp
+internal val PillLift = 3.dp
+/** The shortest a pill bar gets, so a small value stays visible without looking large. */
+internal val PillMin = 4.dp
 /** Bars never grow into blocks: with few columns they stay this wide, centered in their column. */
 private val MaxBar = 28.dp
 private val DataEnd = 4.dp
@@ -80,6 +87,8 @@ fun BarChart(
     onSelect: (Int?) -> Unit = {},
     highlight: Int? = null,
     highlightColor: Color = MaterialTheme.colorScheme.primary,
+    /** For values below zero, as a net flow uses; the same as [color] unless given. */
+    negativeColor: Color = color,
     height: Dp = 140.dp,
     /** Written over the tallest bar, such as "3"; the one direct label a bar chart carries. */
     peakLabel: String? = null,
@@ -111,8 +120,9 @@ fun BarChart(
         val plotHeight = size.height - plotTop
         val zeroY = plotTop + plotHeight * (range.endInclusive / span)
         val column = size.width / values.size
-        val gap = BarGap.toPx().coerceAtMost(column / 3f)
-        val radius = DataEnd.toPx().coerceAtMost((column - gap) / 2f)
+        val gap = PillGap.toPx().coerceAtMost(column * 0.3f)
+        val lift = PillLift.toPx()
+        val negatives = values.any { it < 0f }
 
         values.forEachIndexed { i, value ->
             if (value == 0f) return@forEachIndexed
@@ -120,16 +130,27 @@ fun BarChart(
             val left = i * column + (column - width) / 2f
             val right = left + width
             val valueY = plotTop + plotHeight * ((range.endInclusive - value) / span)
-            val top = minOf(valueY, zeroY)
-            val bottom = maxOf(valueY, zeroY)
-            val base = when (i) {
-                highlight -> highlightColor
+            // Each bar is a pill lifted off the baseline, so the bars read as separate pieces.
+            val minHeight = PillMin.toPx()
+            val top: Float
+            val bottom: Float
+            if (value > 0f) {
+                bottom = zeroY - lift
+                top = minOf(valueY, bottom - minHeight)
+            } else {
+                top = zeroY + lift
+                bottom = maxOf(valueY, top + minHeight)
+            }
+            val base = when {
+                i == highlight -> highlightColor
+                value < 0f -> negativeColor
                 else -> color
             }
             val fill = if (selected != null && selected != i) base.copy(alpha = 0.4f) else base
-            drawBar(left, top, right, bottom, radius, roundTop = value > 0f, color = fill)
+            drawPill(left, top, right, bottom, fill)
         }
-        drawLine(baseline, Offset(0f, zeroY), Offset(size.width, zeroY), strokeWidth = 1.dp.toPx())
+        // Zero is drawn only where bars fall on both sides of it.
+        if (negatives) drawLine(baseline, Offset(0f, zeroY), Offset(size.width, zeroY), strokeWidth = 1.dp.toPx())
 
         val peak = values.withIndex().maxByOrNull { it.value }?.takeIf { it.value > 0f }
         if (label != null && peak != null) {
@@ -147,15 +168,10 @@ fun BarChart(
     }
 }
 
-/** A bar rounded only at its data end, square where it meets the baseline. */
-private fun DrawScope.drawBar(left: Float, top: Float, right: Float, bottom: Float, radius: Float, roundTop: Boolean, color: Color) {
-    val r = CornerRadius(radius, radius)
-    val rect = if (roundTop) {
-        RoundRect(left, top, right, bottom, topLeftCornerRadius = r, topRightCornerRadius = r)
-    } else {
-        RoundRect(left, top, right, bottom, bottomLeftCornerRadius = r, bottomRightCornerRadius = r)
-    }
-    drawPath(Path().apply { addRoundRect(rect) }, color)
+/** A bar as a pill: fully round at both ends, the Expressive shape for a data mark. */
+internal fun DrawScope.drawPill(left: Float, top: Float, right: Float, bottom: Float, color: Color) {
+    val radius = minOf(right - left, bottom - top) / 2f
+    drawRoundRect(color, topLeft = Offset(left, top), size = Size(right - left, bottom - top), cornerRadius = CornerRadius(radius, radius))
 }
 
 /**
@@ -277,18 +293,24 @@ private fun AxisText(text: String) {
 @Composable
 fun Meter(fraction: Float, color: Color, contentDescription: String, modifier: Modifier = Modifier) {
     val clamped = fraction.coerceIn(0f, 1f)
-    Box(
-        modifier = modifier
+    // As Expressive progress draws it: the value as one pill, a gap, the rest of the track as
+    // another pill, and a stop dot where the track ends.
+    Canvas(
+        modifier
             .fillMaxWidth()
             .height(12.dp)
-            .clip(SlateTileShape)
-            .background(color.copy(alpha = 0.22f))
             .semantics { this.contentDescription = contentDescription }
     ) {
-        Canvas(Modifier.fillMaxWidth().height(12.dp)) {
-            if (clamped > 0f) {
-                drawRoundRect(color, size = Size(size.width * clamped, size.height), cornerRadius = CornerRadius(DataEnd.toPx()))
-            }
+        val h = size.height
+        val gap = TrackGap.toPx()
+        val filled = if (clamped > 0f) (size.width * clamped).coerceIn(h, size.width) else 0f
+        if (filled > 0f) drawPill(0f, 0f, filled, h, color)
+        val trackStart = if (filled > 0f) filled + gap else 0f
+        val dot = h * 0.22f
+        if (size.width - trackStart >= dot * 2f) {
+            // Near the end the track narrows to a nub, but the stop dot stays until the value reaches it.
+            drawPill(trackStart, 0f, size.width, h, color.copy(alpha = 0.24f))
+            drawCircle(color, radius = dot, center = Offset(size.width - minOf(h, size.width - trackStart) / 2f, h / 2f))
         }
     }
 }
@@ -323,7 +345,7 @@ fun RankedBars(
                 Spacer(Modifier.height(4.dp))
                 Canvas(Modifier.fillMaxWidth().height(8.dp)) {
                     val width = size.width * (bar.value / max).coerceIn(0f, 1f)
-                    if (width > 0f) drawRoundRect(color, size = Size(width.coerceAtLeast(DataEnd.toPx() * 2), size.height), cornerRadius = CornerRadius(DataEnd.toPx()))
+                    if (width > 0f) drawPill(0f, 0f, width.coerceAtLeast(size.height), size.height, color)
                 }
             }
         }

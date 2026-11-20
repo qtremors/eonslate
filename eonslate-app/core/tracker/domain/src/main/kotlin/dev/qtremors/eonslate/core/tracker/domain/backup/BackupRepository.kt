@@ -3,7 +3,14 @@ package dev.qtremors.eonslate.core.tracker.domain.backup
 import kotlinx.coroutines.flow.StateFlow
 
 /** How much tracker data there is, to compare a backup with what is on the phone. */
-data class DataCounts(val trackers: Int, val entries: Int, val accounts: Int = 0, val transactions: Int = 0)
+data class DataCounts(
+    val trackers: Int,
+    val entries: Int,
+    val accounts: Int = 0,
+    val transactions: Int = 0,
+    val subscriptions: Int = 0,
+    val budgets: Int = 0,
+)
 
 /** Reads and replaces all tracker data at once, for backups. */
 interface BackupRepository {

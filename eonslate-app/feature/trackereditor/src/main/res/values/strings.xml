@@ -134,4 +134,12 @@
     </string-array>
     <string name="editor_tags">Tags</string>
     <string name="editor_tags_hint">Comma separated</string>
+    <string name="editor_section_schedule">Schedule</string>
+    <string name="editor_schedule_daily">Every day</string>
+    <string name="editor_schedule_days">Some days</string>
+    <string name="editor_schedule_weekly">Times a week</string>
+    <plurals name="editor_schedule_times">
+        <item quantity="one">%d day a week, any day</item>
+        <item quantity="other">%d days a week, any days</item>
+    </plurals>
 </resources>

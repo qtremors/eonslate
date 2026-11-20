@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.domain.backup
 
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
 import dev.qtremors.eonslate.core.tracker.domain.value.FieldConfigJson
 
@@ -49,6 +50,9 @@ object BackupCheck {
         snapshot.trackers.forEach { t ->
             if (t.name.isBlank() || t.iconName.isBlank()) add("tracker ${t.id} has no name or icon")
             if (!TrackerColors.isValid(t.colorIndex)) add("tracker ${t.id} has color ${t.colorIndex}")
+            if (t.scheduleDays !in 0..Schedule.ALL_DAYS_MASK || !Schedule(Schedule.daysOf(t.scheduleDays), t.timesPerWeek).isValid()) {
+                add("tracker ${t.id} has schedule ${t.scheduleDays}/${t.timesPerWeek}")
+            }
             if (t.updatedAt < t.createdAt) add("tracker ${t.id} was updated before it was made")
         }
 

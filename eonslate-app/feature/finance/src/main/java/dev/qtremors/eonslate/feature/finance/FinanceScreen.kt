@@ -14,6 +14,7 @@ import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.SwipeToDismissBoxDefaults
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionFilter
@@ -27,9 +28,8 @@ import androidx.compose.material.icons.rounded.FileDownload
 import dev.qtremors.eonslate.core.tracker.domain.csv.CsvFiles
 import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 import dev.qtremors.eonslate.core.tracker.ui.displayDate
-import dev.qtremors.eonslate.core.ui.components.RankedBars
-import dev.qtremors.eonslate.core.ui.components.RankedBar
 import androidx.compose.ui.res.pluralStringResource
+import dev.qtremors.eonslate.core.ui.components.FitText
 import dev.qtremors.eonslate.core.ui.components.BadgeColors
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.foundation.layout.size
@@ -197,6 +197,7 @@ fun FinanceScreen(
     }
     val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort)
     var planKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
+    var jumpToTop by remember { mutableStateOf(false) }
     val plans = remember(ledger, query, planKind) { ledger?.plans(query, planKind).orEmpty() }
     val shown = remember(ledger, filter) { ledger?.filteredTransactions(filter).orEmpty() }
     val scope = rememberCoroutineScope()
@@ -268,6 +269,7 @@ fun FinanceScreen(
     }
     LaunchedEffect(openBudget) {
         if (openBudget) {
+            jumpToTop = true
             open(Editor.BUDGET, null)
             onBudgetOpened()
         }
@@ -393,7 +395,12 @@ fun FinanceScreen(
                     edit = { open(Editor.RECURRING, it.id) },
                     setPaused = { payment, paused -> viewModel.setPaused(payment, paused) },
                     delete = { viewModel.delete(it) { viewModel.pruneIcons() } },
+                    add = { open(Editor.RECURRING, null) },
                 ),
+                scrollToTop = jumpToTop,
+                chosenCurrency = currency,
+                onCurrency = viewModel::showCurrency,
+                onScrolledToTop = { jumpToTop = false },
                 detection = viewModel.detection,
                 onReviewPayments = { open(Editor.INBOX, null) },
             )
@@ -428,7 +435,7 @@ fun FinanceScreen(
             if (data.accounts.isNotEmpty() && (recordId == null || transaction != null)) key(recordId) {
                 TransactionEditor(
                     transaction = transaction,
-                    accounts = data.accounts,
+                    accounts = usualAccounts(data),
                     today = viewModel.today(),
                     prefill = prefill,
                     initialKind = newKind,
@@ -453,7 +460,7 @@ fun FinanceScreen(
             if (data.accounts.isNotEmpty() && (recordId == null || existing != null)) key(recordId) {
                 val original = remember { existing }
                 RecurringEditor(
-                    original, data.accounts, viewModel.today(), busy, failed, dismiss,
+                    original, usualAccounts(data), viewModel.today(), busy, failed, dismiss,
                     onSave = { viewModel.schedule(original, it.copy(id = original?.id ?: viewModel.newId()), done) },
                     onDelete = existing?.let { { viewModel.delete(it, done) } },
                     onRecord = existing?.takeIf { !it.paused && it.nextEpochDay != null }?.let {
@@ -477,7 +484,7 @@ fun FinanceScreen(
             val budget = data.budgets.firstOrNull { it.id == recordId }
             if (data.accounts.isNotEmpty() && (recordId == null || budget != null)) key(recordId) {
                 CategoryBudgetEditor(
-                    budget, data.accounts, viewModel.today(), busy, failed, dismiss,
+                    budget, usualAccounts(data), viewModel.today(), busy, failed, dismiss,
                     onSave = { viewModel.save(it.copy(id = budget?.id ?: viewModel.newId()), done) },
                     onDelete = budget?.let { { viewModel.delete(it, done) } },
                 )
@@ -521,8 +528,6 @@ private enum class TransactionPeriod { ALL, TODAY, WEEK, MONTH, DAYS_90, CUSTOM 
 /** Rows shown before "Show older"; each tap shows this many more. */
 private const val PAGE = 50
 
-/** Categories shown in the breakdown before "Show all". */
-private const val BREAKDOWN = 5
 
 @Composable
 private fun LedgerList(
@@ -549,6 +554,10 @@ private fun LedgerList(
     planActions: PlanActions = PlanActions({}, {}, { _, _ -> }, {}),
     detection: SmsDetection? = null,
     onReviewPayments: () -> Unit = {},
+    scrollToTop: Boolean = false,
+    onScrolledToTop: () -> Unit = {},
+    chosenCurrency: String = "",
+    onCurrency: (String) -> Unit = {},
 ) {
     val sort = filter.sort
     val category = filter.category
@@ -558,7 +567,6 @@ private fun LedgerList(
     val shownIds = remember(shown) { shown.mapTo(HashSet()) { it.id } }
     LaunchedEffect(shownIds) { if (!shownIds.containsAll(selected)) selected = selected intersect shownIds }
     var limit by rememberSaveable(filter) { mutableStateOf(PAGE) }
-    var allCategories by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     if (confirmDelete) {
         ConfirmDialog(
@@ -577,13 +585,23 @@ private fun LedgerList(
     val balances = remember(ledger) { ledger.balances() }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
     val budgetHealth = remember(ledger, today) { ledger.budgetHealth(today) }
+    val slots = remember(ledger) { chartSlots(ledger) }
+    val listState = rememberLazyListState()
+    // Budgets lead the page, so opening one from Home brings the page back to its top.
+    LaunchedEffect(scrollToTop) {
+        if (scrollToTop) {
+            listState.scrollToItem(0)
+            onScrolledToTop()
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         if (page == FinancePage.PLANS) {
-            planItems(ledger, plans, planKind, onPlanKind, today, planActions)
+            planItems(ledger, plans, planKind, onPlanKind, today, planActions, chosenCurrency, onCurrency)
             return@LazyColumn
         }
         // One account is the whole balance; the list matters only once there are several.
@@ -605,19 +623,10 @@ private fun LedgerList(
                 health.budget?.let { open(Editor.BUDGET, it.id) } ?: health.account?.let { open(Editor.ACCOUNT, it.id) }
             }
             // What each budget has spent this period, one chart per currency so amounts compare.
-            budgetHealth.groupBy { it.currency }.forEach { (currency, group) ->
-                item(key = "budget-spending-$currency") {
-                    val ranked = group.sortedByDescending { it.spent }
-                    ChartCard(stringResource(R.string.finance_budget_spending)) {
-                        RankedBars(
-                            ranked.map {
-                                RankedBar(it.title, ValueFormat.money(it.spent, currency, numberLocale) + " · " + it.percent + "%", it.spent.toFloat())
-                            },
-                            MaterialTheme.colorScheme.primary,
-                            onClick = { openBudget(ranked[it]) },
-                        )
-                    }
-                }
+            // All budgets in a currency at once: the total limit, spent and left, with a ring.
+            val budgetCurrency = ledger.shownCurrency(chosenCurrency)
+            budgetHealth.filter { it.currency == budgetCurrency }.takeIf { it.isNotEmpty() }?.let { group ->
+                item(key = "budget-totals") { BudgetTotals(group, budgetCurrency) }
             }
             items(budgetHealth, key = { "budget-" + (it.budget?.id ?: "account-" + it.account?.id) }) { health ->
                 BudgetCard(health, onClick = { openBudget(health) })
@@ -656,9 +665,11 @@ private fun LedgerList(
                     modifier = Modifier.padding(start = 16.dp, top = 4.dp),
                 )
             }
-            val summaries = shown.groupBy { accounts.getValue(it.accountId).currency }
-            summaries.forEach { (currency, transactions) ->
-                item(key = "totals-" + currency) {
+            // One currency at a time, the same one on every tab; the rows below still list all.
+            val currency = ledger.shownCurrency(chosenCurrency)
+            val transactions = shown.filter { accounts.getValue(it.accountId).currency == currency }
+            run {
+                item(key = "totals") {
                     val locale = numberLocale
                     val income = transactions.total(TransactionKind.INCOME)
                     val expenses = transactions.total(TransactionKind.EXPENSE)
@@ -666,6 +677,7 @@ private fun LedgerList(
                         income = ValueFormat.money(income, currency, locale),
                         expenses = ValueFormat.money(expenses, currency, locale),
                         net = ValueFormat.money(income - expenses, currency, locale),
+                        badge = if (ledger.currencies().size > 1) ({ CurrencyPicker(currency, ledger.currencies(), onCurrency) }) else null,
                     )
                 }
                 // Where the shown expenses went, following the period and category filters.
@@ -673,36 +685,21 @@ private fun LedgerList(
                     .groupBy { it.category.trim().ifBlank { "" } }
                     .map { (name, list) -> name to list.total(TransactionKind.EXPENSE) }
                     .sortedByDescending { it.second }
-                if (byCategory.isNotEmpty()) item(key = "breakdown-" + currency) {
-                    val none = stringResource(R.string.overview_uncategorized)
-                    val whole = transactions.total(TransactionKind.EXPENSE)
-                    val bars = if (allCategories) byCategory else byCategory.take(BREAKDOWN)
+                if (byCategory.isNotEmpty()) item(key = "breakdown") {
                     ChartCard(stringResource(R.string.overview_by_category)) {
-                        // Each bar gives its share of the shown spending; a tap filters to it.
-                        RankedBars(
-                            bars.map { (name, total) ->
-                                RankedBar(name.ifBlank { none }, ValueFormat.money(total, currency, numberLocale) + " · " + share(total, whole), total.toFloat())
-                            },
-                            MaterialTheme.colorScheme.primary,
-                            onClick = { index ->
-                                val picked = bars[index].first
-                                if (picked.isNotBlank()) onCategory(if (picked.equals(category, ignoreCase = true)) null else picked)
-                            },
+                        CategoryBreakdown(
+                            byCategory, slots, { ValueFormat.money(it, currency, numberLocale) }, category,
+                            onPick = { picked -> onCategory(if (picked.equals(category, ignoreCase = true)) null else picked) },
                         )
-                        if (byCategory.size > BREAKDOWN) {
-                            TextButton(shapes = ButtonDefaults.shapes(), onClick = { allCategories = !allCategories }) {
-                                Text(
-                                    if (allCategories) stringResource(R.string.finance_show_fewer)
-                                    else stringResource(R.string.finance_show_all, byCategory.size),
-                                )
-                            }
-                        }
                     }
                 }
             }
         }
-        if (shown.isEmpty()) {
-            item { Text(stringResource(if (ledger.transactions.isEmpty()) R.string.finance_empty_activity else R.string.finance_no_matches), modifier = Modifier.padding(12.dp)) }
+        if (shown.isEmpty()) item(key = "empty") {
+            EmptyWithAction(
+                stringResource(if (ledger.transactions.isEmpty()) R.string.finance_empty_activity else R.string.finance_no_matches),
+                stringResource(R.string.finance_new_transaction),
+            ) { open(Editor.TRANSACTION, null) }
         }
         // By size the order is the point, so one list; by date each day has its heading.
         val page = shown.take(limit)
@@ -764,12 +761,6 @@ private fun LedgerList(
     }
 }
 
-private fun share(part: BigInteger, whole: BigInteger): String {
-    if (whole.signum() == 0) return "0%"
-    val percent = part.toBigDecimal().multiply(java.math.BigDecimal(100))
-        .divide(whole.toBigDecimal(), 0, java.math.RoundingMode.HALF_UP)
-    return if (percent.signum() == 0 && part.signum() > 0) "<1%" else "$percent%"
-}
 
 /** Swiping a row toward the start deletes it; the caller offers Undo. */
 @Composable
@@ -814,21 +805,31 @@ internal fun ChartCard(title: String, content: @Composable () -> Unit) {
 
 /** In, out and net for the shown period. In is green and out red, each with its sign too. */
 @Composable
-internal fun Totals(income: String, expenses: String, net: String, title: String? = null) {
+internal fun Totals(
+    income: String,
+    expenses: String,
+    net: String,
+    title: String? = null,
+    /** Beside the title, such as the shown currency. */
+    badge: (@Composable () -> Unit)? = null,
+) {
     val colors = MaterialTheme.colorScheme
     val signals = LocalSignals.current
     Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            title?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant) }
+            if (title != null || badge != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                title?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant) }
+                badge?.invoke()
+            }
             Row {
                 listOf(
                     Triple(R.string.overview_in, "+$income", signals.positive),
                     Triple(R.string.overview_out, "−$expenses", colors.error),
                     Triple(R.string.overview_net, net, colors.onSurface),
                 ).forEach { (label, value, color) ->
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
                         Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-                        Text(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color, maxLines = 1)
+                        FitText(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color)
                     }
                 }
             }
@@ -955,7 +956,7 @@ private fun DateRangeDialog(initial: LongRange?, onDismiss: () -> Unit, onPick: 
             TextButton(shapes = ButtonDefaults.shapes(), onClick = onDismiss) { Text(stringResource(R.string.finance_cancel)) }
         },
     ) {
-        DateRangePicker(state = state, modifier = Modifier.weight(1f))
+        DateRangePicker(state = state, modifier = Modifier.weight(1f).padding(top = 12.dp))
     }
 }
 
@@ -1041,8 +1042,8 @@ private fun BudgetCard(health: BudgetHealth, onClick: () -> Unit) {
                 Text(spentText, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize), color = colors.onSurface)
                 Text(" / " + limitText, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
                 Text(
-                    if (health.over) stringResource(R.string.finance_budget_over_by, money(health.remaining.negate()), health.percent)
-                    else stringResource(R.string.finance_budget_left, money(health.remaining), health.percent),
+                    if (health.over) stringResource(R.string.finance_budget_over_by, money(health.remaining.negate()), budgetPercent(health.percent))
+                    else stringResource(R.string.finance_budget_left, money(health.remaining), budgetPercent(health.percent)),
                     style = MaterialTheme.typography.labelLarge,
                     color = when {
                         health.over -> colors.error
@@ -1076,9 +1077,16 @@ internal fun intervalLabel(interval: PaymentInterval, every: Int): String =
         every, every,
     )
 
+/** Accounts most used first, so a new entry starts in the account you use, not the first by id. */
+private fun usualAccounts(ledger: Ledger): List<Account> {
+    val uses = ledger.transactions.groupingBy { it.accountId }.eachCount()
+    return ledger.accounts.sortedByDescending { uses[it.id] ?: 0 }
+}
+
 @Composable
 internal fun dueLabel(days: Long): String = when {
-    days <= 0L -> stringResource(R.string.finance_due_today)
+    days < 0L -> pluralStringResource(R.plurals.finance_overdue, (-days).toInt(), (-days).toInt())
+    days == 0L -> stringResource(R.string.finance_due_today)
     days == 1L -> stringResource(R.string.finance_due_tomorrow)
     else -> stringResource(R.string.finance_due_in, days)
 }
@@ -1107,7 +1115,9 @@ private fun AccountEditor(
     val balance = if (opening.isBlank()) 0L else parseMoney(opening, currency)
     val monthly = parseMoney(budget, currency)?.takeIf { it > 0 }
     val title = stringResource(if (account == null) R.string.finance_new_account else R.string.finance_edit_account)
-    EditorSheet(title, busy, failed, onDismiss) {
+    val entered = listOf<Any?>(name, code, opening, budget)
+    val opened = remember { entered }
+    EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         FormField(name, { name = it }, stringResource(R.string.finance_name), maxLength = Account.NAME_LIMIT, enabled = !busy)
         FormField(
             code, { code = it }, stringResource(R.string.finance_currency),
@@ -1185,7 +1195,9 @@ private fun TransactionEditor(
     val transfer = kind == TransactionKind.TRANSFER
     val title = stringResource(if (transaction == null) R.string.finance_new_transaction else R.string.finance_edit_transaction)
 
-    EditorSheet(title, busy, failed, onDismiss) {
+    val entered = listOf<Any?>(kind, accountId, destinationId, amount, date, note, details, category)
+    val opened = remember { entered }
+    EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         if (prefill != null) {
             val payee = prefill.merchant ?: prefill.kind.label()
             PressableCard(Modifier.fillMaxWidth()) {
@@ -1296,9 +1308,37 @@ internal fun EditorSheet(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
+    /** Something was entered: closing by swipe, Back or a tap outside asks before it is lost. */
+    dirty: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    EonslateBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, title = title) {
+    var asking by remember { mutableStateOf(false) }
+    var leaving by remember { mutableStateOf(false) }
+    val unsaved by rememberUpdatedState(dirty)
+    val state = androidx.compose.material3.rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { value ->
+            if (value == androidx.compose.material3.SheetValue.Hidden && unsaved && !leaving) {
+                asking = true
+                false
+            } else true
+        },
+    )
+    if (asking) {
+        ConfirmDialog(
+            icon = Icons.Rounded.Delete,
+            title = stringResource(R.string.finance_discard_title),
+            message = stringResource(R.string.finance_discard_message),
+            confirmLabel = stringResource(R.string.finance_discard),
+            onConfirm = {
+                asking = false
+                leaving = true
+                onDismiss()
+            },
+            onDismiss = { asking = false },
+        )
+    }
+    EonslateBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, title = title, sheetState = state) {
         Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (failed) Text(stringResource(R.string.finance_failed), color = MaterialTheme.colorScheme.error)
             content()
@@ -1385,4 +1425,16 @@ internal fun parseMoney(value: String, currency: String): Long? {
         if (digit == separator) '.' else digit.digitToIntOrNull()?.digitToChar() ?: digit
     }.joinToString("")
     return normalized.takeIf(decimalInput::matches)?.let { MoneyAmount.parse(it, currency) }
+}
+
+/** Nothing to show yet: a line saying so, and the button that adds the first one. */
+@Composable
+internal fun EmptyWithAction(message: String, action: String, onAction: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = onAction) {
+            Icon(Icons.Rounded.Add, contentDescription = null)
+            Text(action, modifier = Modifier.padding(start = 8.dp))
+        }
+    }
 }

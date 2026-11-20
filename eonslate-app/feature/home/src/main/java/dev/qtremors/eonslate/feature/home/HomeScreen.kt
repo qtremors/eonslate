@@ -90,6 +90,7 @@ fun HomeScreen(
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
     val streaks by viewModel.streaks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+    val dueToday by viewModel.dueToday.collectAsStateWithLifecycle()
     val selectedTag by viewModel.homeTag.collectAsStateWithLifecycle(initialValue = null)
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -110,6 +111,7 @@ fun HomeScreen(
         },
         streaks = streaks,
         today = today,
+        dueToday = dueToday,
         selectedTag = selectedTag,
         onTagChange = viewModel::setHomeTag,
         snackbar = snackbar,
@@ -148,6 +150,8 @@ fun HomeContent(
     onSettings: (() -> Unit)? = null,
     streaks: Map<String, Int> = emptyMap(),
     today: TodayProgress? = null,
+    /** The trackers due today; null until known. */
+    dueToday: Set<String>? = null,
     snackbar: SnackbarHostState? = null,
     actions: SlateActions? = null,
     /** Creates a tracker from a template in one tap; offered while Home is empty. */
@@ -171,8 +175,15 @@ fun HomeContent(
         }
     }
     val tag = tags.firstOrNull { it.equals(selectedTag, ignoreCase = true) }
-    val shown = remember(trackers, query, tag) {
-        trackers?.filter { TrackerSearch.matches(it.tracker, query) && TrackerSearch.hasTag(it.tracker, tag) }
+    // "Today" only means something once some tracker is not due every day.
+    val scheduled = remember(trackers) { trackers.orEmpty().any { !it.tracker.schedule.isDaily } }
+    var dueOnly by rememberSaveable { mutableStateOf(false) }
+    val onlyDue = dueOnly && scheduled && dueToday != null
+    val shown = remember(trackers, query, tag, onlyDue, dueToday) {
+        trackers?.filter {
+            TrackerSearch.matches(it.tracker, query) && TrackerSearch.hasTag(it.tracker, tag) &&
+                (!onlyDue || it.tracker.id in dueToday.orEmpty())
+        }
     }
     EonslateScaffold(
         title = stringResource(R.string.home_title),
@@ -235,9 +246,12 @@ fun HomeContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (tags.isNotEmpty()) {
+                if (tags.isNotEmpty() || scheduled) {
                     item(key = "tags", span = { GridItemSpan(maxLineSpan) }) {
-                        TagChips(tags, tag, onPick = { picked -> onTagChange(picked.takeUnless { it == tag }) })
+                        TagChips(
+                            tags, tag, onPick = { picked -> onTagChange(picked.takeUnless { it == tag }) },
+                            dueOnly = if (scheduled) dueOnly else null, onDueOnly = { dueOnly = it },
+                        )
                     }
                 }
                 if (today != null && today.total > 0 && query.isBlank() && tag == null) {
@@ -368,6 +382,8 @@ private fun summaryLine(summary: TrackerSummary, nowMillis: Long): String {
     val count = pluralStringResource(R.plurals.home_entry_count, summary.entryCount, summary.entryCount)
     // Under a minute reads as "just now" rather than "0 minutes ago".
     val relative = if (nowMillis - last in 0 until DateUtils.MINUTE_IN_MILLIS) stringResource(R.string.home_just_now)
+    // Android capitalises it ("In 4 hours") for the start of a sentence; here it sits mid-line.
     else DateUtils.getRelativeTimeSpanString(last, nowMillis, DateUtils.MINUTE_IN_MILLIS).toString()
+        .replaceFirstChar { it.lowercase(java.util.Locale.getDefault()) }
     return stringResource(R.string.home_entry_summary, count, relative)
 }

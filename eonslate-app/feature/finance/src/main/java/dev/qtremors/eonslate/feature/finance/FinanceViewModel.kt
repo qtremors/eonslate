@@ -45,6 +45,11 @@ class FinanceViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val currency = settings.tracking.map { it.currencyCode() }
+
+    /** Shows totals and charts in [code] on every tab; it is the app's currency setting. */
+    fun showCurrency(code: String) {
+        viewModelScope.launch { settings.updateTracking { it.copy(currency = code) } }
+    }
     val firstDay = settings.tracking.map { it.firstDayOfWeek() }
 
     private val _busy = MutableStateFlow(false)

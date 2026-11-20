@@ -1,5 +1,9 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.settings.Tracking
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.onStart
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,19 +50,36 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { settings.setHomeTag(tag) }
     }
 
-    /** Each tracker's current streak in days, by id; trackers without one are left out. */
-    val streaks: StateFlow<Map<String, Int>> = entries.observeEntryTimesByTracker()
-        .map { byTracker ->
+    // The device's week start until the setting is read, so nothing waits on it.
+    private val weekStart = settings.tracking.map { it.firstDayOfWeek() }.onStart { emit(Tracking().firstDayOfWeek()) }.distinctUntilChanged()
+    private val schedules = repository.observeSummaries().map { list -> list.associate { it.tracker.id to it.tracker.schedule } }
+    private val loggedDays = entries.observeEntryTimesByTracker().map { times -> times.mapValues { (_, list) -> list.map { it.localDay() } } }
+
+    /** Trackers, the days each was logged, and the week start, read together. */
+    private val logged = combine(schedules, loggedDays, weekStart, ::Logged)
+
+    /**
+     * Each tracker's current streak under its schedule, by id; trackers without one are left out.
+     * It does not wait for the tracker list: until it arrives, every tracker counts as daily.
+     */
+    val streaks: StateFlow<Map<String, Int>> = combine(schedules.onStart { emit(emptyMap()) }, loggedDays, weekStart, ::Logged)
+        .map { (schedules, days, weekStart) ->
             val today = LocalDate.now(ZoneId.of(clock.zoneId()))
-            byTracker.mapValues { (_, times) -> Streaks.of(times.map { it.localDay() }, today).current }.filterValues { it > 0 }
+            days.mapValues { (id, logged) -> Streaks.of(logged, today, schedules[id] ?: Schedule.DAILY, weekStart).current }.filterValues { it > 0 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
-    /** How many active trackers have an entry today; null until both reads arrive. */
-    val today: StateFlow<TodayProgress?> = combine(repository.observeSummaries(), entries.observeEntryTimesByTracker()) { summaries, times ->
-        val day = LocalDate.now(ZoneId.of(clock.zoneId()))
-        Today.progress(summaries.map { it.tracker.id }, times.mapValues { (_, list) -> list.map { it.localDay() } }, day)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+    /** The trackers due today under their schedules. */
+    val dueToday: StateFlow<Set<String>?> = logged
+        .map { (schedules, days, weekStart) -> Today.due(schedules, days, LocalDate.now(ZoneId.of(clock.zoneId())), weekStart) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
+    /** How many of the trackers due today have an entry; null until the reads arrive. */
+    val today: StateFlow<TodayProgress?> = logged
+        .map { (schedules, days, weekStart) -> Today.progress(schedules, days, LocalDate.now(ZoneId.of(clock.zoneId())), weekStart) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
+    private data class Logged(val schedules: Map<String, Schedule>, val days: Map<String, List<LocalDate>>, val weekStart: java.time.DayOfWeek)
 
     /** Logs "yes" now to a tracker that is a single yes or no, such as a daily habit. */
     fun quickLog(tracker: Tracker) {

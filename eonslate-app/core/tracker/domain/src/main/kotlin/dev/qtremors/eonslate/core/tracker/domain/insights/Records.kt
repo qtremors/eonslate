@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.domain.insights
 
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
+import java.time.DayOfWeek
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
@@ -51,4 +53,12 @@ data class TodayProgress(val logged: Int, val total: Int)
 object Today {
     fun progress(trackerIds: Collection<String>, dayOf: Map<String, List<LocalDate>>, today: LocalDate): TodayProgress =
         TodayProgress(logged = trackerIds.count { id -> dayOf[id].orEmpty().any { it == today } }, total = trackerIds.size)
+
+    /** The trackers due [today] under their schedules, logged or not. */
+    fun due(schedules: Map<String, Schedule>, dayOf: Map<String, List<LocalDate>>, today: LocalDate, weekStart: DayOfWeek = DayOfWeek.MONDAY): Set<String> =
+        schedules.filterTo(LinkedHashMap()) { (id, schedule) -> schedule.isDue(today, dayOf[id].orEmpty().toSet(), weekStart) }.keys
+
+    /** Progress over only the trackers due today, so a day off never reads as behind. */
+    fun progress(schedules: Map<String, Schedule>, dayOf: Map<String, List<LocalDate>>, today: LocalDate, weekStart: DayOfWeek = DayOfWeek.MONDAY): TodayProgress =
+        progress(due(schedules, dayOf, today, weekStart), dayOf, today)
 }

@@ -11,6 +11,7 @@ import dev.qtremors.eonslate.core.tracker.data.repository.RoomEntryRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomTrackerRepository
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -38,6 +39,23 @@ class TrackerMigrationTest {
     fun everyVersionHasAMigrationToTheNext() {
         val steps = TrackerMigrations.ALL.map { it.startVersion to it.endVersion }
         assertEquals((1 until TrackerDatabase.VERSION).map { it to it + 1 }, steps)
+    }
+
+    @Test
+    fun version12TrackersAreDueEveryDay() = runTest {
+        ExportedSchema.create(context, name, 12).use {
+            it.execSQL(
+                "INSERT INTO trackers (id, name, description, icon_name, color_index, archived, position, template_id, created_at, updated_at, tags) " +
+                    "VALUES ('t12', 'Gym', '', 'FitnessCenter', 8, 0, 0, NULL, 100, 100, '[]')"
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val tracker = RoomTrackerRepository(db, FakeClock()).getTracker("t12")!!
+            assertEquals(Schedule.DAILY, tracker.schedule)
+        } finally {
+            db.close()
+        }
     }
 
     @Test

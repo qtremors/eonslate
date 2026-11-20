@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.LoadingIndicator
+import dev.qtremors.eonslate.core.ui.components.FitText
 import dev.qtremors.eonslate.core.ui.components.PressableCard
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Arrangement
@@ -66,10 +67,12 @@ import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
 import dev.qtremors.eonslate.core.ui.theme.LocalReduceMotion
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import dev.qtremors.eonslate.core.ui.components.ChartKey
+import dev.qtremors.eonslate.core.ui.components.DonutChart
+import dev.qtremors.eonslate.core.ui.components.LegendRow
+import dev.qtremors.eonslate.core.ui.components.PairedBarChart
 import java.math.BigInteger
 
-/** Categories shown before "Show all". */
-private const val TOP_CATEGORIES = 5
 
 private val LOADING_HEIGHT = 260.dp
 
@@ -95,7 +98,7 @@ fun MoneyOverview(
     LaunchedEffect(data?.accounts?.isEmpty()) { if (data != null) viewModel.ensureAccount() }
     val today = remember { viewModel.today() }
     val summary = remember(data, currency, today) {
-        data?.let { MoneySummary.of(it, today, it.accounts.singleOrNull()?.currency ?: currency) }
+        data?.let { MoneySummary.of(it, today, it.shownCurrency(currency)) }
     }
     // The balance card's space is held while loading, so nothing below it jumps when it arrives.
     if (summary == null) {
@@ -106,7 +109,11 @@ fun MoneyOverview(
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         FoundPaymentsBanner(viewModel.detection, onReviewSms)
-        MoneyOverviewContent(summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory)
+        val slots = remember(data) { data?.let(::chartSlots).orEmpty() }
+        MoneyOverviewContent(
+            summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory, slots = slots,
+            currencies = data?.currencies().orEmpty(), onCurrency = viewModel::showCurrency,
+        )
     }
 }
 
@@ -120,6 +127,11 @@ fun MoneyOverviewContent(
     onAdd: (TransactionKind) -> Unit = {},
     onAddBudget: () -> Unit = {},
     onCategory: (String) -> Unit = { onTransactions() },
+    /** Each spending category's chart hue, by key. */
+    slots: Map<String, Int> = emptyMap(),
+    /** The currencies the accounts use; with several, the tag picks which one Home shows. */
+    currencies: List<String> = emptyList(),
+    onCurrency: (String) -> Unit = {},
 ) {
     val locale = LocalValueDisplay.current.numberLocale
     val money = { minor: BigInteger -> ValueFormat.money(minor, summary.currency, locale) }
@@ -127,7 +139,7 @@ fun MoneyOverviewContent(
         Card {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Label(stringResource(R.string.overview_balance))
-                CurrencyBadge(summary.currency)
+                CurrencyPicker(summary.currency, currencies, onCurrency)
             }
             AnimatedMoney(summary.balance, money)
             Label(stringResource(R.string.overview_this_month))
@@ -149,24 +161,46 @@ fun MoneyOverviewContent(
 
         if (summary.entries.isNotEmpty()) Card { CashFlowContent(summary, today, money) }
 
-        // Every category this month, none folded away; a tap opens its transactions.
-        if (summary.categories.isNotEmpty()) Card(onClick = onTransactions) {
-            var all by rememberSaveable { mutableStateOf(false) }
-            Label(stringResource(R.string.overview_by_category))
+        // How this month's spending splits, at a glance; a slice or row shows its amount, a row opens it.
+        if (summary.categories.isNotEmpty()) Card {
+            var picked by rememberSaveable { mutableStateOf<Int?>(null) }
+            Label(stringResource(R.string.overview_by_category_month))
+            val slices = categorySlices(summary.categories, slots, money)
+            val chosen = picked?.let(slices::getOrNull)
+            DonutChart(
+                slices = slices,
+                contentDescription = slices.joinToString { it.label + " " + it.valueText },
+                selected = picked,
+                onSelect = { picked = it },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        chosen?.label ?: stringResource(R.string.overview_total),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                    FitText(
+                        chosen?.valueText ?: money(summary.monthExpense),
+                        style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
             val none = stringResource(R.string.overview_uncategorized)
-            val total = summary.monthExpense
-            val shown = if (all) summary.categories else summary.categories.take(TOP_CATEGORIES)
-            RankedBars(
-                shown.map { (name, value) ->
-                    val percent = if (total.signum() == 0) 0 else value.multiply(BigInteger.valueOf(100)).divide(total).toInt()
-                    RankedBar(name.ifBlank { none }, money(value) + " · " + percent + "%", value.toFloat())
-                },
-                MaterialTheme.colorScheme.primary,
-                onClick = { index -> shown[index].first.takeIf { it.isNotBlank() }?.let(onCategory) ?: onTransactions() },
-            )
-            if (summary.categories.size > TOP_CATEGORIES) {
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = { all = !all }) {
-                    Text(if (all) stringResource(R.string.finance_show_fewer) else stringResource(R.string.finance_show_all, summary.categories.size))
+            summary.categories.take(CHART_PARTS).forEachIndexed { index, (name, value) ->
+                LegendRow(
+                    color = categoryColor(name, slots),
+                    label = name.ifBlank { none },
+                    valueText = money(value) + " · " + share(value, summary.monthExpense),
+                    emphasized = picked == index,
+                    onClick = { name.takeIf { it.isNotBlank() }?.let(onCategory) ?: onTransactions() },
+                )
+            }
+            if (summary.categories.size > CHART_PARTS) {
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = onTransactions) {
+                    Text(stringResource(R.string.finance_show_all, summary.categories.size))
                 }
             }
         }
@@ -256,7 +290,7 @@ internal fun FoundPaymentsBanner(detection: SmsDetection, onReview: () -> Unit, 
 }
 
 @Composable
-private fun Card(onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
+private fun Card(onClick: (() -> Unit)? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     val colors = MaterialTheme.colorScheme
     PressableCard(Modifier.fillMaxWidth(), onClick = onClick, color = colors.surfaceBright) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
@@ -269,9 +303,10 @@ private fun Label(text: String, modifier: Modifier = Modifier) =
 
 @Composable
 private fun Figure(label: String, value: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurface) {
-    Column(modifier) {
+    // A gap after each figure, so a long amount filling its column never runs into the next.
+    Column(modifier.padding(end = 8.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color, maxLines = 1)
+        FitText(value, style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = color)
     }
 }
 
@@ -304,8 +339,8 @@ private fun BudgetLine(health: BudgetHealth, money: (BigInteger) -> String) {
             if (health.over || health.warning) {
                 Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = color, modifier = Modifier.size(16.dp).padding(end = 2.dp))
                 Text(
-                    if (health.over) stringResource(R.string.finance_over_budget) + " · " + health.percent + "%"
-                    else stringResource(R.string.overview_budget_used, health.percent),
+                    if (health.over) stringResource(R.string.finance_over_budget) + " · " + budgetPercent(health.percent)
+                    else stringResource(R.string.overview_budget_used, budgetPercent(health.percent)),
                     style = MaterialTheme.typography.labelMedium, color = color,
                 )
             } else {
@@ -313,19 +348,6 @@ private fun BudgetLine(health: BudgetHealth, money: (BigInteger) -> String) {
             }
         }
         Meter(health.fraction, color, contentDescription = health.title + " " + money(health.spent) + " / " + money(health.limit))
-    }
-}
-
-/** The currency every amount on Home is in, as a small tag beside the balance. */
-@Composable
-private fun CurrencyBadge(code: String) {
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = CircleShape) {
-        Text(
-            code,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-        )
     }
 }
 
@@ -339,7 +361,7 @@ private fun AnimatedMoney(amount: BigInteger, money: (BigInteger) -> String) {
     }
     val shown = if (progress.value >= 1f) amount
     else amount.toBigDecimal().multiply(java.math.BigDecimal(progress.value.toDouble())).toBigInteger()
-    Text(money(shown), style = HeroTextStyle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+    FitText(money(shown), style = HeroTextStyle, color = MaterialTheme.colorScheme.onSurface)
 }
 
 /**
@@ -367,18 +389,45 @@ private fun CashFlowContent(summary: MoneySummary, today: LocalDate, money: (Big
         Figure(stringResource(R.string.overview_out), "−" + money(flow.spending), Modifier.weight(1f), MaterialTheme.colorScheme.error)
         Figure(stringResource(R.string.overview_net), money(flow.net), Modifier.weight(1f))
     }
-    val values = flow.buckets.map { it.spending.toFloat() }
-    val spent = values.any { it > 0f }
+    var mode by rememberSaveable { mutableStateOf(CashFlowMode.SPENDING) }
+    ConnectedChoices(CashFlowMode.entries, mode, { it.label() }, { mode = it })
+    val positive = LocalSignals.current.positive
+    val negative = MaterialTheme.colorScheme.error
+    val spent = flow.buckets.any { it.spending.signum() > 0 || it.income.signum() > 0 }
     if (spent) {
-        BarChart(
-            values = values,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            selected = picked,
-            onSelect = { picked = it },
-            highlight = values.lastIndex,
-            peakLabel = money(flow.buckets.maxBy { it.spending }.spending),
-            contentDescription = flow.buckets.joinToString { label(it) + " " + money(it.spending) },
-        )
+        when (mode) {
+            // How much went out in each period; the current one stands out.
+            CashFlowMode.SPENDING -> BarChart(
+                values = flow.buckets.map { it.spending.toFloat() },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                selected = picked,
+                onSelect = { picked = it },
+                highlight = flow.buckets.lastIndex,
+                peakLabel = money(flow.buckets.maxBy { it.spending }.spending),
+                contentDescription = flow.buckets.joinToString { label(it) + " " + money(it.spending) },
+            )
+            // Money in beside money out, period by period, on one axis.
+            CashFlowMode.IN_OUT -> {
+                ChartKey(listOf(stringResource(R.string.overview_in) to positive, stringResource(R.string.overview_out) to negative))
+                PairedBarChart(
+                    pairs = flow.buckets.map { it.income.toFloat() to it.spending.toFloat() },
+                    firstColor = positive,
+                    secondColor = negative,
+                    selected = picked,
+                    onSelect = { picked = it },
+                    contentDescription = flow.buckets.joinToString { label(it) + " +" + money(it.income) + " −" + money(it.spending) },
+                )
+            }
+            // What was left each period: above the line when more came in, below when more went out.
+            CashFlowMode.NET -> BarChart(
+                values = flow.buckets.map { it.net.toFloat() },
+                color = positive,
+                negativeColor = negative,
+                selected = picked,
+                onSelect = { picked = it },
+                contentDescription = flow.buckets.joinToString { label(it) + " " + money(it.net) },
+            )
+        }
         ChartAxis(start = label(flow.buckets.first()), end = label(flow.buckets.last()))
     }
     val bucket = picked?.let(flow.buckets::getOrNull)
@@ -398,6 +447,18 @@ private fun CashFlowContent(summary: MoneySummary, today: LocalDate, money: (Big
         )
     }
 }
+
+/** How the cash flow chart reads its range. */
+private enum class CashFlowMode { SPENDING, IN_OUT, NET }
+
+@Composable
+private fun CashFlowMode.label() = stringResource(
+    when (this) {
+        CashFlowMode.SPENDING -> R.string.overview_mode_spending
+        CashFlowMode.IN_OUT -> R.string.overview_mode_in_out
+        CashFlowMode.NET -> R.string.overview_mode_net
+    }
+)
 
 @Composable
 private fun CashFlowRange.label() = stringResource(

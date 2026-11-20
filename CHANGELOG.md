@@ -1,10 +1,43 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.6
+> **Version:** 2.1.7
 > **Last Updated:** 2026-11-20
 
 ---
+
+## [2.1.7] - 2026-11-20
+
+- **Charts that fit their job**: a donut for this month's spending on Home, a split bar with rows on Transactions, a ring with total limit, spent and left for budgets, and maps of costs and income for subscriptions.
+- **Cash flow** reads as Spending, In vs out side by side, or Net above and below zero.
+- Chart marks are pills: bars, donut slices, split bars and meters stand apart with round ends.
+- Meters and budget rings split the value from the rest of the track, as progress does, with a stop dot at the end. Donut slices are thinner, and 30-day bars stay readable.
+- Categories keep one colour across every chart, checked to stay apart for colour-blind readers. The biggest spenders get the colours.
+- Subscription maps show the five largest and fold the rest into one tile; amounts show only when they fit whole.
+- Large amounts shrink to fit instead of losing their digits.
+- Budgets past 999% read ">999%".
+- Restore counts subscriptions and budgets too, with grouped digits.
+- Tracker cards read "latest in 4 hours", not "In".
+- Custom subscription images fill their tile again.
+- Service templates file under your own categories, and the editor names the service choice plainly.
+- The variable switch reads "Amount varies"; editor switches sit in rounded groups.
+- Income schedules show their payout date; subscription rows fit in two lines, with "Estimated" for amounts that post an estimate.
+- Empty lists offer to add the first transaction or subscription.
+- Adding a budget from Home shows it at the top of Transactions.
+- One minus sign for money everywhere.
+- Wide screens keep content at a readable width.
+- Welcome mentions money as well as trackers; Delete all data says what it clears.
+- **One currency at a time**: Home, Transactions and Subscriptions show totals and charts in one currency, picked from the tag beside them. Lists still show every row in its own currency.
+- Editors ask before closing with unsaved changes.
+- Overdue subscriptions say how many days overdue, not "Due today".
+- New entries start in the account you use most.
+- Folded chart slices read "N more", never "Other".
+- A subscription with nothing spent yet shows its total plainly, not in red.
+- **Schedules**: a tracker can be due every day, on chosen weekdays, or a number of days a week.
+- Trackers has a Due today filter, and the day's progress counts only what is due.
+- Streaks skip days off; a weekly target counts weeks met.
+- New reminders start on the tracker's days.
+- Backups carry schedules; older files are due every day.
 
 ## [2.1.6] - 2026-11-20
 

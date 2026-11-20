@@ -137,6 +137,7 @@ fun RemindersContent(
         val existing = state.reminders.firstOrNull { it.id == editing }
         ReminderSheet(
             reminder = existing,
+            defaultDays = state.defaultDays,
             onSave = { minute, days, skip ->
                 onSave(existing?.id, minute, days, skip)
                 editing = null
@@ -220,13 +221,14 @@ fun RemindersContent(
 @Composable
 private fun ReminderSheet(
     reminder: Reminder?,
+    defaultDays: Set<DayOfWeek>,
     onSave: (minuteOfDay: Int, days: Set<DayOfWeek>, skipIfLogged: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
     val start = reminder?.minuteOfDay ?: (20 * 60)
     val time = rememberTimePickerState(initialHour = start / 60, initialMinute = start % 60)
-    var days by remember { mutableStateOf(reminder?.days ?: DayOfWeek.entries.toSet()) }
+    var days by remember { mutableStateOf(reminder?.days ?: defaultDays) }
     var skip by remember { mutableStateOf(reminder?.skipIfLogged ?: true) }
     val haptics = rememberAppHaptics()
 

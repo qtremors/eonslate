@@ -30,6 +30,7 @@
     <string name="home_no_entries">Nothing logged yet</string>
     <!-- %1$s is the entry count, such as "12 entries"; %2$s is when the latest was, such as "2 hours ago". -->
     <string name="home_entry_summary">%1$s, latest %2$s</string>
+    <string name="home_due_today">Due today</string>
     <plurals name="home_entry_count">
         <item quantity="one">%d entry</item>
         <item quantity="other">%d entries</item>

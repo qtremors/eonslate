@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.Service
 import dev.qtremors.eonslate.core.tracker.domain.finance.Services
+import dev.qtremors.eonslate.core.ui.components.BadgeColors
 import dev.qtremors.eonslate.core.ui.components.BadgePalette
 import dev.qtremors.eonslate.core.ui.components.BadgePigmentPicker
 import androidx.compose.ui.res.stringArrayResource
@@ -157,10 +158,8 @@ internal fun SubscriptionIcon(icon: String?, name: String, size: Dp = 40.dp, col
     if (icon != null && icon.startsWith(CustomIcons.PREFIX)) {
         val image by produceState<ImageBitmap?>(null, icon) { value = withContext(Dispatchers.IO) { CustomIcons.load(context, icon) } }
         image?.let {
-            // The whole image shows, letterboxed on a tile, rather than cropped to a square.
-            Box(Modifier.size(size).clip(SlateTileShape).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
-                Image(it, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(size))
-            }
+            // The image fills its tile, centred; the stored file keeps the whole picture.
+            Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size).clip(SlateTileShape))
             return
         }
     }
@@ -171,6 +170,17 @@ internal fun SubscriptionIcon(icon: String?, name: String, size: Dp = 40.dp, col
         service != null -> ServiceTile(service, size, color)
         else -> MonogramBadge(name.ifBlank { "?" }, name, size = size, colors = color?.let { financeBadgeColors(it, name) })
     }
+}
+
+/** The colours of a subscription's tile: its own colour, its service's, or its letter tile's. */
+@Composable
+internal fun subscriptionColors(icon: String?, name: String, color: Int?): BadgeColors {
+    val service = Services.byIcon(icon)
+    if (color == null && service != null) {
+        val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        return remember(service.id, dark) { BadgePalette.forColor(Color(service.color.toInt()), dark) }
+    }
+    return financeBadgeColors(color, name)
 }
 
 @Composable
@@ -191,10 +201,10 @@ internal fun IconChoice(icon: String?, name: String, kind: TransactionKind, onPi
     Row(verticalAlignment = Alignment.CenterVertically) {
         SubscriptionIcon(icon, name, 48.dp)
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(stringResource(R.string.finance_icon), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.finance_service_or_icon), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(Services.byIcon(icon)?.name ?: stringResource(if (icon == null) R.string.finance_icon_letter else R.string.finance_icon_image), style = MaterialTheme.typography.bodyLarge)
         }
-        FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { open = true }) { Text(stringResource(R.string.finance_icon_change)) }
+        FilledTonalButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = { open = true }) { Text(stringResource(R.string.finance_choose_service)) }
     }
     if (open) IconSheet(kind, onDismiss = { open = false }) { picked, service ->
         onPick(picked, service)
@@ -214,7 +224,7 @@ private fun IconSheet(kind: TransactionKind, onDismiss: () -> Unit, onPick: (Str
             if (icon != null) onPick(icon, null) else failed = true
         }
     }
-    EonslateBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.finance_icon)) {
+    EonslateBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.finance_service_or_icon)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { image.launch(arrayOf("image/png", "image/jpeg", "image/webp", "image/svg+xml")) }) {

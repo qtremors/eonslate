@@ -169,6 +169,12 @@ interface FinanceDao {
     @Query("SELECT COUNT(*) FROM finance_transactions")
     suspend fun transactionCount(): Int
 
+    @Query("SELECT COUNT(*) FROM finance_recurring")
+    suspend fun recurringCount(): Int
+
+    @Query("SELECT COUNT(*) FROM finance_budgets")
+    suspend fun budgetCount(): Int
+
     @Query("SELECT * FROM finance_accounts WHERE id = :id")
     suspend fun account(id: String): AccountEntity?
 

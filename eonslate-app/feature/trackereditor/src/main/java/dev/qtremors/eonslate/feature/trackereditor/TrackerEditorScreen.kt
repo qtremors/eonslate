@@ -1,5 +1,15 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import java.util.Locale
+import java.time.temporal.WeekFields
+import java.time.format.TextStyle
+import java.time.DayOfWeek
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
+import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
+import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.FlowRow
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -217,6 +227,11 @@ private fun EditorContent(
             }
         }
 
+        item(key = "schedule") {
+            SectionHeader(stringResource(R.string.editor_section_schedule))
+            ScheduleEditor(draft, viewModel::setScheduleMode, viewModel::toggleScheduleDay, viewModel::setTimesPerWeek)
+        }
+
         item(key = "icon") {
             SectionHeader(stringResource(R.string.editor_section_icon))
             IconPicker(selected = draft.iconName, colorIndex = draft.colorIndex, onSelect = viewModel::setIcon)
@@ -358,4 +373,71 @@ internal fun fieldSummary(field: FieldDefinition): String {
     }
     if (field.required) parts += stringResource(R.string.editor_required_short)
     return parts.joinToString(" · ")
+}
+
+/**
+ * When the tracker is due: every day, on picked weekdays, or a number of days a week on any days.
+ * Today, the day's progress and streaks follow it.
+ */
+@Composable
+private fun ScheduleEditor(
+    draft: TrackerDraft,
+    onMode: (ScheduleMode) -> Unit,
+    onDay: (DayOfWeek) -> Unit,
+    onTimes: (Int) -> Unit,
+) {
+    val haptics = rememberAppHaptics()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+        ConnectedChoices(
+            options = ScheduleMode.entries,
+            selected = draft.scheduleMode,
+            label = {
+                stringResource(
+                    when (it) {
+                        ScheduleMode.DAILY -> R.string.editor_schedule_daily
+                        ScheduleMode.DAYS -> R.string.editor_schedule_days
+                        ScheduleMode.WEEKLY -> R.string.editor_schedule_weekly
+                    },
+                )
+            },
+            onSelect = onMode,
+        )
+        when (draft.scheduleMode) {
+            ScheduleMode.DAILY -> Unit
+            ScheduleMode.DAYS -> {
+                val first = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    (0L until 7L).map { first.plus(it) }.forEach { day ->
+                        val on = draft.scheduleDays and (1 shl (day.value - 1)) != 0
+                        FilterChip(
+                            selected = on,
+                            onClick = {
+                                haptics.toggle(!on)
+                                onDay(day)
+                            },
+                            label = { Text(day.getDisplayName(TextStyle.SHORT, Locale.getDefault())) },
+                            shape = MaterialTheme.shapes.medium,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        )
+                    }
+                }
+            }
+            ScheduleMode.WEEKLY -> {
+                ConnectedChoices(
+                    options = (1..Schedule.MAX_TIMES_PER_WEEK).toList(),
+                    selected = draft.timesPerWeek.coerceIn(1, Schedule.MAX_TIMES_PER_WEEK),
+                    label = { it.toString() },
+                    onSelect = onTimes,
+                )
+                Text(
+                    pluralStringResource(R.plurals.editor_schedule_times, draft.timesPerWeek, draft.timesPerWeek),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }

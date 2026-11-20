@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.core.tracker.domain.insights
 
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
+import java.time.temporal.TemporalAdjusters
+import java.time.DayOfWeek
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
@@ -28,12 +31,78 @@ data class Streak(
     val lastDay: LocalDate?,
     /** The last day of the longest run; the most recent one when two runs tie. */
     val longestEnd: LocalDate? = null,
+    /** Weeks for a weekly target, which counts weeks met; days otherwise. */
+    val inWeeks: Boolean = false,
 ) {
     /** True when the longest run is the one still going. */
     val longestIsCurrent: Boolean get() = current > 0 && current == longest
 }
 
 object Streaks {
+    /**
+     * The streak under [schedule]. Every day: consecutive days logged. Chosen weekdays: due days
+     * logged in a row, so a day off never breaks it and an entry on a day off is a bonus. A weekly
+     * target: weeks in a row that met it. Today, or this week, never breaks a run before it ends.
+     */
+    fun of(
+        days: Collection<LocalDate>,
+        today: LocalDate,
+        schedule: Schedule,
+        weekStart: DayOfWeek = DayOfWeek.MONDAY,
+    ): Streak = when {
+        schedule.isDaily -> of(days, today)
+        schedule.isWeekly -> weekly(days.toSortedSet(), today, schedule.timesPerWeek, weekStart)
+        else -> weekdays(days.toSortedSet(), today, schedule.days)
+    }
+
+    private fun weekdays(logged: java.util.SortedSet<LocalDate>, today: LocalDate, due: Set<DayOfWeek>): Streak {
+        if (logged.isEmpty()) return Streak(0, 0, null)
+        var run = 0
+        var longest = 0
+        var longestEnd: LocalDate? = null
+        var day = logged.first()
+        val last = maxOf(today, logged.last())
+        while (!day.isAfter(last)) {
+            if (day.dayOfWeek in due) {
+                if (day in logged) {
+                    run++
+                    if (run >= longest) {
+                        longest = run
+                        longestEnd = day
+                    }
+                } else if (day.isBefore(today)) {
+                    run = 0
+                }
+            }
+            day = day.plusDays(1)
+        }
+        return Streak(current = run, longest = longest, lastDay = logged.last(), longestEnd = longestEnd)
+    }
+
+    private fun weekly(logged: java.util.SortedSet<LocalDate>, today: LocalDate, target: Int, weekStart: DayOfWeek): Streak {
+        if (logged.isEmpty()) return Streak(0, 0, null, inWeeks = true)
+        fun startOf(day: LocalDate) = day.with(TemporalAdjusters.previousOrSame(weekStart))
+        val perWeek = logged.groupingBy(::startOf).eachCount()
+        val thisWeek = startOf(today)
+        var run = 0
+        var longest = 0
+        var longestEnd: LocalDate? = null
+        var week = startOf(logged.first())
+        while (!week.isAfter(thisWeek)) {
+            if ((perWeek[week] ?: 0) >= target) {
+                run++
+                if (run >= longest) {
+                    longest = run
+                    longestEnd = minOf(week.plusDays(6), today)
+                }
+            } else if (week.isBefore(thisWeek)) {
+                run = 0
+            }
+            week = week.plusWeeks(1)
+        }
+        return Streak(current = run, longest = longest, lastDay = logged.last(), longestEnd = longestEnd, inWeeks = true)
+    }
+
     fun of(days: Collection<LocalDate>, today: LocalDate): Streak {
         val sorted = days.toSortedSet()
         if (sorted.isEmpty()) return Streak(0, 0, null)

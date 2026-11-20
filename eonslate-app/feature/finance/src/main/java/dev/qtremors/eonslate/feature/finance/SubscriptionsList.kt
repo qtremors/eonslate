@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
@@ -39,8 +40,9 @@ import dev.qtremors.eonslate.core.ui.components.ConnectedItem
 import dev.qtremors.eonslate.core.ui.components.ConnectedRow
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
 import dev.qtremors.eonslate.core.ui.components.MenuAction
-import dev.qtremors.eonslate.core.ui.components.RankedBar
-import dev.qtremors.eonslate.core.ui.components.RankedBars
+import dev.qtremors.eonslate.core.ui.components.Treemap
+import dev.qtremors.eonslate.core.ui.components.TreemapTile
+import dev.qtremors.eonslate.core.ui.components.treemapSplit
 import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -54,6 +56,7 @@ internal class PlanActions(
     val edit: (RecurringPayment) -> Unit,
     val setPaused: (RecurringPayment, Boolean) -> Unit,
     val delete: (RecurringPayment) -> Unit,
+    val add: () -> Unit = {},
 )
 
 /** Subscriptions and income that match the search and kind filter: paused last, then soonest due. */
@@ -77,13 +80,17 @@ internal fun LazyListScope.planItems(
     onKind: (TransactionKind?) -> Unit,
     today: LocalDate,
     actions: PlanActions,
+    chosenCurrency: String,
+    onCurrency: (String) -> Unit,
 ) {
     val accounts = ledger.accounts.associateBy { it.id }
     if (ledger.recurring.isNotEmpty()) item(key = "plan-kinds") { PlanKindChips(kind, onKind) }
     val active = plans.filter { !it.paused && it.accountId in accounts }
-    // Each currency gets its own totals and chart, so amounts are never added across currencies.
-    active.groupBy { accounts.getValue(it.accountId).currency }.forEach { (currency, group) ->
-        item(key = "plan-totals-$currency") {
+    // One currency at a time, the same one on every tab; amounts are never added across currencies.
+    val currency = ledger.shownCurrency(chosenCurrency)
+    val group = active.filter { accounts.getValue(it.accountId).currency == currency }
+    if (active.isNotEmpty()) run {
+        item(key = "plan-totals") {
             val locale = LocalValueDisplay.current.numberLocale
             val into = group.filter { it.kind == TransactionKind.INCOME }.sumOf { it.monthlyMinor() }.roundToLong()
             val out = group.filter { it.kind == TransactionKind.EXPENSE }.sumOf { it.monthlyMinor() }.roundToLong()
@@ -91,29 +98,55 @@ internal fun LazyListScope.planItems(
                 income = ValueFormat.money(into, currency, locale),
                 expenses = ValueFormat.money(out, currency, locale),
                 net = ValueFormat.money(into - out, currency, locale),
-                title = stringResource(R.string.finance_per_month) + " · " + currency,
+                title = stringResource(R.string.finance_per_month),
+                badge = { CurrencyPicker(currency, ledger.currencies(), onCurrency) },
             )
         }
-        item(key = "plan-chart-$currency") {
-            val locale = LocalValueDisplay.current.numberLocale
-            val ranked = group.sortedByDescending { it.monthlyMinor() }
-            ChartCard(stringResource(R.string.finance_monthly_amounts)) {
-                RankedBars(
-                    ranked.map {
+        // Costs and income each get their own map, sized within themselves, so a salary never
+        // shrinks the subscriptions to slivers. Tiles wear each item's own tile colours.
+        listOf(TransactionKind.EXPENSE, TransactionKind.INCOME).forEach { kind ->
+            val ranked = group.filter { it.kind == kind }.sortedByDescending { it.monthlyMinor() }
+            if (ranked.isNotEmpty()) item(key = "plan-chart-$kind") {
+                val locale = LocalValueDisplay.current.numberLocale
+                ChartCard(stringResource(if (kind == TransactionKind.INCOME) R.string.finance_income_per_month else R.string.finance_costs_per_month)) {
+                    // The largest get their own tile; the many small ones share one, never a scatter of specks.
+                    val kept = treemapSplit(ranked.map { it.monthlyMinor() })
+                    val rest = ranked.drop(kept)
+                    val tiles = ranked.take(kept).map {
                         val amount = ValueFormat.money(it.monthlyMinor().roundToLong(), currency, locale)
-                        RankedBar(it.note.ifBlank { "?" }, if (it.kind == TransactionKind.INCOME) "+$amount" else amount, it.monthlyMinor().toFloat())
-                    },
-                    MaterialTheme.colorScheme.primary,
-                    onClick = { actions.open(ranked[it]) },
-                )
+                        val name = it.note.ifBlank { "?" }
+                        val colors = subscriptionColors(it.icon, name, it.color)
+                        TreemapTile(name, amount, it.monthlyMinor().toFloat(), colors.container, colors.content)
+                    } + if (rest.isEmpty()) emptyList() else {
+                        val sum = rest.sumOf { it.monthlyMinor() }
+                        listOf(
+                            TreemapTile(
+                                pluralStringResource(R.plurals.finance_more_plans, rest.size, rest.size),
+                                ValueFormat.money(sum.roundToLong(), currency, locale), sum.toFloat(),
+                                androidx.compose.ui.graphics.Color.Transparent, MaterialTheme.colorScheme.onSurfaceVariant,
+                                clickable = false,
+                            ),
+                        )
+                    }
+                    Treemap(
+                        tiles = tiles,
+                        contentDescription = ranked.joinToString { it.note + " " + ValueFormat.money(it.monthlyMinor().roundToLong(), currency, locale) },
+                        height = when (tiles.size) {
+                            1 -> 88.dp
+                            2, 3 -> 140.dp
+                            else -> 220.dp
+                        },
+                        onClick = { actions.open(ranked[it]) },
+                    )
+                }
             }
         }
     }
     if (plans.isEmpty()) item(key = "plan-empty") {
-        Text(
+        EmptyWithAction(
             stringResource(if (ledger.recurring.isEmpty()) R.string.finance_no_recurring else R.string.finance_no_matches),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(12.dp),
+            stringResource(R.string.finance_new_recurring),
+            actions.add,
         )
     }
     itemsIndexed(plans, key = { _, payment -> "recurring-" + payment.id }) { index, payment ->
@@ -152,13 +185,12 @@ private fun PlanRow(payment: RecurringPayment, account: Account, today: LocalDat
     val name = payment.note.ifBlank { account.name }
     val due = payment.nextEpochDay
     val time = payment.nextOccurrence?.takeIf { payment.nextMinute != null }?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
-    val since = payment.startEpochDay?.let {
-        stringResource(R.string.finance_since, LocalDate.ofEpochDay(it).format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.getDefault())))
-    }
     val supporting = listOfNotNull(
         if (payment.paused) stringResource(R.string.finance_paused) else intervalLabel(payment.interval, payment.every),
         if (!payment.paused && due != null) {
-            listOfNotNull(displayDate(due), time).joinToString(" ") + " (" + dueLabel(due - today.toEpochDay()) + ")"
+            val date = listOfNotNull(displayDate(due), time).joinToString(" ")
+            val payout = if (payment.kind == TransactionKind.INCOME) stringResource(R.string.finance_payout, date) else date
+            payout + " (" + dueLabel(due - today.toEpochDay()).replaceFirstChar { it.lowercase(Locale.getDefault()) } + ")"
         } else null,
         when {
             payment.variable && payment.autoEstimate -> stringResource(R.string.finance_variable_estimated)
@@ -166,7 +198,6 @@ private fun PlanRow(payment: RecurringPayment, account: Account, today: LocalDat
             else -> null
         },
         if (payment.interval == PaymentInterval.HOURLY) stringResource(R.string.finance_posts_daily) else null,
-        since,
         payment.details.lineSequence().firstOrNull { it.isNotBlank() }?.trim(),
     ).joinToString(" · ")
     Box {

@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
@@ -38,6 +39,7 @@ import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
 import dev.qtremors.eonslate.core.ui.components.EonslateTimePicker
 import dev.qtremors.eonslate.core.ui.components.FormField
 import dev.qtremors.eonslate.core.ui.components.ToggleRow
+import dev.qtremors.eonslate.core.ui.components.ConnectedGroup
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -77,8 +79,11 @@ internal fun RecurringEditor(
     val day = parseDay(date)
     val repeat = parseInterval(every)
     val title = stringResource(if (existing == null) R.string.finance_new_recurring else R.string.finance_edit_recurring)
+    val suggest = LocalCategorySuggestions.current
 
-    EditorSheet(title, busy, failed, onDismiss) {
+    val entered = listOf<Any?>(accountId, amount, note, category, interval, every, kind, paused, variable, autoEstimate, color, date, started, details, icon, minute)
+    val opened = remember { entered }
+    EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         ConnectedChoices(listOf(TransactionKind.EXPENSE, TransactionKind.INCOME), kind, { it.label() }, { if (!busy) kind = it })
         AccountChoice(stringResource(R.string.finance_account), account, accounts, !busy) {
             if (it.currency != account.currency) amount = ""
@@ -88,7 +93,8 @@ internal fun RecurringEditor(
             icon = picked
             // A service fills in what it knows, never over what was typed; its own color returns.
             if (service != null && note.isBlank()) note = service.name
-            if (service != null && category.isBlank()) category = service.category
+            // A template's group becomes one of your categories, never a hidden new one.
+            if (service != null && category.isBlank()) category = templateCategory(service.category, kind, suggest)
             if (service != null) color = null
         }, busy = busy)
         ColorChoice(color, icon, note, busy) { color = it }
@@ -117,18 +123,20 @@ internal fun RecurringEditor(
         // A new one starts with its first payment; an existing one can say when it really began.
         if (existing != null) DateField(started, { started = it }, stringResource(R.string.finance_started), busy)
         FormField(details, { details = it }, stringResource(R.string.finance_notes), singleLine = false, minLines = 2, maxLength = RecurringPayment.DETAILS_LIMIT, enabled = !busy)
-        ToggleRow(stringResource(R.string.finance_variable), variable, { variable = it }, enabled = !busy)
-        // A varying amount either posts its estimate when due, or waits to be told the real one.
-        if (variable) {
-            ToggleRow(
-                title = stringResource(R.string.finance_auto_estimate),
-                supporting = stringResource(if (autoEstimate) R.string.finance_auto_estimate_on else R.string.finance_auto_estimate_off),
-                checked = autoEstimate,
-                onCheckedChange = { autoEstimate = it },
-                enabled = !busy,
-            )
+        ConnectedGroup {
+            ToggleRow(stringResource(R.string.finance_variable), variable, { variable = it }, enabled = !busy)
+            // A varying amount either posts its estimate when due, or waits to be told the real one.
+            if (variable) {
+                ToggleRow(
+                    title = stringResource(R.string.finance_auto_estimate),
+                    supporting = stringResource(if (autoEstimate) R.string.finance_auto_estimate_on else R.string.finance_auto_estimate_off),
+                    checked = autoEstimate,
+                    onCheckedChange = { autoEstimate = it },
+                    enabled = !busy,
+                )
+            }
+            ToggleRow(stringResource(R.string.finance_paused), paused, { paused = it }, enabled = !busy)
         }
-        ToggleRow(stringResource(R.string.finance_paused), paused, { paused = it }, enabled = !busy)
         if (onRecord != null) {
             TextButton(shapes = ButtonDefaults.shapes(), enabled = !busy, onClick = onRecord) {
                 Text(stringResource(R.string.finance_record_due))
@@ -187,7 +195,9 @@ internal fun CategoryBudgetEditor(
     val day = parseDay(date)
     val repeat = parseInterval(every)
     val title = stringResource(if (existing == null) R.string.finance_new_budget else R.string.finance_edit_budget)
-    EditorSheet(title, busy, failed, onDismiss) {
+    val entered = listOf<Any?>(name, icon, color, accountId, amount, category, interval, every, date, allAccounts)
+    val opened = remember { entered }
+    EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         FormField(name, { name = it }, stringResource(R.string.finance_budget_name), maxLength = CategoryBudget.NAME_LIMIT, enabled = !busy)
         AccountChoice(stringResource(R.string.finance_account), account, accounts, !busy) {
             if (it.currency != account.currency) amount = ""
@@ -201,7 +211,7 @@ internal fun CategoryBudgetEditor(
         }
         DateField(date, { date = it }, stringResource(R.string.finance_budget_start), busy)
         // Only worth asking once another account shares this currency.
-        if (accounts.count { it.currency == account.currency } > 1) {
+        if (accounts.count { it.currency == account.currency } > 1) ConnectedGroup {
             ToggleRow(
                 title = stringResource(R.string.finance_all_accounts),
                 supporting = stringResource(R.string.finance_all_accounts_detail, account.currency),
@@ -314,3 +324,14 @@ private fun PeriodFields(
 private fun parseDay(date: String) = EpochDays.parse(date)?.takeIf { it in Transaction.DATES }
 
 private fun parseInterval(count: String) = count.toIntOrNull()?.takeIf { it in 1..RecurringPayment.MAX_INTERVAL }
+
+/**
+ * The category a service template files under: yours with the same name, else Subscriptions for
+ * a cost, else the first that suits the kind.
+ */
+internal fun templateCategory(group: String, kind: TransactionKind, suggest: (TransactionKind) -> List<String>): String {
+    val names = suggest(kind)
+    return names.firstOrNull { it.equals(group, ignoreCase = true) }
+        ?: names.firstOrNull { kind == TransactionKind.EXPENSE && it.equals("Subscriptions", ignoreCase = true) }
+        ?: names.firstOrNull().orEmpty()
+}

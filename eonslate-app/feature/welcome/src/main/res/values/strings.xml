@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="welcome_title">Eonslate</string>
-    <string name="welcome_subtitle">Track almost anything, offline.</string>
-    <string name="welcome_point_any_title">Your own trackers</string>
-    <string name="welcome_point_any">Money, habits, mood, workouts, anything, with your own fields.</string>
+    <string name="welcome_subtitle">Your money and anything else, offline.</string>
+    <string name="welcome_point_any_title">Money and trackers</string>
+    <string name="welcome_point_any">Spending, budgets, subscriptions, and trackers with your own fields.</string>
     <string name="welcome_point_see_title">See your patterns</string>
     <string name="welcome_point_see">Streaks, totals, averages and charts.</string>
     <string name="welcome_point_private_title">Private by design</string>

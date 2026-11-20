@@ -75,7 +75,8 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
     val locale = Locale.getDefault()
     val pigment = remember(tracker.colorIndex, dark) { BadgePalette.mark(tracker.colorIndex, dark) }
     val days = remember(state.times) { state.times.map { it.day() } }
-    val streak = remember(days, today) { Streaks.of(days, today) }
+    val streak = remember(days, today, tracker.schedule, state.firstDay) { Streaks.of(days, today, tracker.schedule, state.firstDay) }
+    val unit = if (streak.inWeeks) R.plurals.insights_weeks else R.plurals.insights_days
     var period by rememberSaveable { mutableStateOf(Period.DAYS) }
     val buckets = remember(period, today, state.firstDay) { Periods.buckets(period, today, state.firstDay) }
     val counts = remember(state.times, buckets) { Periods.counts(state.times, buckets) }
@@ -84,14 +85,14 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile(
                 label = stringResource(R.string.insights_current_streak),
-                value = pluralStringResource(R.plurals.insights_days, streak.current, streak.current),
+                value = pluralStringResource(unit, streak.current, streak.current),
                 accent = streak.longestIsCurrent,
                 modifier = Modifier.weight(1f),
             )
             val shortDay = remember(locale) { DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMM")) }
             StatTile(
                 label = stringResource(R.string.insights_longest_streak),
-                value = pluralStringResource(R.plurals.insights_days, streak.longest, streak.longest),
+                value = pluralStringResource(unit, streak.longest, streak.longest),
                 supporting = when {
                     streak.longest == 0 -> null
                     streak.longestIsCurrent -> stringResource(R.string.insights_streak_ongoing)

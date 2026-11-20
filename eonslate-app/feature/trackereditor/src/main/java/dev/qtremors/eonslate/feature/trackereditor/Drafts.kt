@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import dev.qtremors.eonslate.core.tracker.domain.model.ChoiceOption
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
@@ -118,9 +119,28 @@ data class TrackerDraft(
     val createdAt: Long? = null,
     /** Tags as typed, comma separated; normalized when built. */
     val tags: String = "",
+    val scheduleMode: ScheduleMode = ScheduleMode.DAILY,
+    /** The weekdays for [ScheduleMode.DAYS], as a mask, Monday lowest. */
+    val scheduleDays: Int = WEEKDAYS_MASK,
+    /** Days a week for [ScheduleMode.WEEKLY]. */
+    val timesPerWeek: Int = 3,
 ) {
     val isNew: Boolean get() = createdAt == null
+
+    val schedule: Schedule
+        get() = when (scheduleMode) {
+            ScheduleMode.DAILY -> Schedule.DAILY
+            ScheduleMode.DAYS -> Schedule(Schedule.daysOf(scheduleDays)).takeIf { it.isValid() } ?: Schedule.DAILY
+            ScheduleMode.WEEKLY -> Schedule(timesPerWeek = timesPerWeek.coerceIn(1, Schedule.MAX_TIMES_PER_WEEK))
+        }
 }
+
+/** How a tracker's due days are picked in the editor. */
+@Serializable
+enum class ScheduleMode { DAILY, DAYS, WEEKLY }
+
+/** Monday to Friday, the first choice when picking days. */
+internal const val WEEKDAYS_MASK = 31
 
 fun Tracker.toDraft(defaultCurrency: String): TrackerDraft = TrackerDraft(
     id = id,
@@ -134,6 +154,13 @@ fun Tracker.toDraft(defaultCurrency: String): TrackerDraft = TrackerDraft(
     templateId = templateId,
     createdAt = createdAt,
     tags = tags.joinToString(", "),
+    scheduleMode = when {
+        schedule.isWeekly -> ScheduleMode.WEEKLY
+        schedule.isDaily -> ScheduleMode.DAILY
+        else -> ScheduleMode.DAYS
+    },
+    scheduleDays = if (schedule.isDaily || schedule.isWeekly) WEEKDAYS_MASK else schedule.daysMask,
+    timesPerWeek = schedule.timesPerWeek.takeIf { it > 0 } ?: 3,
 )
 
 /** The tracker to save, or the ids of fields whose limits could not be read. */
@@ -158,6 +185,7 @@ fun TrackerDraft.build(now: Long, position: Int): TrackerBuild {
             createdAt = created,
             updatedAt = maxOf(now, created),
             tags = Tags.normalize(tags.split(',')),
+            schedule = schedule,
         ),
         emptyMap(),
     )

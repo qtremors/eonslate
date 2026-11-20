@@ -145,6 +145,14 @@ class TrackerEditorViewModel @Inject constructor(
     fun setDescription(text: String) = editDraft { it.copy(description = text) }
 
     fun setTags(text: String) = editDraft { it.copy(tags = text) }
+    fun setScheduleMode(mode: ScheduleMode) = editDraft { it.copy(scheduleMode = mode) }
+    fun setTimesPerWeek(times: Int) = editDraft { it.copy(timesPerWeek = times) }
+
+    /** Turns a weekday on or off; the last day stays on, so the tracker is always due some day. */
+    fun toggleScheduleDay(day: java.time.DayOfWeek) = editDraft {
+        val next = it.scheduleDays xor (1 shl (day.value - 1))
+        if (next == 0) it else it.copy(scheduleDays = next)
+    }
     fun setIcon(name: String) = editDraft { it.copy(iconName = name) }
     fun setColor(index: Int) = editDraft { it.copy(colorIndex = index) }
     fun setArchived(archived: Boolean) = editDraft { it.copy(archived = archived) }

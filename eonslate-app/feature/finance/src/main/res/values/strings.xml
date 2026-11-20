@@ -74,7 +74,7 @@
     <string name="finance_edit_recurring">Edit subscription</string>
     <string name="finance_record_due">Record payment</string>
     <string name="finance_payment_name">Name</string>
-    <string name="finance_variable">Confirm each amount</string>
+    <string name="finance_variable">Amount varies</string>
     <string name="finance_paused">Paused</string>
     <string name="finance_daily">Daily</string>
     <string name="finance_yearly">Yearly</string>
@@ -126,6 +126,10 @@
     <string name="finance_due_today">Due today</string>
     <string name="finance_due_tomorrow">Due tomorrow</string>
     <string name="finance_due_in">In %1$d days</string>
+    <plurals name="finance_overdue">
+        <item quantity="one">%d day overdue</item>
+        <item quantity="other">%d days overdue</item>
+    </plurals>
     <string name="finance_subscriptions">Subscriptions</string>
     <string name="finance_category_new">New</string>
     <plurals name="sms_found">
@@ -244,9 +248,9 @@
     <string name="finance_all_accounts">All accounts</string>
     <string name="finance_all_accounts_detail">Count this category in every %1$s account</string>
     <string name="finance_budget_hourly">Counted by day, so hours round up to whole days.</string>
-    <string name="finance_budget_left">%1$s left · %2$d%%</string>
-    <string name="finance_budget_over_by">%1$s over · %2$d%%</string>
-    <string name="overview_budget_used">%1$d%%</string>
+    <string name="finance_budget_left">%1$s left · %2$s</string>
+    <string name="finance_budget_over_by">%1$s over · %2$s</string>
+    <string name="overview_budget_used">%1$s</string>
     <string name="overview_manage_budgets">Manage budgets</string>
     <string name="overview_no_budgets">No budgets active</string>
     <string name="overview_add_budget">Add budget</string>
@@ -270,12 +274,11 @@
         <item quantity="one">Every year</item>
         <item quantity="other">Every %1$d years</item>
     </plurals>
-    <string name="finance_monthly_amounts">Per month, each</string>
     <string name="finance_kind_all_plans">All</string>
     <string name="finance_expenses">Expenses</string>
     <string name="finance_incomes">Income</string>
     <string name="finance_variable_badge">Varies</string>
-    <string name="finance_variable_estimated">Varies, estimate added</string>
+    <string name="finance_variable_estimated">Estimated</string>
     <string name="finance_posts_daily">Added at most once a day</string>
     <string name="finance_pause">Pause</string>
     <string name="finance_resume">Resume</string>
@@ -307,4 +310,31 @@
     </plurals>
     <string name="finance_delete_category">Delete %1$s?</string>
     <string name="finance_delete_category_message">Past transactions keep it. It is no longer offered.</string>
+    <string name="overview_mode_spending">Spending</string>
+    <string name="overview_mode_in_out">In vs out</string>
+    <string name="overview_mode_net">Net</string>
+    <string name="overview_by_category_month">Spending this month</string>
+    <string name="overview_total">Total</string>
+    <string name="finance_budget_total_limit">Total limit</string>
+    <string name="finance_budget_total_spent">Total spent</string>
+    <string name="finance_budget_total_left">Left</string>
+    <string name="finance_budget_total_over">Over</string>
+    <string name="finance_budget_total_used">%1$s of all budgets used</string>
+    <string name="finance_costs_per_month">Costs per month</string>
+    <string name="finance_income_per_month">Income per month</string>
+    <string name="finance_shown_currency">Shown in %1$s</string>
+    <string name="finance_discard_title">Discard changes?</string>
+    <string name="finance_discard_message">What you entered here won\'t be saved.</string>
+    <string name="finance_discard">Discard</string>
+    <plurals name="overview_more">
+        <item quantity="one">%d more</item>
+        <item quantity="other">%d more</item>
+    </plurals>
+    <plurals name="finance_more_plans">
+        <item quantity="one">%d more</item>
+        <item quantity="other">%d more</item>
+    </plurals>
+    <string name="finance_service_or_icon">Service or icon</string>
+    <string name="finance_choose_service">Choose</string>
+    <string name="finance_payout">Payout %1$s</string>
 </resources>

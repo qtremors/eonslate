@@ -160,7 +160,7 @@ class RoomFinanceRepositoryTest {
             val bytes = backups.create(null, "2.1.2")
             restore.restore(restore.open(bytes, null), "2.1.2")
             assertEquals(finance.observeLedger().first(), old.observeLedger().first())
-            assertEquals(DataCounts(0, 0, 2, 1), restore.counts())
+            assertEquals(DataCounts(0, 0, 2, 1, subscriptions = 1), restore.counts())
             restore.undoRestore()
             assertEquals(listOf(yen), old.observeLedger().first().accounts)
             assertTrue(old.observeLedger().first().transactions.isEmpty())

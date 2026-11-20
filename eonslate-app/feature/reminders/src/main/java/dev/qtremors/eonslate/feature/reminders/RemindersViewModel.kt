@@ -19,7 +19,12 @@ import java.time.DayOfWeek
 import javax.inject.Inject
 
 /** Null while loading. */
-data class RemindersUiState(val trackerName: String, val reminders: List<Reminder>)
+data class RemindersUiState(
+    val trackerName: String,
+    val reminders: List<Reminder>,
+    /** The days a new reminder starts on: the tracker's scheduled weekdays, or every day. */
+    val defaultDays: Set<DayOfWeek> = DayOfWeek.entries.toSet(),
+)
 
 @HiltViewModel
 class RemindersViewModel @Inject constructor(
@@ -32,9 +37,13 @@ class RemindersViewModel @Inject constructor(
     private val trackerId: String = checkNotNull(savedState[ARG_TRACKER_ID]) { "Reminders need a tracker" }
 
     val state: StateFlow<RemindersUiState?> = combine(
-        trackers.observeTracker(trackerId).map { it?.name.orEmpty() },
+        trackers.observeTracker(trackerId),
         repository.observeReminders(trackerId),
-    ) { name, list -> RemindersUiState(name, list) }
+    ) { tracker, list ->
+        val schedule = tracker?.schedule
+        val days = if (schedule == null || schedule.isWeekly) DayOfWeek.entries.toSet() else schedule.days
+        RemindersUiState(tracker?.name.orEmpty(), list, days)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Saves a new reminder when [id] is null; alarms follow through the database. */

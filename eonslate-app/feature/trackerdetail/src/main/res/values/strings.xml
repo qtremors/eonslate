@@ -19,6 +19,10 @@
         <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>
     </plurals>
+    <plurals name="insights_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
     <string name="insights_activity">Logged per day</string>
     <string name="insights_activity_weeks">Logged per week</string>
     <string name="insights_activity_months">Logged per month</string>
