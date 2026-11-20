@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var finance: FinanceRepository
 
+    @Inject
+    lateinit var detection: dev.qtremors.eonslate.feature.finance.SmsDetection
+
     /** Null until the start is decided; the splash stays up until then, so nothing flashes. */
     private var showWelcome by mutableStateOf<Boolean?>(null)
 
@@ -99,6 +102,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         val now = LocalDateTime.now()
         lifecycleScope.launch { finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute) }
+        // New payment SMS, or access just granted, show up without a restart.
+        detection.refreshLater()
     }
 
     override fun onNewIntent(intent: Intent) {

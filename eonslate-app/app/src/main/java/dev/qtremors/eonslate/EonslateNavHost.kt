@@ -1,5 +1,14 @@
 package dev.qtremors.eonslate
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +95,7 @@ fun EonslateNavHost(
     var openInbox by remember { mutableStateOf(false) }
     var openNew by remember { mutableStateOf<TransactionKind?>(null) }
     var openBudget by remember { mutableStateOf(false) }
+    var openCategory by remember { mutableStateOf<String?>(null) }
     val reduceMotion = LocalReduceMotion.current
     val tabs = listOf(
         TabItem(Icons.Rounded.SpaceDashboard, stringResource(R.string.tab_home)),
@@ -94,7 +104,33 @@ fun EonslateNavHost(
         TabItem(Icons.Rounded.TrackChanges, stringResource(R.string.tab_trackers)),
     )
     CompositionLocalProvider(LocalShellHost provides shell) {
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    // From 840 dp the tabs move to a rail at the side, as on tablets and in landscape.
+    val wide = maxWidth >= WIDE_LAYOUT
+    val showShell = destination != null && !destination.hasRoute<Destination.Welcome>()
+    Row(Modifier.fillMaxSize()) {
+    if (wide && showShell) {
+        val action = shell.action
+        NavigationRail(
+            header = action?.let {
+                {
+                    FloatingActionButton(onClick = it.onClick) { Icon(it.icon, contentDescription = it.label) }
+                }
+            },
+        ) {
+            Spacer(Modifier.weight(1f))
+            tabs.forEachIndexed { index, tab ->
+                NavigationRailItem(
+                    selected = destination?.tabIndex() == index,
+                    onClick = { navController.navigateToTab(TABS[index]) },
+                    icon = { Icon(tab.icon, contentDescription = null) },
+                    label = { Text(tab.label) },
+                )
+            }
+            Spacer(Modifier.weight(1f))
+        }
+    }
+    Box(Modifier.weight(1f).fillMaxSize()) {
     NavHost(
         navController = navController,
         startDestination = start,
@@ -134,6 +170,10 @@ fun EonslateNavHost(
                     openBudget = true
                     navController.navigateToTab(Destination.Transactions)
                 },
+                onCategory = { name ->
+                    openCategory = name
+                    navController.navigateToTab(Destination.Transactions)
+                },
                 displayName = homeName,
             )
         }
@@ -153,6 +193,7 @@ fun EonslateNavHost(
                 openInbox = openInbox, onInboxOpened = { openInbox = false },
                 openNew = openNew, onNewOpened = { openNew = null },
                 openBudget = openBudget, onBudgetOpened = { openBudget = false },
+                openCategory = openCategory, onCategoryOpened = { openCategory = null },
                 onManageCategories = { navController.navigate(Destination.Categories) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
@@ -167,6 +208,10 @@ fun EonslateNavHost(
                 onBackup = { navController.navigate(Destination.Backup) },
                 onCategories = { navController.navigate(Destination.Categories) },
                 onDisplay = { navController.navigate(Destination.DisplaySettings) },
+                onScanSms = {
+                    openInbox = true
+                    navController.navigateToTab(Destination.Transactions)
+                },
             )
         }
         composable<Destination.DisplaySettings> {
@@ -226,7 +271,8 @@ fun EonslateNavHost(
             )
         }
     }
-        if (destination != null && !destination.hasRoute<Destination.Welcome>()) {
+        // On a wide screen the rail holds the tabs, so the toolbar shows only on detail pages, for Back.
+        if (showShell && destination != null && !(wide && destination.isTab())) {
             val top = destination.isTab()
             FloatingTabBar(
                 tabs = tabs,
@@ -240,7 +286,11 @@ fun EonslateNavHost(
         }
     }
     }
+    }
+    }
 }
+
+private val WIDE_LAYOUT = 840.dp
 
 private val TABS = listOf(Destination.Home, Destination.Transactions, Destination.Subscriptions, Destination.Trackers)
 

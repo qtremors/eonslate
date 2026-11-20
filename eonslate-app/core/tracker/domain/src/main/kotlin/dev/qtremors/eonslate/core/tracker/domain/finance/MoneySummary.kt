@@ -56,8 +56,8 @@ data class MoneySummary(
     val balance: BigInteger,
     val monthIncome: BigInteger,
     val monthExpense: BigInteger,
-    /** Expenses per month, oldest first, ending with [today]'s month. */
-    val trend: List<Pair<YearMonth, BigInteger>>,
+    /** Every transaction in [currency], for the cash flow over any range. */
+    val entries: List<Transaction>,
     /** This month's expenses by category, largest first; blank categories are "". */
     val categories: List<Pair<String, BigInteger>>,
     val budgets: List<BudgetHealth>,
@@ -67,8 +67,9 @@ data class MoneySummary(
 ) {
     val monthNet: BigInteger get() = monthIncome - monthExpense
 
+    fun cashFlow(range: CashFlowRange, today: LocalDate): CashFlow = CashFlow.of(entries, range, today)
+
     companion object {
-        const val TREND_MONTHS = 6
         const val RECENT = 5
         const val DUE_DAYS = 7
 
@@ -88,10 +89,7 @@ data class MoneySummary(
                 balance = ids.fold(BigInteger.ZERO) { acc, id -> acc + (balances[id] ?: BigInteger.ZERO) },
                 monthIncome = sum(thisMonth.filter { it.kind == TransactionKind.INCOME }),
                 monthExpense = sum(thisMonth.filter { it.kind == TransactionKind.EXPENSE }),
-                trend = (TREND_MONTHS - 1 downTo 0).map { back ->
-                    val m = month.minusMonths(back.toLong())
-                    m to sum(mine.asSequence().filter { it.kind == TransactionKind.EXPENSE && inMonth(it, m) })
-                },
+                entries = mine,
                 categories = thisMonth.filter { it.kind == TransactionKind.EXPENSE }
                     .groupBy { it.category.trim() }
                     .map { (name, list) -> name to sum(list.asSequence()) }

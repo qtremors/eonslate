@@ -141,12 +141,13 @@ class BackupViewModel @Inject constructor(
     }
 
     /**
-     * Deletes every tracker, entry, account and transaction. It is a restore of nothing, so the
-     * current data is kept as the restore point first, and Undo brings it all back.
+     * Deletes every tracker, entry, account and transaction, resets the settings and removes icon
+     * images. It is a restore of nothing, so the current data is kept as the restore point first,
+     * and Undo brings it all back.
      */
     fun clearAll(appVersion: String) = work(Busy.RESTORING) {
         try {
-            backups.restore(BackupSnapshot(schema = 1, createdAt = 0, appVersion = appVersion), appVersion)
+            backups.restore(BackupSnapshot(schema = 1, createdAt = 0, appVersion = appVersion, preferences = emptyMap()), appVersion)
             say(BackupMessage.CLEARED)
         } catch (e: CancellationException) {
             throw e

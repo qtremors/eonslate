@@ -53,10 +53,22 @@ import dev.qtremors.eonslate.core.ui.theme.LocalSignals
 import dev.qtremors.eonslate.core.ui.theme.MetricTextStyle
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
 import dev.qtremors.eonslate.core.ui.theme.ValueTextStyle
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import dev.qtremors.eonslate.core.tracker.domain.finance.CashFlow
+import dev.qtremors.eonslate.core.tracker.domain.finance.CashFlowBucket
+import dev.qtremors.eonslate.core.tracker.domain.finance.CashFlowRange
+import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
+import dev.qtremors.eonslate.core.ui.theme.LocalReduceMotion
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.math.BigInteger
-import java.time.format.TextStyle
 
-/** How many categories get their own bar before the rest fold into "Other". */
+/** Categories shown before "Show all". */
 private const val TOP_CATEGORIES = 5
 
 private val LOADING_HEIGHT = 260.dp
@@ -73,6 +85,8 @@ fun MoneyOverview(
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
     onAddBudget: () -> Unit = {},
+    /** Opens Transactions on this month in one category. */
+    onCategory: (String) -> Unit = { onTransactions() },
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -90,38 +104,32 @@ fun MoneyOverview(
         }
         return
     }
-    val pending by viewModel.detection.pending.collectAsStateWithLifecycle()
-    val added by viewModel.detection.added.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (pending.isNotEmpty() || added > 0) {
-            SmsBanner(
-                found = pending.size,
-                added = added,
-                onReview = onReviewSms,
-                onAddAll = { scope.launch { viewModel.detection.approveAll() } },
-                onDismiss = { viewModel.detection.addedShown() },
-            )
-        }
-        MoneyOverviewContent(summary, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget)
+        FoundPaymentsBanner(viewModel.detection, onReviewSms)
+        MoneyOverviewContent(summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory)
     }
 }
 
 @Composable
 fun MoneyOverviewContent(
     summary: MoneySummary,
+    today: LocalDate,
     onTransactions: () -> Unit,
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
     onAdd: (TransactionKind) -> Unit = {},
     onAddBudget: () -> Unit = {},
+    onCategory: (String) -> Unit = { onTransactions() },
 ) {
     val locale = LocalValueDisplay.current.numberLocale
     val money = { minor: BigInteger -> ValueFormat.money(minor, summary.currency, locale) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card {
-            Label(stringResource(R.string.overview_balance))
-            Text(money(summary.balance), style = HeroTextStyle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Label(stringResource(R.string.overview_balance))
+                CurrencyBadge(summary.currency)
+            }
+            AnimatedMoney(summary.balance, money)
             Label(stringResource(R.string.overview_this_month))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Figure(stringResource(R.string.overview_in), "+" + money(summary.monthIncome), Modifier.weight(1f), LocalSignals.current.positive)
@@ -139,32 +147,28 @@ fun MoneyOverviewContent(
             }
         }
 
-        if (summary.trend.any { it.second.signum() > 0 }) Card(onClick = onTransactions) {
-            Label(stringResource(R.string.overview_spending))
-            val values = summary.trend.map { it.second.toFloat() }
-            val peak = summary.trend.maxBy { it.second }
-            BarChart(
-                values = values,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                highlight = values.lastIndex,
-                peakLabel = money(peak.second),
-                contentDescription = summary.trend.joinToString { (m, v) -> m.month.getDisplayName(TextStyle.SHORT, locale) + " " + money(v) },
-            )
-            ChartAxis(
-                start = summary.trend.first().first.month.getDisplayName(TextStyle.SHORT, locale),
-                end = summary.trend.last().first.month.getDisplayName(TextStyle.SHORT, locale),
-            )
-        }
+        if (summary.entries.isNotEmpty()) Card { CashFlowContent(summary, today, money) }
 
+        // Every category this month, none folded away; a tap opens its transactions.
         if (summary.categories.isNotEmpty()) Card(onClick = onTransactions) {
+            var all by rememberSaveable { mutableStateOf(false) }
             Label(stringResource(R.string.overview_by_category))
-            val other = stringResource(R.string.overview_other)
             val none = stringResource(R.string.overview_uncategorized)
-            val shown = summary.categories.take(TOP_CATEGORIES)
-            val rest = summary.categories.drop(TOP_CATEGORIES).fold(BigInteger.ZERO) { a, c -> a + c.second }
-            val bars = shown.map { (name, value) -> RankedBar(name.ifBlank { none }, money(value), value.toFloat()) } +
-                (if (rest.signum() > 0) listOf(RankedBar(other, money(rest), rest.toFloat())) else emptyList())
-            RankedBars(bars, MaterialTheme.colorScheme.primary)
+            val total = summary.monthExpense
+            val shown = if (all) summary.categories else summary.categories.take(TOP_CATEGORIES)
+            RankedBars(
+                shown.map { (name, value) ->
+                    val percent = if (total.signum() == 0) 0 else value.multiply(BigInteger.valueOf(100)).divide(total).toInt()
+                    RankedBar(name.ifBlank { none }, money(value) + " · " + percent + "%", value.toFloat())
+                },
+                MaterialTheme.colorScheme.primary,
+                onClick = { index -> shown[index].first.takeIf { it.isNotBlank() }?.let(onCategory) ?: onTransactions() },
+            )
+            if (summary.categories.size > TOP_CATEGORIES) {
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = { all = !all }) {
+                    Text(if (all) stringResource(R.string.finance_show_fewer) else stringResource(R.string.finance_show_all, summary.categories.size))
+                }
+            }
         }
 
         // Budgets always show: their meters, or a way to set the first one.
@@ -215,24 +219,37 @@ fun MoneyOverviewContent(
     }
 }
 
-/** Payments found in SMS: review them, add them all, or a note of how many were added. */
+/**
+ * Payments found in SMS, on Home and Transactions: review them or add them all. After a batch it
+ * says what was added and what was left out, until dismissed.
+ */
 @Composable
-private fun SmsBanner(found: Int, added: Int, onReview: () -> Unit, onAddAll: () -> Unit, onDismiss: () -> Unit) {
+internal fun FoundPaymentsBanner(detection: SmsDetection, onReview: () -> Unit, modifier: Modifier = Modifier) {
+    val pending by detection.pending.collectAsStateWithLifecycle()
+    val result by detection.result.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val found = pending.size
+    val outcome = result
+    if (found == 0 && outcome == null) return
     val colors = MaterialTheme.colorScheme
-    PressableCard(Modifier.fillMaxWidth(), color = colors.primaryContainer) {
+    PressableCard(modifier.fillMaxWidth(), color = colors.primaryContainer) {
         Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Sms, contentDescription = null, tint = colors.onPrimaryContainer)
             Text(
-                if (found > 0) pluralStringResource(R.plurals.sms_found, found, found) else pluralStringResource(R.plurals.sms_added, added, added),
+                if (found > 0) pluralStringResource(R.plurals.sms_found, found, found) else batchText(outcome!!),
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.onPrimaryContainer,
                 modifier = Modifier.weight(1f).padding(start = 12.dp),
             )
             if (found > 0) {
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = onAddAll) { Text(stringResource(R.string.sms_add_all), color = colors.onPrimaryContainer) }
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = { scope.launch { detection.approveAll() } }) {
+                    Text(stringResource(R.string.sms_add_all), color = colors.onPrimaryContainer)
+                }
                 Button(shapes = ButtonDefaults.shapes(), onClick = onReview) { Text(stringResource(R.string.sms_review)) }
             } else {
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = onDismiss) { Text(stringResource(R.string.sms_ok), color = colors.onPrimaryContainer) }
+                TextButton(shapes = ButtonDefaults.shapes(), onClick = detection::resultShown) {
+                    Text(stringResource(R.string.sms_ok), color = colors.onPrimaryContainer)
+                }
             }
         }
     }
@@ -298,3 +315,97 @@ private fun BudgetLine(health: BudgetHealth, money: (BigInteger) -> String) {
         Meter(health.fraction, color, contentDescription = health.title + " " + money(health.spent) + " / " + money(health.limit))
     }
 }
+
+/** The currency every amount on Home is in, as a small tag beside the balance. */
+@Composable
+private fun CurrencyBadge(code: String) {
+    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = CircleShape) {
+        Text(
+            code,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/** The balance counts up to its amount when Home opens, unless motion is reduced; it always ends exact. */
+@Composable
+private fun AnimatedMoney(amount: BigInteger, money: (BigInteger) -> String) {
+    val still = LocalReduceMotion.current
+    val progress = remember { Animatable(if (still) 1f else 0f) }
+    LaunchedEffect(amount, still) {
+        if (still) progress.snapTo(1f) else progress.animateTo(1f, tween(700))
+    }
+    val shown = if (progress.value >= 1f) amount
+    else amount.toBigDecimal().multiply(java.math.BigDecimal(progress.value.toDouble())).toBigInteger()
+    Text(money(shown), style = HeroTextStyle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+}
+
+/**
+ * Income and spending over a chosen range: its totals, a bar per day, month or year, and the
+ * picked bar with its spending, income and top category.
+ */
+@Composable
+private fun CashFlowContent(summary: MoneySummary, today: LocalDate, money: (BigInteger) -> String) {
+    var range by rememberSaveable { mutableStateOf(CashFlowRange.HALF_YEAR) }
+    var picked by rememberSaveable(range) { mutableStateOf<Int?>(null) }
+    val flow = remember(summary, range, today) { summary.cashFlow(range, today) }
+    val locale = LocalValueDisplay.current.numberLocale
+    val label = { bucket: CashFlowBucket ->
+        val start = LocalDate.ofEpochDay(bucket.days.first)
+        when (flow.step) {
+            CashFlow.Step.DAY -> start.format(DateTimeFormatter.ofPattern("d MMM", locale))
+            CashFlow.Step.MONTH -> start.format(DateTimeFormatter.ofPattern(if (start.year == today.year) "MMM" else "MMM yyyy", locale))
+            CashFlow.Step.YEAR -> start.year.toString()
+        }
+    }
+    Label(stringResource(R.string.overview_cash_flow))
+    ConnectedChoices(CashFlowRange.entries, range, { it.label() }, { range = it })
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Figure(stringResource(R.string.overview_in), "+" + money(flow.income), Modifier.weight(1f), LocalSignals.current.positive)
+        Figure(stringResource(R.string.overview_out), "−" + money(flow.spending), Modifier.weight(1f), MaterialTheme.colorScheme.error)
+        Figure(stringResource(R.string.overview_net), money(flow.net), Modifier.weight(1f))
+    }
+    val values = flow.buckets.map { it.spending.toFloat() }
+    val spent = values.any { it > 0f }
+    if (spent) {
+        BarChart(
+            values = values,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            selected = picked,
+            onSelect = { picked = it },
+            highlight = values.lastIndex,
+            peakLabel = money(flow.buckets.maxBy { it.spending }.spending),
+            contentDescription = flow.buckets.joinToString { label(it) + " " + money(it.spending) },
+        )
+        ChartAxis(start = label(flow.buckets.first()), end = label(flow.buckets.last()))
+    }
+    val bucket = picked?.let(flow.buckets::getOrNull)
+    if (bucket == null) {
+        if (spent) Text(stringResource(R.string.overview_tap_bar), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        Text(label(bucket), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        val uncategorized = stringResource(R.string.overview_uncategorized)
+        Text(
+            listOfNotNull(
+                stringResource(R.string.overview_spent, money(bucket.spending)),
+                stringResource(R.string.overview_earned, money(bucket.income)),
+                bucket.topCategory?.let { stringResource(R.string.overview_top, it.ifBlank { uncategorized }, money(bucket.topAmount)) },
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun CashFlowRange.label() = stringResource(
+    when (this) {
+        CashFlowRange.WEEK -> R.string.overview_range_week
+        CashFlowRange.MONTH -> R.string.overview_range_month
+        CashFlowRange.HALF_YEAR -> R.string.overview_range_half
+        CashFlowRange.YEAR -> R.string.overview_range_year
+        CashFlowRange.ALL -> R.string.overview_range_all
+    }
+)

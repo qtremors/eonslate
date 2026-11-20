@@ -37,6 +37,8 @@ data class BackupSnapshot(
     val icons: Map<String, String> = emptyMap(),
     @SerialName("category_budgets") val budgets: List<CategoryBudget> = emptyList(),
     val categories: List<CategoryChoice> = emptyList(),
+    /** App preferences by name; null in files made before they were included, which leaves them as they are. */
+    val preferences: Map<String, String>? = null,
     @Transient val legacy: LegacyFinance? = null,
 ) {
     /** What a person is shown before they choose to restore it. */
@@ -128,3 +130,11 @@ data class ValueRow(
     @SerialName("long_value") val longValue: Long? = null,
     @SerialName("text_value") val textValue: String? = null,
 )
+
+/** Where the app keeps its preferences, so a backup can take them along and a restore put them back. */
+interface PreferenceStore {
+    suspend fun export(): Map<String, String>
+
+    /** Replaces every preference with [values]; an empty map resets them all. */
+    suspend fun replace(values: Map<String, String>)
+}

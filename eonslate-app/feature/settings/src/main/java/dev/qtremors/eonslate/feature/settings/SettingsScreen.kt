@@ -107,6 +107,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onCategories: (() -> Unit)? = null,
     onDisplay: (() -> Unit)? = null,
+    /** Opens the payment SMS scan on Transactions. */
+    onScanSms: (() -> Unit)? = null,
 ) {
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
@@ -127,7 +129,7 @@ fun SettingsScreen(
     SettingsContent(
         appearance, actions, onBack, onAbout, modifier,
         tracking = tracking, onBackup = onBackup, sms = sms, onSms = viewModel::updateSms,
-        onCategories = onCategories, onDisplay = onDisplay,
+        onCategories = onCategories, onDisplay = onDisplay, onScanSms = onScanSms,
     )
 }
 
@@ -150,6 +152,7 @@ fun SettingsContent(
     onSms: ((SmsSettings) -> SmsSettings) -> Unit = {},
     onCategories: (() -> Unit)? = null,
     onDisplay: (() -> Unit)? = null,
+    onScanSms: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val askSms = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -306,6 +309,12 @@ fun SettingsContent(
                         onCheckedChange = { on -> onSms { it.copy(autoApprove = on) } },
                         icon = Icons.Rounded.DoneAll,
                         enabled = sms.detect,
+                    )
+                    if (onScanSms != null) NavigationRow(
+                        title = stringResource(R.string.settings_sms_scan),
+                        icon = Icons.Rounded.Sms,
+                        badgeKey = "sms-scan",
+                        onClick = onScanSms,
                     )
                 }
             }

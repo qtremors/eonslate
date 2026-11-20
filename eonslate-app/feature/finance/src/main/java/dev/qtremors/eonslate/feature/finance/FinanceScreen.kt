@@ -11,9 +11,13 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.rememberDateRangePickerState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxDefaults
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.material3.SwipeToDismissBoxValue
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionFilter
+import dev.qtremors.eonslate.core.tracker.domain.finance.source
 import dev.qtremors.eonslate.core.tracker.domain.finance.BudgetHealth
 import dev.qtremors.eonslate.core.tracker.domain.csv.BudgetCsv
 import dev.qtremors.eonslate.core.tracker.domain.csv.RecurringCsv
@@ -152,6 +156,9 @@ fun FinanceScreen(
     /** Opens the new budget editor, as Home's empty budgets card asks. */
     openBudget: Boolean = false,
     onBudgetOpened: () -> Unit = {},
+    /** Shows this month in one category, as a tap on the Home category chart asks. */
+    openCategory: String? = null,
+    onCategoryOpened: () -> Unit = {},
 ) {
     var newKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -199,8 +206,8 @@ fun FinanceScreen(
     val deleteOne: (Transaction) -> Unit = { transaction ->
         viewModel.delete(transaction) {
             scope.launch {
-                if (snackbar.showSnackbar(deletedText, undoText, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {
-                    viewModel.save(transaction) {}
+                if (snackbar.showSnackbar(deletedText, undoText, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+                    viewModel.restore(transaction)
                 }
             }
         }
@@ -220,6 +227,8 @@ fun FinanceScreen(
     var message by remember { mutableStateOf("") }
     var prefill by remember { mutableStateOf<PaymentMessage?>(null) }
     val done = {
+        // A subscription editor may have left an unused icon file behind.
+        if (editor == Editor.RECURRING || editor == Editor.SUBSCRIPTION_DETAILS) viewModel.pruneIcons()
         newKind = null
         editor = null
         message = ""
@@ -246,6 +255,15 @@ fun FinanceScreen(
             newKind = openNew
             open(Editor.TRANSACTION, null)
             onNewOpened()
+        }
+    }
+    LaunchedEffect(openCategory) {
+        if (openCategory != null) {
+            category = openCategory
+            kindFilter = null
+            period = TransactionPeriod.MONTH
+            query = ""
+            onCategoryOpened()
         }
     }
     LaunchedEffect(openBudget) {
@@ -374,8 +392,10 @@ fun FinanceScreen(
                     open = { open(Editor.SUBSCRIPTION_DETAILS, it.id) },
                     edit = { open(Editor.RECURRING, it.id) },
                     setPaused = { payment, paused -> viewModel.setPaused(payment, paused) },
-                    delete = { viewModel.delete(it) {} },
+                    delete = { viewModel.delete(it) { viewModel.pruneIcons() } },
                 ),
+                detection = viewModel.detection,
+                onReviewPayments = { open(Editor.INBOX, null) },
             )
         }
     }
@@ -527,6 +547,8 @@ private fun LedgerList(
     planKind: TransactionKind? = null,
     onPlanKind: (TransactionKind?) -> Unit = {},
     planActions: PlanActions = PlanActions({}, {}, { _, _ -> }, {}),
+    detection: SmsDetection? = null,
+    onReviewPayments: () -> Unit = {},
 ) {
     val sort = filter.sort
     val category = filter.category
@@ -601,6 +623,7 @@ private fun LedgerList(
                 BudgetCard(health, onClick = { openBudget(health) })
             }
         }
+        if (detection != null) item(key = "found-payments") { FoundPaymentsBanner(detection, onReviewPayments, Modifier.padding(vertical = 4.dp)) }
         if (selected.isNotEmpty()) item(key = "selection") {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -751,13 +774,23 @@ private fun share(part: BigInteger, whole: BigInteger): String {
 /** Swiping a row toward the start deletes it; the caller offers Undo. */
 @Composable
 private fun SwipeToDelete(enabled: Boolean, onDelete: () -> Unit, content: @Composable () -> Unit) {
-    val state = rememberSwipeToDismissBoxState()
+    // Not saved: a row brought back by Undo has the same key, and a saved "swiped away" state
+    // would dismiss it again the moment it returns.
+    val threshold = SwipeToDismissBoxDefaults.positionalThreshold
+    val state = remember { SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, threshold) }
     val colors = MaterialTheme.colorScheme
+    // The box calls back from an effect keyed on the callback itself, so a new lambda each
+    // recomposition would delete again and again. One stable callback deletes exactly once.
+    val currentDelete by rememberUpdatedState(onDelete)
+    val dismiss = remember {
+        var done = false
+        { _: SwipeToDismissBoxValue -> if (!done) { done = true; currentDelete() } }
+    }
     SwipeToDismissBox(
         state = state,
         enableDismissFromStartToEnd = false,
         gesturesEnabled = enabled,
-        onDismiss = { onDelete() },
+        onDismiss = dismiss,
         backgroundContent = {
             Box(
                 Modifier.fillMaxSize().background(colors.errorContainer).padding(horizontal = 24.dp),
@@ -1134,7 +1167,8 @@ private fun TransactionEditor(
     val reference = prefill?.reference?.let { stringResource(R.string.finance_sms_reference, it) }
     val smsKey by rememberSaveable { mutableStateOf(transaction?.smsKey ?: prefill?.key) }
     var note by rememberSaveable { mutableStateOf(transaction?.note ?: listOfNotNull(prefill?.merchant, reference).joinToString(" · ")) }
-    var details by rememberSaveable { mutableStateOf(transaction?.details.orEmpty()) }
+    // A reviewed payment keeps where it came from in its notes.
+    var details by rememberSaveable { mutableStateOf(transaction?.details ?: prefill?.source().orEmpty()) }
     // A new transaction starts in its kind's most used category, and follows the kind until changed.
     var autoCategory by rememberSaveable {
         mutableStateOf(if (transaction == null && prefill?.category.isNullOrBlank()) suggest(kind).firstOrNull() else null)

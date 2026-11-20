@@ -8,7 +8,10 @@ import java.nio.charset.CharacterCodingException
 object CsvFiles {
     const val MIME = "text/csv"
     private const val MAX_BYTES = 16 * 1024 * 1024
-    val importTypes get() = arrayOf(MIME, "text/plain", "application/vnd.ms-excel", "application/octet-stream")
+    /** Android labels a .csv as "text/comma-separated-values", and other apps use the rest. */
+    val importTypes get() = arrayOf(
+        MIME, "text/comma-separated-values", "text/x-csv", "application/csv", "text/plain", "application/vnd.ms-excel", "application/octet-stream",
+    )
 
     fun read(input: InputStream): String {
         val bytes = ByteArrayOutputStream()

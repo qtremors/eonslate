@@ -124,5 +124,12 @@ private val paymentSenders = mapOf(
 internal fun paymentSenderName(sender: String?): String? {
     val parts = sender?.uppercase(Locale.ROOT)?.trim()?.split('-') ?: return null
     val code = if (parts.size > 1 && parts.first().length == 2) parts[1] else parts.first()
-    return paymentSenders[code] ?: paymentSenders[code.drop(2)]
+    return paymentSenders[code] ?: paymentSenders[code.drop(2)] ?: senderFallbacks.firstOrNull { (key, _) ->
+        // Bank codes grow suffixes and prefixes, such as "HDFCBKUPI" or "AXHDFCBK".
+        code.startsWith(key) || code.contains(key)
+    }?.second
 }
+
+/** Longer codes first, so "HDFCBK" wins over "HDFC"; short ones are left out, as they match too much. */
+private val senderFallbacks = paymentSenders.entries.filter { it.key.length >= 4 }
+    .sortedByDescending { it.key.length }.map { it.key to it.value }

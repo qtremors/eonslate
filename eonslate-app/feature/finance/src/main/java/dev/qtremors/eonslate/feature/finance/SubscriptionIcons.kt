@@ -71,12 +71,13 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Custom icons: any PNG, JPEG, WebP or SVG, decoded and drawn again as a 128 px square PNG, which
- * drops whatever else the file carried. Stored by the hash of that PNG; backups take them along.
+ * Custom icons: any PNG, JPEG, WebP or SVG, decoded and drawn again as a PNG of up to 512 px on its
+ * longer side, in its own proportions, which drops whatever else the file carried. Stored by the
+ * hash of that PNG; backups take them along.
  */
 internal object CustomIcons {
     const val PREFIX = "file:"
-    private const val SIZE = 128
+    private const val SIZE = 512
     private const val MAX_INPUT = 20L * 1024 * 1024
 
     fun dir(context: Context) = File(context.filesDir, "icons")
@@ -118,9 +119,20 @@ internal object CustomIcons {
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= SIZE * 2) sample *= 2
         val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
             ?: return null
-        val side = minOf(decoded.width, decoded.height)
-        val square = Bitmap.createBitmap(decoded, (decoded.width - side) / 2, (decoded.height - side) / 2, side, side)
-        return Bitmap.createScaledBitmap(square, SIZE, SIZE, true)
+        // Wide and tall images keep their shape; only ones larger than SIZE are scaled down.
+        val scale = minOf(1f, SIZE.toFloat() / maxOf(decoded.width, decoded.height))
+        if (scale >= 1f) return decoded
+        return Bitmap.createScaledBitmap(
+            decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true,
+        )
+    }
+
+    /** Deletes icon files that no subscription uses, as after an icon was replaced, removed or picked and then cancelled. */
+    suspend fun prune(context: Context, used: Set<String>) = withContext(Dispatchers.IO) {
+        val keep = used.filter { it.startsWith(PREFIX) }.mapTo(HashSet()) { it.removePrefix(PREFIX) }
+        dir(context).listFiles { file -> file.isFile && file.name.endsWith(".png") }?.forEach { file ->
+            if (file.name.removeSuffix(".png") !in keep) file.delete()
+        }
     }
 
     private fun save(context: Context, bitmap: Bitmap): String {
@@ -145,7 +157,10 @@ internal fun SubscriptionIcon(icon: String?, name: String, size: Dp = 40.dp, col
     if (icon != null && icon.startsWith(CustomIcons.PREFIX)) {
         val image by produceState<ImageBitmap?>(null, icon) { value = withContext(Dispatchers.IO) { CustomIcons.load(context, icon) } }
         image?.let {
-            Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size).clip(SlateTileShape))
+            // The whole image shows, letterboxed on a tile, rather than cropped to a square.
+            Box(Modifier.size(size).clip(SlateTileShape).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+                Image(it, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(size))
+            }
             return
         }
     }

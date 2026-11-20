@@ -113,9 +113,7 @@
     <string name="overview_in">In</string>
     <string name="overview_out">Out</string>
     <string name="overview_net">Net</string>
-    <string name="overview_spending">Spending</string>
     <string name="overview_by_category">By category</string>
-    <string name="overview_other">Other</string>
     <string name="overview_uncategorized">Uncategorized</string>
     <string name="overview_budgets">Budgets</string>
     <string name="overview_due">Due this week</string>
@@ -288,4 +286,25 @@
     <string name="finance_auto_estimate_off">Waits for you to enter the amount.</string>
     <string name="finance_color_automatic">Automatic</string>
     <string name="finance_color_custom">Custom</string>
+    <string name="overview_cash_flow">Cash flow</string>
+    <string name="overview_range_week">7D</string>
+    <string name="overview_range_month">30D</string>
+    <string name="overview_range_half">6M</string>
+    <string name="overview_range_year">1Y</string>
+    <string name="overview_range_all">All</string>
+    <string name="overview_tap_bar">Tap a bar for its details.</string>
+    <string name="overview_spent">Spent %1$s</string>
+    <string name="overview_earned">In %1$s</string>
+    <string name="overview_top">Most on %1$s, %2$s</string>
+    <string name="sms_add">Add</string>
+    <plurals name="sms_no_account">
+        <item quantity="one">%1$d with no account in its currency</item>
+        <item quantity="other">%1$d with no account in their currency</item>
+    </plurals>
+    <plurals name="sms_failed">
+        <item quantity="one">%1$d couldn’t be saved</item>
+        <item quantity="other">%1$d couldn’t be saved</item>
+    </plurals>
+    <string name="finance_delete_category">Delete %1$s?</string>
+    <string name="finance_delete_category_message">Past transactions keep it. It is no longer offered.</string>
 </resources>

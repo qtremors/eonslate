@@ -1,6 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
 import java.util.Base64
+import dev.qtremors.eonslate.core.tracker.domain.backup.PreferenceStore
 import dev.qtremors.eonslate.core.tracker.domain.backup.ArchiveHeader
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupArchive
 import dev.qtremors.eonslate.core.tracker.domain.backup.BackupCheck
@@ -39,6 +40,8 @@ class BackupManager(
     private val icons: File? = null,
     /** Runs after the data is replaced, as when payments that fell due must be posted. */
     private val afterReplace: suspend () -> Unit = {},
+    /** The app preferences, which travel in backups too. */
+    private val preferences: PreferenceStore? = null,
 ) : Backups {
     private val lock = Mutex()
     private val point = File(directory, RESTORE_POINT)
@@ -48,7 +51,7 @@ class BackupManager(
     override val restorePoint: StateFlow<Long?> = _restorePoint.asStateFlow()
 
     override suspend fun create(password: CharArray?, appVersion: String): ByteArray = lock.withLock {
-        val snapshot = withIcons(repository.snapshot(appVersion))
+        val snapshot = withPreferences(withIcons(repository.snapshot(appVersion)))
         withContext(work) { BackupArchive.encode(snapshot, password, iterations) }
     }
 
@@ -65,7 +68,7 @@ class BackupManager(
 
     override suspend fun restore(snapshot: BackupSnapshot, appVersion: String) = lock.withLock {
         BackupCheck.requireSound(snapshot, repository.schema)
-        val current = withIcons(repository.snapshot(appVersion))
+        val current = withPreferences(withIcons(repository.snapshot(appVersion)))
         val replacement = snapshot.legacy?.applyTo(snapshot, current) ?: snapshot
         BackupCheck.requireSound(replacement, repository.schema)
         withContext(work) {
@@ -87,6 +90,8 @@ class BackupManager(
             }
         }
         _restorePoint.value = point.takeIf(File::isFile)?.lastModified()
+        replacement.preferences?.let { preferences?.replace(it) }
+        withContext(work) { pruneIcons(replacement) }
         caughtUp()
     }
 
@@ -109,7 +114,21 @@ class BackupManager(
         repository.replaceAll(snapshot)
         withContext(work) { point.delete() }
         _restorePoint.value = null
+        snapshot.preferences?.let { preferences?.replace(it) }
+        withContext(work) { pruneIcons(snapshot) }
         caughtUp()
+    }
+
+    private suspend fun withPreferences(snapshot: BackupSnapshot): BackupSnapshot =
+        preferences?.let { snapshot.copy(preferences = it.export()) } ?: snapshot
+
+    /** Removes icon files no subscription uses now; the restore point keeps its own copies. */
+    private fun pruneIcons(snapshot: BackupSnapshot) {
+        val dir = icons ?: return
+        val used = snapshot.recurring.mapNotNullTo(HashSet()) { it.icon?.takeIf { icon -> icon.startsWith(FILE_PREFIX) }?.removePrefix(FILE_PREFIX) }
+        dir.listFiles { file -> file.isFile && file.name.endsWith(".png") }?.forEach { file ->
+            if (file.name.removeSuffix(".png") !in used) file.delete()
+        }
     }
 
     private suspend fun withIcons(snapshot: BackupSnapshot): BackupSnapshot = withContext(work) {
@@ -130,7 +149,8 @@ class BackupManager(
         snapshot.icons.forEach { (hash, data) ->
             if (!HASH.matches(hash)) return@forEach
             val bytes = runCatching { Base64.getDecoder().decode(data) }.getOrNull() ?: return@forEach
-            if (bytes.size <= LegacyFinanceBackup.MAX_ICON_BYTES) File(dir, "$hash.png").writeBytes(bytes)
+            // Only real images: anything else would show a broken tile, so the letter tile stays instead.
+            if (bytes.size <= LegacyFinanceBackup.MAX_ICON_BYTES && IconBytes.isImage(bytes)) File(dir, "$hash.png").writeBytes(bytes)
         }
     }
 
@@ -138,5 +158,26 @@ class BackupManager(
         private const val FILE_PREFIX = "file:"
         private val HASH = Regex("[0-9a-f]{64}")
         const val RESTORE_POINT = "before-restore.${BackupArchive.EXTENSION}"
+    }
+}
+
+/** Recognizes the image formats an icon may be: PNG, JPEG and WebP by their signatures, and safe SVG text. */
+internal object IconBytes {
+    fun isImage(bytes: ByteArray): Boolean = png(bytes) || jpeg(bytes) || webp(bytes) || svg(bytes)
+
+    private fun starts(bytes: ByteArray, vararg head: Int) = bytes.size >= head.size && head.indices.all { (bytes[it].toInt() and 0xFF) == head[it] }
+
+    private fun png(bytes: ByteArray) = starts(bytes, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+
+    private fun jpeg(bytes: ByteArray) = starts(bytes, 0xFF, 0xD8, 0xFF)
+
+    private fun webp(bytes: ByteArray) = bytes.size >= 12 && starts(bytes, 0x52, 0x49, 0x46, 0x46) &&
+        String(bytes, 8, 4, Charsets.US_ASCII) == "WEBP"
+
+    private fun svg(bytes: ByteArray): Boolean {
+        val text = bytes.toString(Charsets.UTF_8).trimStart('\uFEFF', ' ', '\r', '\n', '\t')
+        val lower = text.lowercase()
+        return (text.startsWith("<svg") || text.startsWith("<?xml")) && "<svg" in lower &&
+            "<!doctype" !in lower && "<!entity" !in lower && "<script" !in lower
     }
 }

@@ -23,6 +23,8 @@ data class CategoryChoice(
     val id: String = "category:${name.trim().lowercase(Locale.ROOT)}",
     val icon: String? = null,
     val color: Int? = null,
+    /** Removed by the person: past transactions keep the name, but it is no longer offered. */
+    val deleted: Boolean = false,
 ) {
     val key: String get() = name.trim().lowercase(Locale.ROOT)
 
@@ -62,7 +64,8 @@ object Categories {
                 }
                 CategoryChoice(uses.first().first.trim(), kind)
             }
-        return (catalog + used).distinctBy(CategoryChoice::key)
+        // A deleted category comes first in the catalog, so the same name in history stays hidden too.
+        return (catalog + used).distinctBy(CategoryChoice::key).filterNot { it.deleted }
     }
 
     /**
@@ -83,7 +86,7 @@ object Categories {
         val keys = used.map { it.lowercase(Locale.ROOT) } + catalog.keys
         return keys.distinct().mapNotNull { key ->
             val choice = saved[key]
-            if (choice != null) choice.name.takeIf { choice.kind.fits(kind) }
+            if (choice != null) choice.name.takeIf { !choice.deleted && choice.kind.fits(kind) }
             else usedNames[key] ?: catalog[key]?.takeIf { it.kind.fits(kind) }?.name
         }
     }

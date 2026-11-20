@@ -1,10 +1,36 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.5
-> **Last Updated:** 2026-11-19
+> **Version:** 2.1.6
+> **Last Updated:** 2026-11-20
 
 ---
+
+## [2.1.6] - 2026-11-20
+
+- **Cash flow** on Home: pick 7 days, 30 days, 6 months, 1 year, or all time, and see income, spending and net for it.
+- Tap a bar to see that day, month or year: spent, income, and the category with the most spending.
+- **Spending by category** on Home lists every category with its share. Tap one to open this month in it.
+- The balance shows its currency and counts up when Home opens, unless motion is reduced.
+- **Payment SMS** are found again whenever the app returns, and right after turning detection on or allowing SMS access.
+- **Review each payment** on its card: pick a category, then Add or Discard. Opening one and backing out keeps it waiting.
+- Found payments show on Transactions too, and Settings has Scan past payment SMS.
+- Add all says how many were added and which were left out.
+- Payments already entered by hand, from CSV, or from a backup are not offered again.
+- Discarded payments stay hidden in manual scans as well.
+- Older payments are no longer crowded out by ones already handled.
+- Added payments keep their sender and account or card ending in their notes.
+- More bank sender codes are recognized, and references written in capitals are kept.
+- **Delete categories**: Past transactions keep the name; it is no longer offered. One always stays.
+- **Backups** now include your settings. Restoring an older file leaves them as they are.
+- **Delete all data** also resets settings and removes subscription images. Undo brings everything back.
+- **Tablets and landscape**: From 840 dp wide, the tabs move to a rail at the side.
+- Custom subscription images keep their shape, up to 512 px, and show whole on their tile.
+- Restores keep only real images, and unused image files are removed after edits.
+- About links to the changelog and shows the package name.
+- Debug builds report slow main-thread work.
+- CSV files saved by other apps can be picked for import.
+- Undo after swiping a transaction away brings it back, and a swipe deletes only once.
 
 ## [2.1.5] - 2026-11-19
 

@@ -132,7 +132,8 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         ) return@withTransaction false
 
         if (ledger.categories.isEmpty()) dao.insertCategories(Categories.defaults.map { it.toEntity() })
-        dao.upsert(category.toEntity())
+        dao.forgetDeleted(category.key, category.id)
+        dao.upsert(category.copy(deleted = false).toEntity())
         if (previous != null && previous.name != category.name) {
             val names = (ledger.transactions.asSequence().map { it.category } +
                 ledger.recurring.asSequence().map { it.category } +
@@ -145,6 +146,17 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
                 dao.renameBudgetCategories(batch, category.name)
             }
         }
+        true
+    }
+
+    override suspend fun deleteCategory(category: CategoryChoice): Boolean = database.withTransaction {
+        val ledger = readLedger()
+        val available = Categories.all(ledger)
+        if (available.size <= 1 || available.none { it.id == category.id && it.key == category.key }) return@withTransaction false
+        // The defaults become real rows first, so deleting one never brings the others back.
+        if (ledger.categories.isEmpty()) dao.insertCategories(Categories.defaults.map { it.toEntity() })
+        dao.forgetDeleted(category.key, category.id)
+        dao.upsert(category.copy(deleted = true).toEntity())
         true
     }
 

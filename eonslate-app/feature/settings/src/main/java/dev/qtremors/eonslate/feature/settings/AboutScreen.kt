@@ -23,6 +23,8 @@ import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Gavel
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhoneAndroid
@@ -52,6 +54,7 @@ object Links {
     const val SOURCE = "https://github.com/qtremors/eonslate"
     const val RELEASES = "https://github.com/qtremors/eonslate/releases"
     const val ISSUES = "https://github.com/qtremors/eonslate/issues"
+    const val CHANGELOG = "https://github.com/qtremors/eonslate/blob/main/CHANGELOG.md"
 }
 
 /**
@@ -98,6 +101,7 @@ fun AboutScreen(
                     NavigationRow(stringResource(R.string.about_developer), Icons.Rounded.Person, "developer", onClick = { open(context, Links.DEVELOPER) }, supporting = stringResource(R.string.about_developer_name))
                     NavigationRow(stringResource(R.string.about_source), Icons.Rounded.Code, "source", onClick = { open(context, Links.SOURCE) })
                     NavigationRow(stringResource(R.string.about_releases), Icons.Rounded.NewReleases, "releases", onClick = { open(context, Links.RELEASES) })
+                    NavigationRow(stringResource(R.string.about_changelog), Icons.Rounded.History, "changelog", onClick = { open(context, Links.CHANGELOG) })
                     NavigationRow(stringResource(R.string.about_issues), Icons.Rounded.BugReport, "issues", onClick = { open(context, Links.ISSUES) })
                 }
             }
@@ -121,6 +125,12 @@ fun AboutScreen(
                         supporting = stringResource(R.string.about_device_hint),
                         leading = { IconBadge(icon = Icons.Rounded.PhoneAndroid, key = "device") },
                         onClick = { copy(context, "Eonslate $versionName · $device") },
+                    )
+                    ConnectedRow(
+                        title = stringResource(R.string.about_package),
+                        supporting = context.packageName,
+                        leading = { IconBadge(icon = Icons.Rounded.Inventory2, key = "package") },
+                        onClick = { copy(context, context.packageName) },
                     )
                 }
             }

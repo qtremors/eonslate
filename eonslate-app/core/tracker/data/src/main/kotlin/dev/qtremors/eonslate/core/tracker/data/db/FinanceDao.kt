@@ -123,8 +123,9 @@ data class CategoryEntity(
     val kind: String,
     val icon: String?,
     val color: Int?,
+    @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
 ) {
-    fun toDomain() = CategoryChoice(name, CategoryKind.valueOf(kind), id, icon, color)
+    fun toDomain() = CategoryChoice(name, CategoryKind.valueOf(kind), id, icon, color, deleted)
 }
 
 internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor)
@@ -138,7 +139,7 @@ internal fun RecurringPayment.toEntity() =
 internal fun CategoryBudget.toEntity() =
     CategoryBudgetEntity(id, accountId, category, minor, interval.name, every, startEpochDay, name, icon, color, allAccounts)
 
-internal fun CategoryChoice.toEntity() = CategoryEntity(id, name, key, kind.name, icon, color)
+internal fun CategoryChoice.toEntity() = CategoryEntity(id, name, key, kind.name, icon, color, deleted)
 
 internal fun LedgerTransaction.toEntity() =
     TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey, details, createdAt)
@@ -273,6 +274,10 @@ interface FinanceDao {
 
     @Query("DELETE FROM finance_categories")
     suspend fun clearCategories()
+
+    /** Drops a deleted category's marker when its name is used for a new one. */
+    @Query("DELETE FROM finance_categories WHERE name_key = :key AND id != :id AND deleted = 1")
+    suspend fun forgetDeleted(key: String, id: String)
 
     @Query("UPDATE finance_transactions SET category = :name WHERE category IN (:previous)")
     suspend fun renameTransactionCategories(previous: List<String>, name: String)

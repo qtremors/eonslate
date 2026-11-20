@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.5
-> **Last Updated:** 2026-11-19
+> **Version:** 2.1.6
+> **Last Updated:** 2026-11-20
 
 ## Roadmap
 
@@ -32,13 +32,13 @@ Each step is planned as one release commit.
 | 20 | 2.1.4 | Transactions parity: filters, sorts, notes, full breakdown, atomic delete | Done |
 | 21 | 2.1.5 | Budgets parity: spent chart, CSV, details, scope, early warnings | Done |
 | 22 | 2.1.5 | Subscriptions parity: filters, net flow, full chart, CSV, quick actions, variable posting | Done |
-| 23 | 2.1.6 | Home cash flow: ranges, period details, interactive categories | Planned |
-| 24 | 2.1.6 | SMS parity: rescans, inline review, feedback, duplicates, provenance | Planned |
-| 25 | 2.1.6 | Categories, settings and data: delete, full reset, wide nav, icons | Planned |
+| 23 | 2.1.6 | Home cash flow: ranges, period details, interactive categories | Done |
+| 24 | 2.1.6 | SMS parity: rescans, inline review, feedback, duplicates, provenance | Done |
+| 25 | 2.1.6 | Categories, settings and data: delete, full reset, wide nav, icons | Done |
 
 ## v2.0.0 parity
 
-From the v2.0.0 comparison on 2026-11-13. Upgrade and legacy-import paths are out of scope (no existing users).
+From the v2.0.0 comparison on 2026-11-13. Upgrade and legacy-import paths are out of scope (no existing users). All planned items are done; device checks remain.
 
 ### 2.1.4 Transactions
 - [x] Type filter: All, Expense, Income
@@ -79,33 +79,33 @@ From the v2.0.0 comparison on 2026-11-13. Upgrade and legacy-import paths are ou
 - [x] Label nominal hourly rates apart from expected postings
 
 ### 2.1.6 Home cash flow
-- [ ] Ranges: 7 days, 30 days, 6 months, 1 year, all time
-- [ ] Spending, income and net for the selected range
-- [ ] Tap a period for its spending, income and top category
-- [ ] Interactive category chart without folding into Other
-- [ ] Currency badge and animated balance; category subtitle on recent rows
+- [x] Ranges: 7 days, 30 days, 6 months, 1 year, all time
+- [x] Spending, income and net for the selected range
+- [x] Tap a period for its spending, income and top category
+- [x] Interactive category chart without folding into Other
+- [x] Currency badge and animated balance; category subtitle on recent rows
 
 ### 2.1.6 SMS
-- [ ] Rescan on resume and right after enabling detection or granting access
-- [ ] Scan past SMS from Settings; pending banner on Transactions
-- [ ] Exclude handled messages before the 200-item cap
-- [ ] Pick category and approve on each card
-- [ ] Cancelling an opened item keeps it pending
-- [ ] One discard state for automatic and manual scans
-- [ ] Bulk approval reports added, skipped and failed items
-- [ ] Duplicate check against existing ledger entries, manual ones included
-- [ ] Keep sender and account/card ending on approved payments
-- [ ] Sender fallbacks (prefix, substring), alphabetic references
+- [x] Rescan on resume and right after enabling detection or granting access
+- [x] Scan past SMS from Settings; pending banner on Transactions
+- [x] Exclude handled messages before the 200-item cap
+- [x] Pick category and approve on each card
+- [x] Cancelling an opened item keeps it pending
+- [x] One discard state for automatic and manual scans
+- [x] Bulk approval reports added, skipped and failed items
+- [x] Duplicate check against existing ledger entries, manual ones included
+- [x] Keep sender and account/card ending on approved payments
+- [x] Sender fallbacks (prefix, substring), alphabetic references
 
 ### 2.1.6 Categories, settings and data
-- [ ] Delete a category; keep history, drop it from suggestions; guard the last one
-- [ ] Delete all data also resets preferences and removes icon files
-- [ ] Preferences in backups
-- [ ] Navigation rail at 840 dp and wider
-- [ ] About: package ID and changelog link
-- [ ] Debug StrictMode
-- [ ] Custom icons keep aspect ratio up to 512 px
-- [ ] Validate restored raster icons; clean up replaced, deleted and cancelled icon files
+- [x] Delete a category; keep history, drop it from suggestions; guard the last one
+- [x] Delete all data also resets preferences and removes icon files
+- [x] Preferences in backups
+- [x] Navigation rail at 840 dp and wider
+- [x] About: package ID and changelog link
+- [x] Debug StrictMode
+- [x] Custom icons keep aspect ratio up to 512 px
+- [x] Validate restored raster icons; clean up replaced, deleted and cancelled icon files
 
 ### Out of scope
 - Package ID, Android 7 support and old-install handoff

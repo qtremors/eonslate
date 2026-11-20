@@ -22,7 +22,13 @@ internal object PaymentInbox {
     fun hasAccess(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
 
-    suspend fun scan(context: Context, now: Long, zone: ZoneId, days: Int): List<PaymentMessage> = withContext(Dispatchers.IO) {
+    /**
+     * The newest payments, up to [LIMIT], from the last [days] days. Messages [handled] already, as
+     * recorded or discarded, are passed over before counting, so they never crowd out new ones.
+     */
+    suspend fun scan(
+        context: Context, now: Long, zone: ZoneId, days: Int, handled: (String) -> Boolean = { false },
+    ): List<PaymentMessage> = withContext(Dispatchers.IO) {
         if (!hasAccess(context)) return@withContext emptyList()
         val cutoff = Instant.ofEpochMilli(now).atZone(zone).toLocalDate().minusDays(days.toLong() - 1)
             .atStartOfDay(zone).toInstant().toEpochMilli()
@@ -35,14 +41,16 @@ internal object PaymentInbox {
             arrayOf(cutoff.toString()),
             "${Telephony.Sms.DATE} DESC",
         )?.use { cursor ->
-            while (cursor.moveToNext() && found.size < 200) {
+            while (cursor.moveToNext() && found.size < LIMIT) {
                 ensureActive()
                 val text = cursor.getString(1) ?: continue
                 val day = Instant.ofEpochMilli(cursor.getLong(2)).atZone(zone).toLocalDate().toEpochDay()
                 val payment = PaymentMessages.parse(text, cursor.getString(0), day) ?: continue
-                payment.key?.let { found.putIfAbsent(it, payment) }
+                payment.key?.takeUnless(handled)?.let { found.putIfAbsent(it, payment) }
             }
         }
         found.values.toList()
     }
+
+    private const val LIMIT = 200
 }

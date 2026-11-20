@@ -45,4 +45,13 @@ class InMemorySettingsRepository(
     override suspend fun updateSms(change: (SmsSettings) -> SmsSettings) {
         smsState.value = change(smsState.value)
     }
+
+    override suspend fun export(): Map<String, String> = emptyMap()
+
+    /** Held in memory only, so a replace resets to the defaults. */
+    override suspend fun replace(values: Map<String, String>) {
+        appearanceState.value = Appearance()
+        trackingState.value = Tracking()
+        smsState.value = SmsSettings()
+    }
 }

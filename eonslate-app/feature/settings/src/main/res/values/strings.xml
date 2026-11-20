@@ -90,4 +90,7 @@
     <string name="settings_date_day_first">Day first</string>
     <string name="settings_date_month_first">Month first</string>
     <string name="settings_date_year_first">Year first</string>
+    <string name="settings_sms_scan">Scan past payment SMS</string>
+    <string name="about_changelog">Changelog</string>
+    <string name="about_package">Package</string>
 </resources>

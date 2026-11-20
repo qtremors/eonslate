@@ -61,6 +61,29 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun exportedSettingsComeBackAndAnEmptyReplaceResetsAllButTheWelcome() = runTest(UnconfinedTestDispatcher()) {
+        val settings = DataStoreSettingsRepository(store(this, newFile()))
+        settings.setWelcomeSeen(true)
+        settings.updateAppearance { it.copy(theme = ThemeChoice.DARK, haptics = false) }
+        settings.updateTracking { it.copy(currency = "EUR") }
+        settings.updateSms { it.copy(detect = true, discarded = setOf("a".repeat(64))) }
+        val exported = settings.export()
+        assertFalse("welcome_seen" in exported)
+
+        settings.replace(emptyMap())
+        assertEquals(Appearance(), settings.appearance.first())
+        assertEquals(SmsSettings(), settings.sms.first())
+        assertTrue(settings.welcomeSeen.first())
+
+        settings.replace(exported + ("unknown" to "x") + ("haptics" to "maybe"))
+        assertEquals(ThemeChoice.DARK, settings.appearance.first().theme)
+        // A malformed value falls back to its default.
+        assertEquals(Appearance().haptics, settings.appearance.first().haptics)
+        assertEquals("EUR", settings.tracking.first().currency)
+        assertEquals(setOf("a".repeat(64)), settings.sms.first().discarded)
+    }
+
+    @Test
     fun trackingStartsByFollowingTheDevice() = runTest(UnconfinedTestDispatcher()) {
         val settings = DataStoreSettingsRepository(store(this, newFile()))
         assertEquals(Tracking(), settings.tracking.first())

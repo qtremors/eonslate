@@ -23,6 +23,7 @@ import dev.qtremors.eonslate.core.tracker.domain.csv.TrackerCsvRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
+import dev.qtremors.eonslate.core.tracker.domain.backup.PreferenceStore
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
 import dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator
 import dev.qtremors.eonslate.core.tracker.domain.time.SystemAppClock
@@ -51,6 +52,7 @@ object TrackerDatabaseModule {
         repository: RoomBackupRepository,
         finance: RoomFinanceRepository,
         clock: AppClock,
+        preferences: PreferenceStore,
     ): Backups = BackupManager(
         repository, File(context.filesDir, "backups"), Dispatchers.Default, icons = File(context.filesDir, "icons"),
         // A restored ledger catches up on payments that fell due, as at launch.
@@ -58,6 +60,7 @@ object TrackerDatabaseModule {
             val now = java.time.Instant.ofEpochMilli(clock.nowMillis()).atZone(java.time.ZoneId.of(clock.zoneId()))
             finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
         },
+        preferences = preferences,
     )
 
     @Provides

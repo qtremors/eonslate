@@ -32,7 +32,44 @@ fun PaymentMessage.asTransaction(id: String, accounts: List<Account>, today: Lon
     val matching = accounts.filter { it.currency == currency }
     val account = accountEnding?.let { end -> matching.firstOrNull { it.name.trim().endsWith(end) } } ?: matching.firstOrNull() ?: return null
     val note = listOfNotNull(merchant, reference?.let { "Ref $it" }).joinToString(" · ").take(Transaction.NOTE_LIMIT)
-    return Transaction(id, account.id, kind, minor, epochDay ?: today, note, null, category.orEmpty().take(Transaction.CATEGORY_LIMIT), key)
+    return Transaction(
+        id, account.id, kind, minor, epochDay ?: today, note, null, category.orEmpty().take(Transaction.CATEGORY_LIMIT), key,
+        details = source().take(Transaction.DETAILS_LIMIT),
+    )
+}
+
+/** Where a payment was found, kept in the transaction notes: the sender and the account or card it names. */
+fun PaymentMessage.source(): String = listOfNotNull(
+    (issuer ?: sender)?.let { "From $it" },
+    accountEnding?.let { (if (isCard) "Card •" else "Account •") + it },
+).joinToString(" · ")
+
+/** Found payments that the ledger does not hold yet. */
+object PaymentDuplicates {
+    /**
+     * Leaves out [messages] already recorded by their fingerprint. Each transaction entered another
+     * way (by hand, from CSV or a backup) with the same currency, kind, amount and day stands for
+     * one message, so a second identical payment on that day still shows.
+     */
+    fun fresh(messages: List<PaymentMessage>, ledger: Ledger, today: Long): List<PaymentMessage> {
+        val known = ledger.transactions.mapNotNullTo(HashSet()) { it.smsKey }
+        val currencies = ledger.accounts.associate { it.id to it.currency }
+        val unmatched = ledger.transactions.asSequence()
+            .filter { it.smsKey == null && it.kind != TransactionKind.TRANSFER }
+            .mapNotNull { t -> currencies[t.accountId]?.let { Signature(it, t.kind, t.minor, t.epochDay) } }
+            .groupingBy { it }.eachCount().toMutableMap()
+        return messages.filter { message ->
+            if (message.key != null && message.key in known) return@filter false
+            val signature = Signature(message.currency, message.kind, message.minor, message.epochDay ?: today)
+            val left = unmatched[signature] ?: 0
+            if (left > 0) {
+                unmatched[signature] = left - 1
+                false
+            } else true
+        }
+    }
+
+    private data class Signature(val currency: String, val kind: TransactionKind, val minor: Long, val day: Long)
 }
 
 /** Turns one completed bank alert into a reviewable draft. */
@@ -84,8 +121,10 @@ object PaymentMessages {
         val account = ending.find(alert)
         val mask = account?.groupValues?.get(2)
         val upiDetails = upi.findAll(alert).firstOrNull { it.groupValues[2].any(Char::isDigit) }
-        val ref = (reference.findAll(alert).map { it.groupValues[1] }.firstOrNull { it.any(Char::isDigit) }
-            ?: upiDetails?.groupValues?.get(2))?.uppercase(Locale.ROOT)
+        val references = reference.findAll(alert).map { it.groupValues[1] }.toList()
+        // Numbered references first; else one written in capitals, as some banks use letters only.
+        val ref = (references.firstOrNull { it.any(Char::isDigit) } ?: upiDetails?.groupValues?.get(2)
+            ?: references.firstOrNull { it.length >= 6 && it == it.uppercase(Locale.ROOT) })?.uppercase(Locale.ROOT)
         val label = upiDetails?.groupValues?.get(3)?.trim()?.trimEnd('.')?.takeIf { it.length in 2..60 }
             ?: merchant.findAll(alert).map { it.groupValues[1].trim().trimEnd('.') }
                 .firstOrNull { it.any(Char::isLetter) && !merchantNoise.containsMatchIn(it) }

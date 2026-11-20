@@ -4,14 +4,23 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
+import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
+import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentDuplicates
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentMessage
 import dev.qtremors.eonslate.core.tracker.domain.finance.asTransaction
 import dev.qtremors.eonslate.core.tracker.domain.time.AppClock
 import dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
@@ -19,10 +28,13 @@ import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** What one "Add all" did: how many were added, how many have no account in their currency, and how many could not be saved. */
+data class BatchResult(val added: Int, val noAccount: Int = 0, val failed: Int = 0)
+
 /**
- * Payment SMS found when the app opens. With auto-approve they are added at once and [added]
- * says how many; otherwise they wait in [pending] for review. Already recorded, dismissed, and
- * payments in a currency no account uses are left out.
+ * Payment SMS found in the inbox. It scans when detection is turned on, when the app comes back
+ * to the front, and when asked; with auto-approve, sure matches are added at once. The rest wait
+ * in [pending] for review. Recorded, discarded, and already-entered payments are left out.
  */
 @Singleton
 class SmsDetection @Inject constructor(
@@ -32,64 +44,116 @@ class SmsDetection @Inject constructor(
     private val ids: IdGenerator,
     private val clock: AppClock,
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Mutex()
-    private var ran = false
+    private var lastScan = Long.MIN_VALUE
     private val _pending = MutableStateFlow<List<PaymentMessage>>(emptyList())
     val pending: StateFlow<List<PaymentMessage>> = _pending.asStateFlow()
-    private val _added = MutableStateFlow(0)
-    val added: StateFlow<Int> = _added.asStateFlow()
+    private val _result = MutableStateFlow<BatchResult?>(null)
+    /** The latest batch added without review or with "Add all", until it has been shown. */
+    val result: StateFlow<BatchResult?> = _result.asStateFlow()
 
-    /** Scans once per launch; later calls do nothing. */
-    suspend fun runOnce() = lock.withLock {
-        if (ran) return@withLock
-        ran = true
-        scan()
+    init {
+        // Turning detection on scans straight away, rather than at the next launch.
+        scope.launch {
+            settings.sms.map { it.detect }.distinctUntilChanged().collect { on -> if (on) refresh(force = true) }
+        }
+    }
+
+    /**
+     * Scans again unless one ran in the last minute; [force] scans regardless, as after access is
+     * granted. A scan already running is not repeated.
+     */
+    suspend fun refresh(force: Boolean = false) {
+        if (!lock.tryLock()) return
+        try {
+            val now = clock.nowMillis()
+            if (!force && now - lastScan < MIN_INTERVAL) return
+            lastScan = now
+            scan()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // A failed read leaves what was found before; the next return to the app tries again.
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    /** Asks for a scan from a place with no coroutine of its own, such as an activity resuming. */
+    fun refreshLater() {
+        scope.launch { refresh() }
     }
 
     private suspend fun scan() {
         val sms = settings.sms.first()
-        if (!sms.detect || !PaymentInbox.hasAccess(context)) return
-        val zone = ZoneId.of(clock.zoneId())
-        val found = runCatching { PaymentInbox.scan(context, clock.nowMillis(), zone, DAYS) }.getOrDefault(emptyList())
-        val ledger = finance.observeLedger().first()
-        val known = ledger.transactions.mapNotNullTo(HashSet()) { it.smsKey }
-        val fresh = found.filter { m ->
-            m.key != null && m.key !in known && m.key !in sms.discarded && ledger.accounts.any { it.currency == m.currency }
+        if (!sms.detect || !PaymentInbox.hasAccess(context)) {
+            _pending.value = emptyList()
+            return
         }
-        val (approved, review) = fresh.partition { sms.autoApprove && it.confidence >= 1f }
+        val zone = ZoneId.of(clock.zoneId())
+        val ledger = finance.observeLedger().first()
+        val handled = handledKeys(ledger, sms.discarded)
+        val found = PaymentInbox.scan(context, clock.nowMillis(), zone, DAYS) { it in handled }
+        val fresh = PaymentDuplicates.fresh(found, ledger, today())
+            .filter { m -> ledger.accounts.any { it.currency == m.currency } }
+        val (sure, review) = fresh.partition { sms.autoApprove && it.confidence >= 1f }
         _pending.value = review
-        if (approved.isEmpty()) return
-        val today = Instant.ofEpochMilli(clock.nowMillis()).atZone(zone).toLocalDate().toEpochDay()
-        val transactions = approved.mapNotNull { it.asTransaction(ids.newId(), ledger.accounts, today) }
-        if (finance.appendTransactions(transactions)) _added.value = transactions.size
-        else _pending.value = fresh
+        if (sure.isNotEmpty()) {
+            val result = add(sure, ledger)
+            if (result.added > 0) _result.value = result
+        }
+    }
+
+    /** Fingerprints of payments already recorded or discarded, so a scan can skip them before counting. */
+    internal fun handledKeys(ledger: Ledger, discarded: Set<String>): Set<String> =
+        ledger.transactions.mapNotNullTo(HashSet(discarded)) { it.smsKey }
+
+    /** Adds [messages], in one write when it can; any that fail together are tried one by one. */
+    suspend fun approve(messages: List<PaymentMessage>): BatchResult {
+        val ledger = finance.observeLedger().first()
+        val result = add(PaymentDuplicates.fresh(messages, ledger, today()), ledger)
+        val done = messages.mapNotNullTo(HashSet()) { it.key }
+        _pending.value = _pending.value.filter { it.key !in done }
+        _result.value = result
+        return result
     }
 
     /** Adds every held payment. */
-    suspend fun approveAll() {
-        val ledger = finance.observeLedger().first()
-        val today = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId())).toLocalDate().toEpochDay()
-        val transactions = _pending.value.mapNotNull { it.asTransaction(ids.newId(), ledger.accounts, today) }
-        if (finance.appendTransactions(transactions)) _pending.value = emptyList()
+    suspend fun approveAll(): BatchResult = approve(_pending.value)
+
+    private suspend fun add(messages: List<PaymentMessage>, ledger: Ledger): BatchResult {
+        val day = today()
+        val drafts = messages.map { it to it.asTransaction(ids.newId(), ledger.accounts, day) }
+        val noAccount = drafts.count { it.second == null }
+        val transactions = drafts.mapNotNull { it.second }
+        if (transactions.isEmpty() || finance.appendTransactions(transactions)) return BatchResult(transactions.size, noAccount)
+        // One bad entry fails the batch; save the rest alone so a duplicate costs only itself.
+        var added = 0
+        for (transaction in transactions) if (finance.saveTransaction(transaction)) added++
+        return BatchResult(added, noAccount, transactions.size - added)
     }
 
-    /** Dismisses [messages] for good. */
+    /** Dismisses [messages] for good, from automatic and manual scans alike. */
     suspend fun discard(messages: List<PaymentMessage>) {
         val keys = messages.mapNotNull { it.key }.toSet()
         settings.updateSms { it.copy(discarded = it.discarded + keys) }
         _pending.value = _pending.value.filter { it.key !in keys }
     }
 
-    /** A payment reviewed one by one was recorded or skipped; it no longer waits. */
-    fun reviewed(message: PaymentMessage) {
-        _pending.value = _pending.value.filter { it.key != message.key }
+    /** A payment with this fingerprint was saved; it no longer waits. */
+    fun recorded(key: String) {
+        _pending.value = _pending.value.filter { it.key != key }
     }
 
-    fun addedShown() {
-        _added.value = 0
+    fun resultShown() {
+        _result.value = null
     }
+
+    private fun today(): Long = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId())).toLocalDate().toEpochDay()
 
     private companion object {
         const val DAYS = 30
+        const val MIN_INTERVAL = 60_000L
     }
 }

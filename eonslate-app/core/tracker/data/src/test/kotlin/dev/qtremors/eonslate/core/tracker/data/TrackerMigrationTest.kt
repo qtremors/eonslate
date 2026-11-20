@@ -41,6 +41,21 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version11CategoriesStayOffered() = runTest {
+        ExportedSchema.create(context, name, 11).use {
+            it.execSQL("INSERT INTO finance_categories (id, name, name_key, kind) VALUES ('category:pets', 'Pets', 'pets', 'EXPENSE')")
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().build()
+        try {
+            val category = RoomFinanceRepository(db).observeLedger().first().categories.single()
+            assertEquals("Pets", category.name)
+            assertEquals(false, category.deleted)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version10VariablePaymentsKeepWaitingForAnAmount() = runTest {
         ExportedSchema.create(context, name, 10).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('cash', 'Cash', 'INR', 0)")

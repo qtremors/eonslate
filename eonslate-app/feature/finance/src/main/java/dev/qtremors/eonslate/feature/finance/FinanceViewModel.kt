@@ -1,6 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
-import dev.qtremors.eonslate.core.tracker.domain.finance.asTransaction
+import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentDuplicates
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -36,7 +36,7 @@ import javax.inject.Inject
 class FinanceViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val finance: FinanceRepository,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
     private val ids: IdGenerator,
     private val clock: AppClock,
     val detection: SmsDetection,
@@ -61,7 +61,7 @@ class FinanceViewModel @Inject constructor(
             val now = now()
             finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
         }
-        viewModelScope.launch { detection.runOnce() }
+        viewModelScope.launch { detection.refresh() }
     }
 
     private fun now() = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId()))
@@ -88,7 +88,10 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun save(account: Account, onDone: () -> Unit) = write(onDone) { finance.saveAccount(account) }
-    fun save(transaction: Transaction, onDone: () -> Unit) = write(onDone) { finance.saveTransaction(transaction) }
+    /** Saves [transaction]; a reviewed payment stops waiting only once it is really saved. */
+    fun save(transaction: Transaction, onDone: () -> Unit) = write(onDone) {
+        finance.saveTransaction(transaction).also { saved -> if (saved) transaction.smsKey?.let(detection::recorded) }
+    }
     fun delete(account: Account, onDone: () -> Unit) = write(onDone) { finance.deleteAccount(account.id) }
     /** Deletes several transactions in one go, as selection mode asks. */
     fun deleteTransactions(ids: Collection<String>, onDone: () -> Unit) = write(onDone) {
@@ -96,9 +99,32 @@ class FinanceViewModel @Inject constructor(
         true
     }
 
+    /** Puts back a deleted transaction, as Undo asks; never dropped while another write is busy. */
+    fun restore(transaction: Transaction) {
+        viewModelScope.launch {
+            try {
+                finance.saveTransaction(transaction)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _failed.value = true
+            }
+        }
+    }
+
     fun delete(transaction: Transaction, onDone: () -> Unit) = write(onDone) {
         finance.deleteTransaction(transaction.id)
         true
+    }
+
+    /** Removes icon files no subscription uses; read from the database, so a just-saved icon counts. */
+    fun pruneIcons() {
+        viewModelScope.launch {
+            runCatching {
+                val used = finance.observeLedger().first().recurring.mapNotNullTo(HashSet()) { it.icon }
+                CustomIcons.prune(context, used)
+            }
+        }
     }
 
     fun schedule(expected: RecurringPayment?, payment: RecurringPayment, onDone: () -> Unit) = write(onDone) {
@@ -139,6 +165,8 @@ class FinanceViewModel @Inject constructor(
     fun save(category: CategoryChoice, previous: CategoryChoice?, onDone: () -> Unit) =
         write(onDone) { finance.saveCategory(category, previous) }
 
+    fun delete(category: CategoryChoice, onDone: () -> Unit) = write(onDone) { finance.deleteCategory(category) }
+
     fun delete(budget: CategoryBudget, onDone: () -> Unit) = write(onDone) {
         finance.deleteBudget(budget.id)
         true
@@ -150,8 +178,11 @@ class FinanceViewModel @Inject constructor(
         _inbox.value = InboxState(scanning = true)
         scanJob = viewModelScope.launch {
             try {
-                val messages = PaymentInbox.scan(context, clock.nowMillis(), ZoneId.of(clock.zoneId()), days)
-                _inbox.value = InboxState(messages = messages)
+                // The same filter as automatic detection: nothing recorded, discarded or entered by hand.
+                val data = finance.observeLedger().first()
+                val handled = detection.handledKeys(data, settings.sms.first().discarded)
+                val found = PaymentInbox.scan(context, clock.nowMillis(), ZoneId.of(clock.zoneId()), days) { it in handled }
+                _inbox.value = InboxState(messages = PaymentDuplicates.fresh(found, data, today().toEpochDay()))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -160,15 +191,12 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    /** Adds [messages] as transactions in one write, and forgets them as found. */
-    suspend fun approveAll(messages: List<PaymentMessage>) {
-        val data = ledger.value ?: return
-        val today = today().toEpochDay()
-        val transactions = messages.mapNotNull { it.asTransaction(ids.newId(), data.accounts, today) }
-        if (finance.appendTransactions(transactions)) {
-            messages.forEach(detection::reviewed)
-            _inbox.value = InboxState(messages = emptyList())
-        }
+    /** Adds [messages], then drops them from the scan shown; the result says what happened. */
+    suspend fun approveAll(messages: List<PaymentMessage>): BatchResult {
+        val result = detection.approve(messages)
+        val done = messages.mapNotNullTo(HashSet()) { it.key }
+        _inbox.value = _inbox.value.let { state -> state.copy(messages = state.messages?.filter { it.key !in done }) }
+        return result
     }
 
     fun clearInbox() {

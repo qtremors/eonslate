@@ -47,11 +47,38 @@ class MoneySummaryTest {
     }
 
     @Test
-    fun trendEndsThisMonthAndCategoriesRankLargestFirst() {
-        assertEquals(MoneySummary.TREND_MONTHS, summary.trend.size)
-        assertEquals(YearMonth.of(2026, 11), summary.trend.last().first)
-        assertEquals(BigInteger.valueOf(4_000), summary.trend[summary.trend.size - 2].second)
+    fun cashFlowEndsTodayAndCategoriesRankLargestFirst() {
+        val half = summary.cashFlow(CashFlowRange.HALF_YEAR, today)
+        assertEquals(CashFlow.Step.MONTH, half.step)
+        assertEquals(6, half.buckets.size)
+        assertEquals(YearMonth.of(2026, 11).atDay(1).toEpochDay()..day, half.buckets.last().days)
+        assertEquals(BigInteger.valueOf(4_000), half.buckets[4].spending)
+        assertEquals(BigInteger.valueOf(15_000), half.spending)
+        assertEquals(BigInteger.valueOf(35_000), half.net)
         assertEquals(listOf("Rent", "Food"), summary.categories.map { it.first })
+    }
+
+    @Test
+    fun aDayShowsItsTopCategoryAndTheWeekCountsOnlyItsDays() {
+        val week = summary.cashFlow(CashFlowRange.WEEK, today)
+        assertEquals(CashFlow.Step.DAY, week.step)
+        assertEquals(7, week.buckets.size)
+        val now = week.buckets.last()
+        assertEquals("Rent", now.topCategory)
+        assertEquals(BigInteger.valueOf(7_000), now.topAmount)
+        assertEquals(BigInteger.valueOf(40_000), now.net)
+        assertEquals(BigInteger.valueOf(11_000), week.spending)
+        assertNull(week.buckets.first().topCategory)
+    }
+
+    @Test
+    fun allTimeUsesMonthsThenYears() {
+        assertEquals(2, summary.cashFlow(CashFlowRange.ALL, today).buckets.size)
+        val old = tx("old", TransactionKind.EXPENSE, 100, epochDay = LocalDate.of(2023, 6, 1).toEpochDay())
+        val long = MoneySummary.of(ledger.copy(transactions = ledger.transactions + old), today, "INR")!!.cashFlow(CashFlowRange.ALL, today)
+        assertEquals(CashFlow.Step.YEAR, long.step)
+        assertEquals(4, long.buckets.size)
+        assertEquals(BigInteger.valueOf(100), long.buckets.first().spending)
     }
 
     @Test

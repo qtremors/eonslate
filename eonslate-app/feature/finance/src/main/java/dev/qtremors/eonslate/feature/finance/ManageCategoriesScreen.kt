@@ -95,7 +95,16 @@ fun ManageCategoriesScreen(onBack: () -> Unit, viewModel: FinanceViewModel = hil
             )
             ConnectedChoices(CategoryKind.entries, kind, { it.label() }, { if (!busy) kind = it })
             FinanceStyleField(icon, color, name, original?.name.orEmpty(), "Tag", busy, { icon = it }, { color = it })
-            SaveRow(!busy && draft.isValid() && !duplicate, { viewModel.save(draft, original, close) }, null, busy)
+            SaveRow(
+                !busy && draft.isValid() && !duplicate, { viewModel.save(draft, original, close) },
+                // At least one category always stays.
+                delete = original?.takeIf { (categories?.size ?: 0) > 1 }?.let {
+                    Deletion(stringResource(R.string.finance_delete_category, it.name), R.string.finance_delete_category_message) {
+                        viewModel.delete(it, close)
+                    }
+                },
+                busy = busy,
+            )
         }
     }
 }

@@ -181,4 +181,6 @@ interface FinanceRepository {
     suspend fun saveBudget(budget: CategoryBudget): Boolean
     suspend fun deleteBudget(id: String)
     suspend fun saveCategory(category: CategoryChoice, previous: CategoryChoice?): Boolean
+    /** Removes [category] from the choices; at least one category always stays. */
+    suspend fun deleteCategory(category: CategoryChoice): Boolean
 }

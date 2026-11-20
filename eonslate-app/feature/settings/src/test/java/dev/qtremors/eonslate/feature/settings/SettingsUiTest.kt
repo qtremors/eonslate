@@ -129,7 +129,12 @@ class AboutAndLicensesUiTest {
         compose.onNodeWithText("Privacy").performScrollTo().performClick()
         assertEquals(1, licenses)
         assertEquals(1, privacy)
-        compose.onNodeWithText("This device").performScrollTo().assertExists()
+        val list = compose.onNode(androidx.compose.ui.test.hasScrollAction())
+        list.performScrollToNode(androidx.compose.ui.test.hasText("Changelog"))
+        compose.onNodeWithText("Changelog").assertExists()
+        list.performScrollToNode(androidx.compose.ui.test.hasText("This device"))
+        list.performScrollToNode(androidx.compose.ui.test.hasText("Package"))
+        compose.onNodeWithText("Package").assertExists()
     }
 
     @Test
