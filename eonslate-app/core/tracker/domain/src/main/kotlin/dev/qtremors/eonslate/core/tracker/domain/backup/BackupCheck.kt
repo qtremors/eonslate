@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.domain.backup
 
+import dev.qtremors.eonslate.core.tracker.domain.model.Interval
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
 import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
@@ -53,6 +54,8 @@ object BackupCheck {
             if (t.scheduleDays !in 0..Schedule.ALL_DAYS_MASK || !Schedule(Schedule.daysOf(t.scheduleDays), t.timesPerWeek).isValid()) {
                 add("tracker ${t.id} has schedule ${t.scheduleDays}/${t.timesPerWeek}")
             }
+            if (t.intervals.size > Interval.MAX_COUNT) add("tracker ${t.id} has ${t.intervals.size} intervals")
+            duplicates(t.intervals.map { it.id }).forEach { add("tracker ${t.id} has interval $it twice") }
             if (t.updatedAt < t.createdAt) add("tracker ${t.id} was updated before it was made")
         }
 

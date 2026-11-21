@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
+import dev.qtremors.eonslate.core.tracker.data.db.IntervalColumn
 import androidx.room.withTransaction
 import dev.qtremors.eonslate.core.tracker.data.db.EntryEntity
 import dev.qtremors.eonslate.core.tracker.data.db.EntryValueEntity
@@ -87,10 +88,10 @@ class RoomBackupRepository @Inject constructor(
 }
 
 private fun TrackerEntity.toRow() =
-    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.decode(tags), scheduleDays, timesPerWeek)
+    TrackerRow(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.decode(tags), scheduleDays, timesPerWeek, IntervalColumn.decode(intervals))
 
 private fun TrackerRow.toEntity() =
-    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.encode(tags), scheduleDays, timesPerWeek)
+    TrackerEntity(id, name, description, iconName, colorIndex, archived, position, templateId, createdAt, updatedAt, TagColumn.encode(tags), scheduleDays, timesPerWeek, IntervalColumn.encode(intervals))
 
 private fun TrackerFieldEntity.toRow() = FieldRow(id, trackerId, name, type, configJson, required, position)
 

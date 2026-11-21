@@ -39,6 +39,46 @@
     <string name="error_min_above_max">The lowest value is above the highest</string>
     <string name="error_unknown_currency">Use a three-letter currency code, such as USD</string>
     <string name="error_max_duration">The longest time must be more than zero</string>
+    <string name="error_goal">The goal must be above zero.</string>
+    <string name="goal_progress_day">%1$s of %2$s today</string>
+    <string name="goal_progress_week">%1$s of %2$s this week</string>
+    <string name="goal_limit_day">%1$s, at most %2$s today</string>
+    <string name="goal_limit_week">%1$s, at most %2$s this week</string>
+    <string name="interval_today">today</string>
+    <plurals name="interval_in_days">
+        <item quantity="one">in %d day</item>
+        <item quantity="other">in %d days</item>
+    </plurals>
+    <plurals name="interval_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <plurals name="interval_gap_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="interval_gap_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <plurals name="interval_gap_months">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+    <plurals name="interval_gap_years">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
+    <string name="interval_due">due %1$s</string>
+    <string name="interval_due_at">due at %1$s</string>
+    <string name="interval_left">%1$s left</string>
+    <string name="interval_over">%1$s over</string>
+    <string name="interval_never">Not logged yet</string>
+    <string name="interval_last">Last %1$s</string>
+    <string name="interval_last_at">Last %1$s at %2$s</string>
+    <string name="rhythm_every">Usually every %1$s</string>
+    <string name="rhythm_next_on">next around %1$s</string>
+    <string name="rhythm_next_at">next at %1$s</string>
     <string name="error_rating_scale">Pick a scale from %1$d to %2$d</string>
     <string name="error_no_options">Add at least one choice</string>
     <string name="error_too_many_options">Up to %1$d choices</string>

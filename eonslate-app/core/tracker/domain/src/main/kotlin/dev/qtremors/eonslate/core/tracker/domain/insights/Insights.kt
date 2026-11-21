@@ -50,6 +50,8 @@ object Streaks {
         schedule: Schedule,
         weekStart: DayOfWeek = DayOfWeek.MONDAY,
     ): Streak = when {
+        // Nothing is ever due, so there is no run to keep.
+        schedule.isAsNeeded -> Streak(0, 0, days.maxOrNull())
         schedule.isDaily -> of(days, today)
         schedule.isWeekly -> weekly(days.toSortedSet(), today, schedule.timesPerWeek, weekStart)
         else -> weekdays(days.toSortedSet(), today, schedule.days)

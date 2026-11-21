@@ -37,7 +37,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 13
+        const val VERSION = 14
         const val NAME = "eonslate.db"
 
         /**
@@ -203,7 +203,7 @@ object TrackerMigrations {
         }
     }
 
-    /** A tracker has a schedule: weekdays it is due, or days a week; every day until set. */
+    /** A tracker has a schedule: weekdays it is due (none: as needed), or days a week; every day until set. */
     val MIGRATION_12_13 = object : Migration(12, 13) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE trackers ADD COLUMN schedule_days INTEGER NOT NULL DEFAULT 127")
@@ -211,9 +211,16 @@ object TrackerMigrations {
         }
     }
 
+    /** A tracker can be due again after a time or an amount since it was last logged. */
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE trackers ADD COLUMN intervals TEXT NOT NULL DEFAULT '[]'")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
     )
 }
 
@@ -241,7 +248,6 @@ object TrackerIntegrity {
             OR NEW.updated_at < NEW.created_at
             OR NEW.schedule_days < 0 OR NEW.schedule_days > 127
             OR NEW.times_per_week < 0 OR NEW.times_per_week > ${Schedule.MAX_TIMES_PER_WEEK}
-            OR (NEW.times_per_week = 0 AND NEW.schedule_days = 0)
         """,
         "tracker_fields" to """
             length(trim(NEW.name)) = 0

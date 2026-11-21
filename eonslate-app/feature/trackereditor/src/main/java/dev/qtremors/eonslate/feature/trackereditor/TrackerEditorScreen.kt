@@ -230,6 +230,9 @@ private fun EditorContent(
         item(key = "schedule") {
             SectionHeader(stringResource(R.string.editor_section_schedule))
             ScheduleEditor(draft, viewModel::setScheduleMode, viewModel::toggleScheduleDay, viewModel::setTimesPerWeek)
+            if (draft.scheduleMode == ScheduleMode.AS_NEEDED) {
+                IntervalList(draft, viewModel::saveInterval, viewModel::removeInterval, viewModel::newIntervalId)
+            }
         }
 
         item(key = "icon") {
@@ -397,6 +400,7 @@ private fun ScheduleEditor(
                         ScheduleMode.DAILY -> R.string.editor_schedule_daily
                         ScheduleMode.DAYS -> R.string.editor_schedule_days
                         ScheduleMode.WEEKLY -> R.string.editor_schedule_weekly
+                        ScheduleMode.AS_NEEDED -> R.string.editor_schedule_as_needed
                     },
                 )
             },
@@ -404,6 +408,11 @@ private fun ScheduleEditor(
         )
         when (draft.scheduleMode) {
             ScheduleMode.DAILY -> Unit
+            ScheduleMode.AS_NEEDED -> Text(
+                stringResource(R.string.editor_schedule_as_needed_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             ScheduleMode.DAYS -> {
                 val first = WeekFields.of(Locale.getDefault()).firstDayOfWeek
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {

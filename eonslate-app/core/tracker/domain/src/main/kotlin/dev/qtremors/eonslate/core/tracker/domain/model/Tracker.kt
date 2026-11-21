@@ -29,6 +29,8 @@ data class Tracker(
     val tags: List<String> = emptyList(),
     /** When it is due; every day unless set. */
     val schedule: Schedule = Schedule.DAILY,
+    /** When it is due again after a time or an amount since it was last logged. */
+    val intervals: List<Interval> = emptyList(),
 ) {
     /** The field with [fieldId], or null when it is not part of this tracker. */
     fun field(fieldId: String): FieldDefinition? = fields.firstOrNull { it.id == fieldId }

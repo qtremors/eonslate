@@ -1,5 +1,13 @@
 package dev.qtremors.eonslate.feature.trackerdetail
 
+import dev.qtremors.eonslate.core.tracker.ui.rhythmText
+import dev.qtremors.eonslate.core.tracker.ui.intervalLastText
+import dev.qtremors.eonslate.core.tracker.ui.intervalText
+import dev.qtremors.eonslate.core.tracker.domain.insights.Intervals
+import dev.qtremors.eonslate.core.tracker.ui.goalText
+import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
+import dev.qtremors.eonslate.core.tracker.domain.model.GoalPeriod
+import dev.qtremors.eonslate.core.tracker.domain.insights.Goals
 import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +82,9 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
     val dark = colors.surface.luminance() < 0.5f
     val locale = Locale.getDefault()
     val pigment = remember(tracker.colorIndex, dark) { BadgePalette.mark(tracker.colorIndex, dark) }
-    val days = remember(state.times) { state.times.map { it.day() } }
+    val logged = remember(state.times) { state.times.map { it.day() } }
+    // With daily goals a day counts once they are met; logged days stand in until entries load.
+    val days = remember(logged, state.allEntries, tracker) { state.allEntries?.let { Goals.doneDays(tracker, it).toList() } ?: logged }
     val streak = remember(days, today, tracker.schedule, state.firstDay) { Streaks.of(days, today, tracker.schedule, state.firstDay) }
     val unit = if (streak.inWeeks) R.plurals.insights_weeks else R.plurals.insights_days
     var period by rememberSaveable { mutableStateOf(Period.DAYS) }
@@ -82,7 +92,8 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
     val counts = remember(state.times, buckets) { Periods.counts(state.times, buckets) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // As needed is never due, so it has no streak to show.
+        if (!tracker.schedule.isAsNeeded) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile(
                 label = stringResource(R.string.insights_current_streak),
                 value = pluralStringResource(unit, streak.current, streak.current),
@@ -100,6 +111,11 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
                 },
                 modifier = Modifier.weight(1f),
             )
+        }
+
+        state.allEntries?.let { all ->
+            IntervalTiles(tracker, all, today)
+            GoalTiles(tracker, all, today, state.firstDay)
         }
 
         ConnectedChoices(
@@ -442,4 +458,54 @@ private fun fieldDecimals(field: FieldDefinition): Int = when (val c = field.con
     is FieldConfig.Number -> c.decimals
     is FieldConfig.Money -> MoneyAmount.fractionDigits(c.currencyCode)
     else -> 0
+}
+
+/** One tile per goal: how often it was met, where today stands, and the run of days or weeks met. */
+@Composable
+private fun GoalTiles(tracker: Tracker, all: List<Entry>, today: LocalDate, firstDay: java.time.DayOfWeek) {
+    val progress = remember(tracker, all, today, firstDay) { Goals.progress(tracker, all, today, firstDay) }
+    progress.forEach { p ->
+        val weekly = p.goal.per == GoalPeriod.WEEK
+        val met = remember(p.field, all, firstDay) { if (weekly) Goals.metWeeks(p.field, all, firstDay) else Goals.metDays(p.field, all) }
+        val run = remember(met, today, firstDay) {
+            if (weekly) Streaks.of(met, today, Schedule(timesPerWeek = 1), firstDay).current else Streaks.of(met, today).current
+        }
+        val unit = if (weekly) R.plurals.insights_weeks else R.plurals.insights_days
+        StatTile(
+            label = stringResource(R.string.insights_goal, p.field.name),
+            value = pluralStringResource(if (weekly) R.plurals.insights_goal_weeks_met else R.plurals.insights_goal_days_met, met.size, met.size),
+            supporting = goalText(p) + " · " + stringResource(R.string.insights_goal_run, pluralStringResource(unit, run, run)),
+            accent = p.met,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * One tile per set interval: what is next and when it was last done. Then, for jobs without one,
+ * the rhythm learned from history, so an As needed tracker shows its pace with no setup.
+ */
+@Composable
+private fun IntervalTiles(tracker: Tracker, all: List<Entry>, today: LocalDate) {
+    val statuses = remember(tracker, all, today) { Intervals.status(tracker, all, today) }
+    statuses.forEach { status ->
+        StatTile(
+            label = status.label ?: stringResource(R.string.insights_interval),
+            value = intervalText(status, tracker).removePrefix(status.label.orEmpty()).trim().replaceFirstChar { it.uppercase() },
+            supporting = intervalLastText(status, tracker),
+            accent = status.due,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    if (!tracker.schedule.isAsNeeded) return
+    val covered = statuses.map { it.label }.toSet()
+    val rhythms = remember(tracker, all, today) { Intervals.learned(tracker, all, today) }.filter { it.label !in covered }
+    rhythms.forEach { rhythm ->
+        StatTile(
+            label = rhythm.label ?: stringResource(R.string.insights_rhythm),
+            value = rhythmText(rhythm, tracker).substringAfter(": ").replaceFirstChar { it.uppercase() },
+            supporting = stringResource(R.string.insights_rhythm_hint),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }

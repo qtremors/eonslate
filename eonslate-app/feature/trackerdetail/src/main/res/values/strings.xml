@@ -19,6 +19,19 @@
         <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>
     </plurals>
+    <string name="insights_goal">Goal: %1$s</string>
+    <string name="insights_interval">Due again</string>
+    <string name="insights_rhythm">Usual rhythm</string>
+    <string name="insights_rhythm_hint">Learned from your logs</string>
+    <string name="insights_goal_run">%1$s in a row</string>
+    <plurals name="insights_goal_days_met">
+        <item quantity="one">Met on %d day</item>
+        <item quantity="other">Met on %d days</item>
+    </plurals>
+    <plurals name="insights_goal_weeks_met">
+        <item quantity="one">Met in %d week</item>
+        <item quantity="other">Met in %d weeks</item>
+    </plurals>
     <plurals name="insights_weeks">
         <item quantity="one">%d week</item>
         <item quantity="other">%d weeks</item>

@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.7
-> **Last Updated:** 2026-11-20
+> **Version:** 2.1.8
+> **Last Updated:** 2026-11-21
 
 ## Roadmap
 
@@ -38,10 +38,11 @@ Each step is planned as one release commit.
 | 26 | 2.1.7 | Device test fixes and a distinct chart for each job | Done |
 | 27 | 2.1.7 | One currency at a time, unsaved-change prompts, final fixes | Done |
 | 28 | 2.1.7 | Schedules: due days per tracker, a Today filter, honest daily progress | Done |
-| 29 | 2.1.8 | Goals: daily or weekly targets for number and duration fields | Planned |
-| 30 | 2.1.8 | Consistency: year heat map, consistency ring, stat tiles; spending heat map | Planned |
-| 31 | 2.1.9 | Patterns: weekday breakdowns for trackers and spending, all-trackers overview | Planned |
-| 32 | 2.1.9 | Widgets: Today checklist and money summary; reminder and editor touches | Planned |
+| 29 | 2.1.8 | Goals for number and duration fields, an As needed schedule, sectioned trackers | Done |
+| 30 | 2.1.8 | Intervals: due after a time or an amount since the last log; learned rhythms | Done |
+| 31 | 2.1.9 | Consistency: year heat map, consistency ring, stat tiles; spending heat map | Planned |
+| 32 | 2.1.9 | Patterns: weekday breakdowns for trackers and spending, all-trackers overview | Planned |
+| 33 | 2.1.9 | Widgets: Today checklist and money summary; reminder and editor touches | Planned |
 
 ## v2.0.0 parity
 
@@ -177,14 +178,28 @@ From a stress test with a generated backup (40 subscriptions, 3,147 transactions
 - [x] Reminders offer the schedule's days by default
 - [x] Streaks count due days only, so a day off the schedule never breaks one
 
-### 2.1.8 Goals
-- [ ] Number and duration fields can have a target, per day or per week, at least or at most
-- [ ] Backups and CSV carry the target
-- [ ] Tracker cards show today's progress toward the goal as a meter
-- [ ] Insights: goal met on how many days, and the current run of days met
-- [ ] A day counts as done for streaks and Today once its goal is met
+### 2.1.8 Goals, as needed, sections
+- [x] Number and duration fields can have a target, per day or per week, at least or at most
+- [x] Goals live in the field's settings, so backups carry them with no migration
+- [x] Tracker cards show today's progress toward the goal as a meter
+- [x] Insights: goal met on how many days or weeks, and the current run
+- [x] A day counts as done for streaks and Today once its daily goals are met
+- [x] An As needed schedule, never due by itself and without a streak
+- [x] Trackers sort into Due today, Not today and As needed once schedules differ; one grid otherwise
+- Everything optional stays hidden until turned on, so a simple tracker stays simple
 
-### 2.1.8 Consistency
+### 2.1.8 Intervals
+- [x] An As needed tracker can be due again after a time since its last log: days, weeks, months or years
+- [x] Or after a number field grows by an amount since the last log, such as an odometer read from any entry
+- [x] Intervals can follow one choice option, so one tracker holds several jobs on their own clocks
+- [x] Without any setup, an As needed tracker learns its usual rhythm from three or more logs, per choice and by a growing number
+- [x] Cards show what is next: "Oil change due at 30,000 km · 1,240 km left", "Usually every 5 weeks · next around 12 Dec"
+- [x] Insights: each interval with when it was last done, and learned rhythms for jobs without one
+- [x] A due interval puts the tracker under Due today; logging the job starts its clock again
+- [x] One optional "Due again" list under As needed; nothing new for trackers that do not use it
+- Nothing is specific to one use: a bike, haircuts or a shampoo bottle are all plain custom trackers
+
+### 2.1.9 Consistency
 - [ ] Insights: a year heat map of logged days, coloured by amount or goal reached, tap a day for its entries
 - [ ] Insights: a consistency ring, the share of due days logged since the tracker started
 - [ ] Stat tiles: started on, best streak, current streak filling toward the best

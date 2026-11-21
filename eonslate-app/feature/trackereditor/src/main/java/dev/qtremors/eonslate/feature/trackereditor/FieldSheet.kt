@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import dev.qtremors.eonslate.core.tracker.domain.model.GoalPeriod
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -154,7 +156,10 @@ private fun TypeSettings(
                 icon = Icons.AutoMirrored.Rounded.Notes,
             )
         }
-        FieldType.DURATION -> Hint(stringResource(R.string.sheet_duration_hint))
+        FieldType.DURATION -> {
+            Hint(stringResource(R.string.sheet_duration_hint))
+            GoalSettings(draft, limits, viewModel, unit = stringResource(R.string.sheet_goal_minutes))
+        }
         FieldType.YES_NO -> Hint(stringResource(R.string.sheet_yes_no_hint))
         FieldType.DATE -> Hint(stringResource(R.string.sheet_date_hint))
     }
@@ -199,6 +204,45 @@ private fun NumberSettings(draft: FieldDraft, errors: List<ValidationError>, lim
             modifier = Modifier.weight(1f),
         )
     }
+    GoalSettings(draft, limits, viewModel, unit = draft.unit.trim())
+}
+
+/**
+ * A daily or weekly target for a number or duration field: at least so much, or at most. Cards
+ * show the day's progress toward it, and a day counts as done once a daily goal is met.
+ */
+@Composable
+private fun GoalSettings(draft: FieldDraft, limits: LimitProblems, viewModel: TrackerEditorViewModel, unit: String) {
+    ConnectedGroup {
+        ToggleRow(
+            title = stringResource(R.string.sheet_goal),
+            supporting = stringResource(R.string.sheet_goal_hint),
+            checked = draft.goalOn,
+            onCheckedChange = { on -> viewModel.updateSheet { it.copy(goalOn = on) } },
+            icon = Icons.Rounded.Flag,
+        )
+    }
+    if (!draft.goalOn) return
+    ConnectedChoices(
+        options = listOf(false, true),
+        selected = draft.goalAtMost,
+        label = { stringResource(if (it) R.string.sheet_goal_at_most else R.string.sheet_goal_at_least) },
+        onSelect = { most -> viewModel.updateSheet { it.copy(goalAtMost = most) } },
+    )
+    FormField(
+        value = draft.goalTarget,
+        onValueChange = { v -> viewModel.updateSheet { it.copy(goalTarget = v) } },
+        label = stringResource(R.string.sheet_goal_target),
+        supporting = unit.ifEmpty { null },
+        error = if (limits.goalInvalid) stringResource(R.string.sheet_goal_invalid) else null,
+        keyboardType = if (draft.type == FieldType.DURATION) KeyboardType.Number else KeyboardType.Decimal,
+    )
+    ConnectedChoices(
+        options = GoalPeriod.entries,
+        selected = draft.goalPer,
+        label = { stringResource(if (it == GoalPeriod.WEEK) R.string.sheet_goal_week else R.string.sheet_goal_day) },
+        onSelect = { per -> viewModel.updateSheet { it.copy(goalPer = per) } },
+    )
 }
 
 @Composable

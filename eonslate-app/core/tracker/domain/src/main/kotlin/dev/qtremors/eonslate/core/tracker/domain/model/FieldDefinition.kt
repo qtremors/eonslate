@@ -72,6 +72,8 @@ sealed interface FieldConfig {
         val decimals: Int = 0,
         val min: Long? = null,
         val max: Long? = null,
+        /** A target for the day's or week's total, in the same scaled units. */
+        val goal: Goal? = null,
     ) : FieldConfig {
         override val type: FieldType get() = FieldType.NUMBER
 
@@ -95,6 +97,8 @@ sealed interface FieldConfig {
     @SerialName("duration")
     data class Duration(
         val maxSeconds: Long? = null,
+        /** A target for the day's or week's total time, in seconds. */
+        val goal: Goal? = null,
     ) : FieldConfig {
         override val type: FieldType get() = FieldType.DURATION
     }
@@ -171,4 +175,33 @@ val FieldConfig.choiceOptions: List<ChoiceOption>
         is FieldConfig.SingleChoice -> options
         is FieldConfig.MultiChoice -> options
         else -> emptyList()
+    }
+
+/** Whether a goal is a day's or a week's total. */
+@Serializable
+enum class GoalPeriod {
+    @SerialName("day") DAY,
+    @SerialName("week") WEEK,
+}
+
+/**
+ * A target for a number or duration field: the total over [per] should reach [target], or stay
+ * within it when [atMost], such as "at most 2 coffees a day". [target] is in the field's stored
+ * units: scaled numbers, or seconds.
+ */
+@Serializable
+data class Goal(
+    val target: Long,
+    val per: GoalPeriod = GoalPeriod.DAY,
+    @SerialName("at_most") val atMost: Boolean = false,
+) {
+    fun met(total: Long): Boolean = if (atMost) total <= target else total >= target
+}
+
+/** The goal of a number or duration field; null for every other kind. */
+val FieldConfig.goal: Goal?
+    get() = when (this) {
+        is FieldConfig.Number -> goal
+        is FieldConfig.Duration -> goal
+        else -> null
     }

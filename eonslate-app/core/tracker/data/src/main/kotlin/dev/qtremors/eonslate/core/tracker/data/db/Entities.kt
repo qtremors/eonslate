@@ -30,6 +30,8 @@ data class TrackerEntity(
     @ColumnInfo(name = "schedule_days", defaultValue = "127") val scheduleDays: Int = 127,
     /** Days a week to log on any days, or 0 to follow [scheduleDays]; added in schema 13. */
     @ColumnInfo(name = "times_per_week", defaultValue = "0") val timesPerWeek: Int = 0,
+    /** A JSON array of intervals; added in schema 14. */
+    @ColumnInfo(name = "intervals", defaultValue = "[]") val intervals: String = "[]",
 )
 
 /**

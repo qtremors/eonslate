@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.domain.backup
 
+import dev.qtremors.eonslate.core.tracker.domain.model.Interval
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
@@ -91,6 +92,8 @@ data class TrackerRow(
     /** Added in schema 13; older files are due every day. */
     @SerialName("schedule_days") val scheduleDays: Int = Schedule.ALL_DAYS_MASK,
     @SerialName("times_per_week") val timesPerWeek: Int = 0,
+    /** Added in schema 14; older files have none. */
+    val intervals: List<Interval> = emptyList(),
 )
 
 @Serializable

@@ -32,6 +32,7 @@ fun ValidationError.message(): String = when (this) {
     is E.MinAboveMax -> stringResource(R.string.error_min_above_max)
     is E.UnknownCurrency -> stringResource(R.string.error_unknown_currency)
     is E.MaxDurationNotPositive -> stringResource(R.string.error_max_duration)
+    is E.GoalNotPositive -> stringResource(R.string.error_goal)
     is E.RatingScaleOutOfRange -> stringResource(R.string.error_rating_scale, min, max)
     is E.NoOptions -> stringResource(R.string.error_no_options)
     is E.TooManyOptions -> stringResource(R.string.error_too_many_options, max)
@@ -66,6 +67,7 @@ val ValidationError.fieldId: String?
         is E.MinAboveMax -> fieldId
         is E.UnknownCurrency -> fieldId
         is E.MaxDurationNotPositive -> fieldId
+        is E.GoalNotPositive -> fieldId
         is E.RatingScaleOutOfRange -> fieldId
         is E.NoOptions -> fieldId
         is E.TooManyOptions -> fieldId

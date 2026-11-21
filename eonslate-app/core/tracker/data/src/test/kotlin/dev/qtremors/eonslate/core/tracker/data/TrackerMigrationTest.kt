@@ -42,6 +42,24 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version13TrackersHaveNoIntervals() = runTest {
+        ExportedSchema.create(context, name, 13).use {
+            it.execSQL(
+                "INSERT INTO trackers (id, name, description, icon_name, color_index, archived, position, template_id, created_at, updated_at, tags, schedule_days, times_per_week) " +
+                    "VALUES ('t13', 'Haircut', '', 'Star', 2, 0, 0, NULL, 100, 100, '[]', 0, 0)"
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val tracker = RoomTrackerRepository(db, FakeClock()).getTracker("t13")!!
+            assertEquals(Schedule.AS_NEEDED, tracker.schedule)
+            assertEquals(emptyList<Any>(), tracker.intervals)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version12TrackersAreDueEveryDay() = runTest {
         ExportedSchema.create(context, name, 12).use {
             it.execSQL(

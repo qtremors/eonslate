@@ -1,5 +1,14 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.tracker.domain.insights.Rhythm
+import dev.qtremors.eonslate.core.tracker.domain.insights.Intervals
+import dev.qtremors.eonslate.core.tracker.domain.insights.IntervalStatus
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import dev.qtremors.eonslate.core.tracker.domain.insights.Goals
+import dev.qtremors.eonslate.core.tracker.domain.insights.GoalProgress
 import dev.qtremors.eonslate.core.settings.Tracking
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.onStart
@@ -52,8 +61,40 @@ class HomeViewModel @Inject constructor(
 
     // The device's week start until the setting is read, so nothing waits on it.
     private val weekStart = settings.tracking.map { it.firstDayOfWeek() }.onStart { emit(Tracking().firstDayOfWeek()) }.distinctUntilChanged()
-    private val schedules = repository.observeSummaries().map { list -> list.associate { it.tracker.id to it.tracker.schedule } }
-    private val loggedDays = entries.observeEntryTimesByTracker().map { times -> times.mapValues { (_, list) -> list.map { it.localDay() } } }
+    private val trackersById = repository.observeSummaries().map { list -> list.associate { it.tracker.id to it.tracker } }
+    private val schedules = trackersById.map { trackers -> trackers.mapValues { (_, tracker) -> tracker.schedule } }
+
+    /**
+     * Every entry, values and all, of the trackers that need them: goals, intervals, and As needed
+     * trackers whose rhythm is learned from history. The rest need only times.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val goalEntries: Flow<Map<String, List<Entry>>> = trackersById
+        .map { trackers -> trackers.filterValues { Goals.fields(it).isNotEmpty() || it.intervals.isNotEmpty() || it.schedule.isAsNeeded }.keys }
+        .distinctUntilChanged()
+        .flatMapLatest { ids ->
+            if (ids.isEmpty()) flowOf(emptyMap())
+            else combine(ids.map { id -> entries.observeEntries(id).map { id to it } }) { pairs -> pairs.toMap() }
+        }
+
+    /**
+     * The days each tracker counts as done: days with an entry, or for a tracker with daily goals
+     * the days they were all met. Until goals are read, logged days stand in.
+     */
+    private val loggedDays = combine(
+        entries.observeEntryTimesByTracker(),
+        trackersById.onStart { emit(emptyMap()) },
+        goalEntries.onStart { emit(emptyMap()) },
+    ) { times, trackers, withValues ->
+        val days = times.mapValues { (_, list) -> list.map { it.localDay() } }
+        days + withValues.mapNotNull { (id, list) -> trackers[id]?.let { id to Goals.doneDays(it, list).toList() } }
+    }
+
+    /** Each tracker's progress toward its first goal, for the meter on its card. */
+    val goals: StateFlow<Map<String, GoalProgress>> = combine(trackersById, goalEntries, weekStart) { trackers, withValues, weekStart ->
+        val today = LocalDate.now(ZoneId.of(clock.zoneId()))
+        withValues.mapNotNull { (id, list) -> trackers[id]?.let { Goals.progress(it, list, today, weekStart).firstOrNull() }?.let { id to it } }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
     /** Trackers, the days each was logged, and the week start, read together. */
     private val logged = combine(schedules, loggedDays, weekStart, ::Logged)
@@ -69,15 +110,30 @@ class HomeViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
-    /** The trackers due today under their schedules. */
-    val dueToday: StateFlow<Set<String>?> = logged
-        .map { (schedules, days, weekStart) -> Today.due(schedules, days, LocalDate.now(ZoneId.of(clock.zoneId())), weekStart) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+    /** What comes next for each tracker: its most pressing set interval, or else its learned rhythm. */
+    val upcoming: StateFlow<Map<String, Upcoming>> = combine(trackersById, goalEntries) { trackers, withValues ->
+        val today = LocalDate.now(ZoneId.of(clock.zoneId()))
+        withValues.mapNotNull { (id, list) ->
+            val tracker = trackers[id] ?: return@mapNotNull null
+            val statuses = Intervals.status(tracker, list, today)
+            val next = Intervals.next(statuses)
+            val rhythm = if (next == null && tracker.schedule.isAsNeeded) Intervals.learned(tracker, list, today).minByOrNull { it.daysLeft } else null
+            if (next == null && rhythm == null) null else id to Upcoming(next, rhythm, statuses.any { it.due })
+        }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+
+    /** The trackers due today: by schedule, or because a set interval has come round. */
+    val dueToday: StateFlow<Set<String>?> = combine(logged, upcoming) { (schedules, days, weekStart), next ->
+        Today.due(schedules, days, LocalDate.now(ZoneId.of(clock.zoneId())), weekStart) + next.filterValues { it.due }.keys
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
     /** How many of the trackers due today have an entry; null until the reads arrive. */
     val today: StateFlow<TodayProgress?> = logged
         .map { (schedules, days, weekStart) -> Today.progress(schedules, days, LocalDate.now(ZoneId.of(clock.zoneId())), weekStart) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
+    /** The next interval or learned rhythm of a tracker, and whether an interval is due. */
+    data class Upcoming(val interval: IntervalStatus?, val rhythm: Rhythm?, val due: Boolean)
 
     private data class Logged(val schedules: Map<String, Schedule>, val days: Map<String, List<LocalDate>>, val weekStart: java.time.DayOfWeek)
 

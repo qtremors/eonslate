@@ -1,5 +1,9 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.tracker.ui.rhythmText
+import dev.qtremors.eonslate.core.tracker.ui.intervalText
+import dev.qtremors.eonslate.core.tracker.ui.goalText
+import dev.qtremors.eonslate.core.tracker.domain.insights.GoalProgress
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,6 +95,8 @@ fun HomeScreen(
     val streaks by viewModel.streaks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val dueToday by viewModel.dueToday.collectAsStateWithLifecycle()
+    val goals by viewModel.goals.collectAsStateWithLifecycle()
+    val upcoming by viewModel.upcoming.collectAsStateWithLifecycle()
     val selectedTag by viewModel.homeTag.collectAsStateWithLifecycle(initialValue = null)
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -112,6 +118,8 @@ fun HomeScreen(
         streaks = streaks,
         today = today,
         dueToday = dueToday,
+        goals = goals,
+        upcoming = upcoming,
         selectedTag = selectedTag,
         onTagChange = viewModel::setHomeTag,
         snackbar = snackbar,
@@ -152,6 +160,10 @@ fun HomeContent(
     today: TodayProgress? = null,
     /** The trackers due today; null until known. */
     dueToday: Set<String>? = null,
+    /** Each tracker's progress toward its first goal. */
+    goals: Map<String, GoalProgress> = emptyMap(),
+    /** What comes next for trackers with intervals or a learned rhythm. */
+    upcoming: Map<String, HomeViewModel.Upcoming> = emptyMap(),
     snackbar: SnackbarHostState? = null,
     actions: SlateActions? = null,
     /** Creates a tracker from a template in one tap; offered while Home is empty. */
@@ -175,14 +187,22 @@ fun HomeContent(
         }
     }
     val tag = tags.firstOrNull { it.equals(selectedTag, ignoreCase = true) }
-    // "Today" only means something once some tracker is not due every day.
+    val shown = remember(trackers, query, tag) {
+        trackers?.filter { TrackerSearch.matches(it.tracker, query) && TrackerSearch.hasTag(it.tracker, tag) }
+    }
+    // Sections only once some tracker is not due every day: what is due today first, then what
+    // is not due today, then what is logged as needed.
     val scheduled = remember(trackers) { trackers.orEmpty().any { !it.tracker.schedule.isDaily } }
-    var dueOnly by rememberSaveable { mutableStateOf(false) }
-    val onlyDue = dueOnly && scheduled && dueToday != null
-    val shown = remember(trackers, query, tag, onlyDue, dueToday) {
-        trackers?.filter {
-            TrackerSearch.matches(it.tracker, query) && TrackerSearch.hasTag(it.tracker, tag) &&
-                (!onlyDue || it.tracker.id in dueToday.orEmpty())
+    val sections = remember(shown, dueToday, scheduled) {
+        val list = shown.orEmpty()
+        if (!scheduled || dueToday == null) listOf(null to list)
+        else {
+            // An As needed tracker whose interval has come round is due like any other.
+            val due = list.filter { it.tracker.id in dueToday }
+            val asNeeded = list.filter { it.tracker.schedule.isAsNeeded && it.tracker.id !in dueToday }
+            val later = list - due.toSet() - asNeeded.toSet()
+            listOf(R.string.home_section_due to due, R.string.home_section_later to later, R.string.home_section_as_needed to asNeeded)
+                .filter { it.second.isNotEmpty() }
         }
     }
     EonslateScaffold(
@@ -246,12 +266,9 @@ fun HomeContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (tags.isNotEmpty() || scheduled) {
+                if (tags.isNotEmpty()) {
                     item(key = "tags", span = { GridItemSpan(maxLineSpan) }) {
-                        TagChips(
-                            tags, tag, onPick = { picked -> onTagChange(picked.takeUnless { it == tag }) },
-                            dueOnly = if (scheduled) dueOnly else null, onDueOnly = { dueOnly = it },
-                        )
+                        TagChips(tags, tag, onPick = { picked -> onTagChange(picked.takeUnless { it == tag }) })
                     }
                 }
                 if (today != null && today.total > 0 && query.isBlank() && tag == null) {
@@ -262,7 +279,16 @@ fun HomeContent(
                         EmptyState(icon = Icons.Rounded.SearchOff, title = stringResource(R.string.home_no_matches), message = query)
                     }
                 }
-                items(shown.orEmpty(), key = { s -> s.tracker.id }) { summary ->
+                sections.forEach { (title, list) ->
+                if (title != null) item(key = "section-$title", span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        stringResource(title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+                    )
+                }
+                items(list, key = { s -> s.tracker.id }) { summary ->
                     // The position in the full list, so moving still works while searching.
                     val index = trackers.indexOf(summary)
                     var menu by rememberSaveable { mutableStateOf(false) }
@@ -272,8 +298,13 @@ fun HomeContent(
                             iconName = summary.tracker.iconName,
                             colorIndex = summary.tracker.colorIndex,
                             key = summary.tracker.id,
-                            supporting = summaryLine(summary, nowMillis),
+                            // What comes next, when an interval or a rhythm says; otherwise the latest entry.
+                            supporting = upcoming[summary.tracker.id]?.let { next ->
+                                next.interval?.let { intervalText(it, summary.tracker) } ?: next.rhythm?.let { rhythmText(it, summary.tracker) }
+                            } ?: summaryLine(summary, nowMillis),
                             streak = streaks[summary.tracker.id] ?: 0,
+                            goal = goals[summary.tracker.id]?.fraction,
+                            goalText = goals[summary.tracker.id]?.let { goalText(it) },
                             onClick = { onOpenTracker(summary.tracker.id) },
                             onLongClick = if (actions != null) ({ menu = true }) else null,
                             action = {
@@ -318,6 +349,7 @@ fun HomeContent(
                             )
                         }
                     }
+                }
                 }
             }
         }

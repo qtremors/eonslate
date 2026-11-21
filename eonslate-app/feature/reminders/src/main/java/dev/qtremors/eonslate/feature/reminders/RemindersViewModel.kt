@@ -41,7 +41,7 @@ class RemindersViewModel @Inject constructor(
         repository.observeReminders(trackerId),
     ) { tracker, list ->
         val schedule = tracker?.schedule
-        val days = if (schedule == null || schedule.isWeekly) DayOfWeek.entries.toSet() else schedule.days
+        val days = if (schedule == null || schedule.isWeekly || schedule.isAsNeeded) DayOfWeek.entries.toSet() else schedule.days
         RemindersUiState(tracker?.name.orEmpty(), list, days)
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

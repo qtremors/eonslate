@@ -63,7 +63,15 @@ class ScheduleTest {
     @Test
     fun storedMasksRoundTripAndBadOnesFallBackToDaily() {
         assertEquals(mwf, Schedule.of(mwf.daysMask, 0))
-        assertEquals(Schedule.DAILY, Schedule.of(0, 0))
+        assertEquals(Schedule.AS_NEEDED, Schedule.of(0, 0))
         assertEquals(Schedule.DAILY, Schedule.of(127, 9))
+    }
+
+    @Test
+    fun asNeededIsNeverDueAndKeepsNoStreak() {
+        assertFalse(Schedule.AS_NEEDED.isDue(day(3), setOf(day(3))))
+        assertEquals(0, Streaks.of(listOf(day(2), day(3)), today = day(3), schedule = Schedule.AS_NEEDED).current)
+        val progress = Today.progress(mapOf("bike" to Schedule.AS_NEEDED), mapOf("bike" to listOf(day(3))), day(3))
+        assertEquals(TodayProgress(logged = 0, total = 0), progress)
     }
 }

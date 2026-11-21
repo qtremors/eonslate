@@ -1,10 +1,23 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.7
-> **Last Updated:** 2026-11-20
+> **Version:** 2.1.8
+> **Last Updated:** 2026-11-21
 
 ---
+
+## [2.1.8] - 2026-11-21
+
+- **Goals**: number and duration fields can aim for at least or at most an amount a day or a week.
+- Tracker cards show today's progress toward the goal; a day counts as done once daily goals are met.
+- Insights shows how often each goal was met and the run in a row.
+- **As needed** schedule for things logged when they happen, never due by themselves.
+- Trackers sort into Due today, Not today and As needed once schedules differ.
+- **Intervals**: an As needed tracker can be due again after a time, after a number such as an odometer grows by an amount, or whichever comes first.
+- Intervals can follow one choice, so one tracker keeps several jobs on their own clocks.
+- **Learned rhythm**: As needed trackers learn their usual pace from history and show what is likely next, with no setup.
+- Cards show what is next; Insights shows each interval and when it was last done.
+- A due interval moves the tracker into Due today.
 
 ## [2.1.7] - 2026-11-20
 

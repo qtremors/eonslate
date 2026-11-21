@@ -52,6 +52,7 @@ sealed interface ValidationError {
     data class MinAboveMax(val fieldId: String) : ValidationError
     data class UnknownCurrency(val fieldId: String, val code: String) : ValidationError
     data class MaxDurationNotPositive(val fieldId: String) : ValidationError
+    data class GoalNotPositive(val fieldId: String) : ValidationError
     data class RatingScaleOutOfRange(val fieldId: String, val min: Int, val max: Int) : ValidationError
     data class NoOptions(val fieldId: String) : ValidationError
     data class TooManyOptions(val fieldId: String, val max: Int) : ValidationError

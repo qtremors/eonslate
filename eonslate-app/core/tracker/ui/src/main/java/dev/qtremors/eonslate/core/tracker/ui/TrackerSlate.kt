@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.ui.components.BadgePalette
 import dev.qtremors.eonslate.core.ui.components.IconBadge
+import dev.qtremors.eonslate.core.ui.components.Meter
 import dev.qtremors.eonslate.core.ui.components.TrackerIcons
 import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
@@ -67,6 +68,10 @@ fun TrackerSlate(
     onLongClick: (() -> Unit)? = null,
     /** The current streak in days; from two days on it shows as an ember pill. */
     streak: Int = 0,
+    /** Progress toward a goal, 0 to 1, shown as a meter under the line; null without a goal. */
+    goal: Float? = null,
+    /** What the meter says, such as "5 of 8 glasses". */
+    goalText: String? = null,
     action: (@Composable RowScope.() -> Unit)? = null
 ) {
     val haptics = rememberAppHaptics()
@@ -144,6 +149,12 @@ fun TrackerSlate(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (goal != null) {
+                    Meter(goal, badge.content, contentDescription = goalText.orEmpty(), modifier = Modifier.padding(top = 10.dp))
+                    if (goalText != null) {
+                        Text(goalText, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
     }

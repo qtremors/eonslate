@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
+import dev.qtremors.eonslate.core.tracker.domain.model.Interval
 import dev.qtremors.eonslate.core.tracker.domain.backup.storedAsLong
 import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
@@ -82,9 +83,20 @@ internal fun Tracker.toEntity(): TrackerEntity = TrackerEntity(
     tags = TagColumn.encode(Tags.normalize(tags)),
     scheduleDays = schedule.daysMask,
     timesPerWeek = schedule.timesPerWeek,
+    intervals = IntervalColumn.encode(intervals),
 )
 
 /** Tags are kept as a JSON array of strings in one column. */
+/** Intervals are kept as a JSON array in one column; unreadable text reads as none. */
+internal object IntervalColumn {
+    private val list = ListSerializer(Interval.serializer())
+    private val json = Json { ignoreUnknownKeys = true }
+
+    fun encode(intervals: List<Interval>): String = json.encodeToString(list, intervals)
+
+    fun decode(text: String): List<Interval> = runCatching { json.decodeFromString(list, text) }.getOrDefault(emptyList())
+}
+
 internal object TagColumn {
     private val list = ListSerializer(String.serializer())
 
@@ -138,6 +150,7 @@ internal fun TrackerEntity.toDomain(fields: List<TrackerFieldEntity>): Tracker =
     updatedAt = updatedAt,
     tags = TagColumn.decode(tags),
     schedule = Schedule.of(scheduleDays, timesPerWeek),
+    intervals = IntervalColumn.decode(intervals),
 )
 
 internal fun TrackerWithFields.toDomain(): Tracker = tracker.toDomain(fields)

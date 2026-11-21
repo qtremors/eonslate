@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.domain.validation
 
+import dev.qtremors.eonslate.core.tracker.domain.model.goal
 import dev.qtremors.eonslate.core.tracker.domain.model.ChoiceOption
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
@@ -62,6 +63,7 @@ object TrackerValidator {
             errors += ValidationError.FieldNameTooLong(id, FieldDefinition.NAME_MAX_LENGTH)
         }
 
+        if ((field.config.goal?.target ?: 1) <= 0) errors += ValidationError.GoalNotPositive(id)
         when (val config = field.config) {
             is FieldConfig.Number -> {
                 if (config.decimals !in 0..FieldConfig.Number.MAX_DECIMALS) {

@@ -32,8 +32,14 @@ class FieldConfigJsonTest {
 
     @Test
     fun unknownPropertiesAreIgnored() {
-        val newer = """{"kind":"number","decimals":2,"unit":"kg","goal":70}"""
+        val newer = """{"kind":"number","decimals":2,"unit":"kg","someday":70}"""
         assertEquals(FieldConfig.Number(unit = "kg", decimals = 2), FieldConfigJson.decodeOrNull(newer))
+    }
+
+    @Test
+    fun goalsRoundTrip() {
+        val config = FieldConfig.Duration(goal = dev.qtremors.eonslate.core.tracker.domain.model.Goal(3600, dev.qtremors.eonslate.core.tracker.domain.model.GoalPeriod.WEEK, atMost = true))
+        assertEquals(config, FieldConfigJson.decodeOrNull(FieldConfigJson.encode(config)))
     }
 
     @Test
