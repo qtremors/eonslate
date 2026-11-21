@@ -40,6 +40,24 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_log_widget" />
         </receiver>
+        <receiver
+            android:name=".widgets.TodayWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_today_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/today_widget" />
+        </receiver>
+        <receiver
+            android:name=".widgets.MoneyWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_money_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/money_widget" />
+        </receiver>
         <service
             android:name=".quicklog.QuickLogTileService"
             android:exported="true"

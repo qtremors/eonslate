@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import dev.qtremors.eonslate.core.ui.components.rememberFocusOnOpen
 import java.util.Locale
 import java.time.temporal.WeekFields
 import java.time.format.TextStyle
@@ -202,6 +203,7 @@ private fun EditorContent(
                     value = draft.name,
                     onValueChange = viewModel::setName,
                     label = stringResource(R.string.editor_name),
+                    modifier = rememberFocusOnOpen(draft.isNew && draft.name.isBlank()),
                     error = trackerErrors.firstOrNull {
                         it is ValidationError.TrackerNameBlank ||
                             it is ValidationError.TrackerNameTooLong
@@ -229,7 +231,8 @@ private fun EditorContent(
 
         item(key = "schedule") {
             SectionHeader(stringResource(R.string.editor_section_schedule))
-            ScheduleEditor(draft, viewModel::setScheduleMode, viewModel::toggleScheduleDay, viewModel::setTimesPerWeek)
+            val firstDay by viewModel.firstDay.collectAsStateWithLifecycle(initialValue = WeekFields.of(Locale.getDefault()).firstDayOfWeek)
+            ScheduleEditor(draft, viewModel::setScheduleMode, viewModel::toggleScheduleDay, viewModel::setTimesPerWeek, firstDay)
             if (draft.scheduleMode == ScheduleMode.AS_NEEDED) {
                 IntervalList(draft, viewModel::saveInterval, viewModel::removeInterval, viewModel::newIntervalId)
             }
@@ -388,6 +391,7 @@ private fun ScheduleEditor(
     onMode: (ScheduleMode) -> Unit,
     onDay: (DayOfWeek) -> Unit,
     onTimes: (Int) -> Unit,
+    firstDay: DayOfWeek,
 ) {
     val haptics = rememberAppHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 8.dp)) {
@@ -414,7 +418,7 @@ private fun ScheduleEditor(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             ScheduleMode.DAYS -> {
-                val first = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+                val first = firstDay
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     (0L until 7L).map { first.plus(it) }.forEach { day ->
                         val on = draft.scheduleDays and (1 shl (day.value - 1)) != 0

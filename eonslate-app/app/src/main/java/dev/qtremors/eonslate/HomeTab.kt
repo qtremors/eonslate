@@ -1,5 +1,12 @@
 package dev.qtremors.eonslate
 
+import dev.qtremors.eonslate.core.ui.theme.EonslateDisplay
+import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
+import dev.qtremors.eonslate.core.ui.components.BrandMark
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Row
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,17 +37,27 @@ fun HomeTab(
     onAddBudget: () -> Unit,
     onCategory: (String) -> Unit,
     displayName: String = "",
+    onLoaded: () -> Unit = {},
 ) {
+    val title = stringResource(R.string.app_title)
     EonslateScaffold(
-        title = displayName.ifBlank { stringResource(R.string.app_title) },
+        title = title,
+        // The mark and name lead the bar, as an app's start screen does; the bell and profile end it.
+        brand = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BrandMark()
+                Text(title, style = MaterialTheme.typography.titleLarge.copy(fontFamily = EonslateDisplay))
+            }
+        },
         actions = {
-            IconButton(shapes = IconButtonDefaults.shapes(), onClick = onSettings) {
+            val account = LocalAccountActions.current
+            if (account != null) account() else IconButton(shapes = IconButtonDefaults.shapes(), onClick = onSettings) {
                 Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.tab_settings))
             }
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onReviewSms = onReviewSms, onSubscriptions = onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory) }
+            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onReviewSms = onReviewSms, onSubscriptions = onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory, onLoaded = onLoaded) }
             item(key = "today") { TodayStrip(onLog = onLog, onAll = onTrackers) }
         }
     }

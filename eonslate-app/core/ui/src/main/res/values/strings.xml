@@ -4,7 +4,15 @@
     <string name="action_close_search">Close search</string>
     <string name="action_clear_search">Clear search</string>
     <string name="action_back">Back</string>
+    <string name="action_notifications">Notifications</string>
+    <string name="action_profile">Profile</string>
+    <plurals name="notifications_waiting">
+        <item quantity="one">Notifications, %d waiting</item>
+        <item quantity="other">Notifications, %d waiting</item>
+    </plurals>
     <string name="action_cancel">Cancel</string>
     <string name="action_show_password">Show password</string>
     <string name="action_hide_password">Hide password</string>
+    <string name="heat_less">Less</string>
+    <string name="heat_more">More</string>
 </resources>

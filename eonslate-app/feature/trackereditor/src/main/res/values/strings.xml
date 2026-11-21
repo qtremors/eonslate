@@ -120,6 +120,46 @@
         <item>Timer</item>
         <item>Heart</item>
         <item>Star</item>
+        <item>Water drop</item>
+        <item>Food</item>
+        <item>Coffee</item>
+        <item>Running</item>
+        <item>Cycling</item>
+        <item>Swimming</item>
+        <item>Spa</item>
+        <item>Heart rate</item>
+        <item>Healing</item>
+        <item>Mind</item>
+        <item>Motorbike</item>
+        <item>Car</item>
+        <item>Fuel</item>
+        <item>Tools</item>
+        <item>Cleaning</item>
+        <item>Haircut</item>
+        <item>Shower</item>
+        <item>Soap</item>
+        <item>Pets</item>
+        <item>Plants</item>
+        <item>Home</item>
+        <item>Shopping</item>
+        <item>Savings</item>
+        <item>Work</item>
+        <item>Study</item>
+        <item>Code</item>
+        <item>Art</item>
+        <item>Music</item>
+        <item>Camera</item>
+        <item>Games</item>
+        <item>Travel</item>
+        <item>Language</item>
+        <item>Idea</item>
+        <item>Energy</item>
+        <item>Event</item>
+        <item>No smoking</item>
+        <item>No alcohol</item>
+        <item>Drinks</item>
+        <item>Science</item>
+        <item>Phone</item>
     </string-array>
     <!-- In the order of BadgePalette's pigments. -->
     <string-array name="editor_pigment_names">

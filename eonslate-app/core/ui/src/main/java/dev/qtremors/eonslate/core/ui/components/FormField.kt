@@ -1,7 +1,6 @@
 package dev.qtremors.eonslate.core.ui.components
 
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -22,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import dev.qtremors.eonslate.core.ui.R
 import dev.qtremors.eonslate.core.ui.theme.FieldShape
@@ -70,10 +70,10 @@ fun FormField(
         ),
         shape = FieldShape,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceBright,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceBright,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
-            errorContainerColor = MaterialTheme.colorScheme.surfaceBright
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
+            errorContainerColor = Color.Transparent,
         ),
         modifier = modifier.fillMaxWidth()
     )

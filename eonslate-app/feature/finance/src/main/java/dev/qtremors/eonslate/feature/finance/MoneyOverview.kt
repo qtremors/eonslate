@@ -90,16 +90,15 @@ fun MoneyOverview(
     onAddBudget: () -> Unit = {},
     /** Opens Transactions on this month in one category. */
     onCategory: (String) -> Unit = { onTransactions() },
+    /** Called once the figures are on screen; the launch splash waits for it. */
+    onLoaded: () -> Unit = {},
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
-    val ledger by viewModel.ledger.collectAsStateWithLifecycle()
-    val currency by viewModel.currency.collectAsStateWithLifecycle(initialValue = Tracking.deviceCurrency())
-    val data = ledger
-    LaunchedEffect(data?.accounts?.isEmpty()) { if (data != null) viewModel.ensureAccount() }
+    val overview by viewModel.overview.collectAsStateWithLifecycle()
+    LaunchedEffect(overview?.noAccounts) { if (overview?.noAccounts == true) viewModel.ensureAccount() }
     val today = remember { viewModel.today() }
-    val summary = remember(data, currency, today) {
-        data?.let { MoneySummary.of(it, today, it.shownCurrency(currency)) }
-    }
+    val summary = overview?.summary
+    LaunchedEffect(summary != null) { if (summary != null) onLoaded() }
     // The balance card's space is held while loading, so nothing below it jumps when it arrives.
     if (summary == null) {
         Surface(color = MaterialTheme.colorScheme.surfaceBright, shape = SlateCardShape, modifier = modifier.fillMaxWidth().height(LOADING_HEIGHT)) {
@@ -108,11 +107,9 @@ fun MoneyOverview(
         return
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        FoundPaymentsBanner(viewModel.detection, onReviewSms)
-        val slots = remember(data) { data?.let(::chartSlots).orEmpty() }
         MoneyOverviewContent(
-            summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory, slots = slots,
-            currencies = data?.currencies().orEmpty(), onCurrency = viewModel::showCurrency,
+            summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory,
+            slots = overview?.slots.orEmpty(), currencies = overview?.currencies.orEmpty(), onCurrency = viewModel::showCurrency,
         )
     }
 }

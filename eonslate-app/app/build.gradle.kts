@@ -16,8 +16,8 @@ android {
         applicationId = "dev.qtremors.eonslate"
         minSdk = 26
         targetSdk = 37
-        versionCode = 218
-        versionName = "2.1.8"
+        versionCode = 219
+        versionName = "2.1.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -110,6 +110,7 @@ kotlin {
 dependencies {
     implementation(project(":core:navigation:api"))
     implementation(project(":core:tracker:data"))
+    implementation(project(":core:tracker:ui"))
     implementation(project(":core:ui"))
     implementation(project(":feature:entry"))
     implementation(project(":feature:home"))

@@ -43,6 +43,10 @@ sealed interface Destination {
     @Serializable
     data object Welcome : Destination
 
+    /** Payments found in SMS, payments to confirm, budgets over, and things due. */
+    @Serializable
+    data object Notifications : Destination
+
     @Serializable
     data object Settings : Destination
 

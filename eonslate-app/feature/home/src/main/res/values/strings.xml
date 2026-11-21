@@ -31,6 +31,11 @@
     <!-- %1$s is the entry count, such as "12 entries"; %2$s is when the latest was, such as "2 hours ago". -->
     <string name="home_entry_summary">%1$s, latest %2$s</string>
     <string name="home_section_due">Due today</string>
+    <string name="home_overview">%1$d%% consistent across %2$d trackers</string>
+    <plurals name="home_overview_title">
+        <item quantity="one">Consistency across %d tracker</item>
+        <item quantity="other">Consistency across %d trackers</item>
+    </plurals>
     <string name="home_section_later">Not today</string>
     <string name="home_section_as_needed">As needed</string>
     <plurals name="home_entry_count">

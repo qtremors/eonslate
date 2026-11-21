@@ -1,10 +1,38 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.8
+> **Version:** 2.1.9
 > **Last Updated:** 2026-11-21
 
 ---
+
+## [2.1.9] - 2026-11-21
+
+- **The last year**: Insights shows every day of the past year as a heat map; tap a day to open it.
+- **Consistency**: a ring with the share of due days done since the tracker started, beside when it started.
+- The current streak fills toward the best one.
+- **Spending by day**: Transactions shows a year of spending as a heat map; tap a day to filter to it.
+- **By weekday**: Insights shows which weekdays carry the most entries.
+- **Spending by weekday**: Transactions shows which days the shown spending falls on.
+- **Consistency overview**: Trackers shows consistency across all scheduled trackers and the three most consistent; a tag narrows it.
+- **Today widget**: the trackers due today, unlogged first; tap one to log it.
+- **Money widget**: your balance and this month's spending in the currency the app shows.
+- Both appear in the widget picker with a preview and keep up as you log.
+- A reminder clears from the shade once its tracker is logged today.
+- New trackers, transactions, subscriptions and budgets open with the keyboard on the first field.
+- The Today widget counts like the Trackers tab: daily goals must be met, and due intervals count as due.
+- The Money widget uses the number format from Personalization.
+- Weekday choices for schedules and reminders start on the app's week start.
+- 40 more tracker icons, such as a motorbike, fuel, scissors, a shower, pets and study.
+- Goal lines say the unit once: "5 of 8 glasses today".
+- Interval tiles lead with what is left, then when it is due and when it was last done.
+- Widgets take a sensible size in the picker, and the money widget is named Money.
+- **New top bar**: Home leads with the Eonslate mark; every tab ends with a bell and your profile picture.
+- **Notifications**: payments found in SMS, payments to confirm, budgets gone over, intervals due, and payments in the next three days. The bell shows how many want doing.
+- **Profile**: your name, then Settings, Personalization, Categories, Archived trackers, Backup and restore, Privacy and About.
+- Tabs show filled icons when chosen, with new icons for Home, Transactions, Subscriptions and Trackers.
+- Faster start: the splash waits until Home has its figures, so the app opens filled in. Screens share one read of each list instead of reading it for every card, and the heavy sums run off the main thread.
+- Text fields are clear inside, so labels no longer sit on a shaded patch.
 
 ## [2.1.8] - 2026-11-21
 

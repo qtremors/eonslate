@@ -247,7 +247,7 @@ private fun DetailContent(
 
         if (state.view == DetailView.INSIGHTS) {
             item(key = "insights") {
-                InsightsView(state = state, tracker = tracker, today = today, modifier = Modifier.padding(top = 12.dp))
+                InsightsView(state = state, tracker = tracker, today = today, modifier = Modifier.padding(top = 12.dp), onDay = viewModel::openDay)
             }
             return@LazyColumn
         }

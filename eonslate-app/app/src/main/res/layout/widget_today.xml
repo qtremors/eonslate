@@ -1,0 +1,39 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/today_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/quick_log_widget_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/today_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_today_title"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/today_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="@string/widget_today_preview_progress"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp" />
+
+    <TextView android:id="@+id/today_row_1" style="@style/Widget.Eonslate.Row" android:text="@string/widget_today_preview_one" />
+    <TextView android:id="@+id/today_row_2" style="@style/Widget.Eonslate.Row" android:text="@string/widget_today_preview_two" />
+    <TextView android:id="@+id/today_row_3" style="@style/Widget.Eonslate.Row" android:text="@string/widget_today_preview_three" />
+    <TextView android:id="@+id/today_row_4" style="@style/Widget.Eonslate.Row" android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/today_more"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp"
+        android:visibility="gone" />
+</LinearLayout>

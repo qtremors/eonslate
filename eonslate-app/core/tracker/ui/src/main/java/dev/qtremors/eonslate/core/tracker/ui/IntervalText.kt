@@ -82,3 +82,26 @@ fun rhythmText(rhythm: Rhythm, tracker: Tracker): String {
     }
     return rhythm.label?.let { "$it: ${text.replaceFirstChar { c -> c.lowercase() }}" } ?: text
 }
+
+/** What is left, for a tile's big line: "1,240 km left", "50 km over", "In 121 days", "Today". */
+@Composable
+fun intervalRemaining(status: IntervalStatus, tracker: Tracker): String {
+    val field = status.interval.amountFieldId?.let(tracker::field)
+    val left = status.amountLeft
+    return if (status.dueAt != null && left != null && status.leadsByAmount) {
+        if (left >= 0) stringResource(R.string.interval_left, reading(field, left)) else stringResource(R.string.interval_over, reading(field, abs(left)))
+    } else {
+        relativeDays(status.daysLeft ?: 0).replaceFirstChar { it.uppercase() }
+    }
+}
+
+/** When it falls due: "Due at 30,000 km", "Due 14 Mar". */
+@Composable
+fun intervalDuePoint(status: IntervalStatus, tracker: Tracker): String? {
+    val field = status.interval.amountFieldId?.let(tracker::field)
+    return when {
+        status.dueAt != null && status.amountLeft != null && status.leadsByAmount -> stringResource(R.string.interval_due_at, reading(field, status.dueAt!!)).replaceFirstChar { it.uppercase() }
+        status.dueOn != null -> stringResource(R.string.interval_due, shortDate(status.dueOn!!)).replaceFirstChar { it.uppercase() }
+        else -> null
+    }
+}

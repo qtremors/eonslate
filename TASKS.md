@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.8
+> **Version:** 2.1.9
 > **Last Updated:** 2026-11-21
 
 ## Roadmap
@@ -40,9 +40,14 @@ Each step is planned as one release commit.
 | 28 | 2.1.7 | Schedules: due days per tracker, a Today filter, honest daily progress | Done |
 | 29 | 2.1.8 | Goals for number and duration fields, an As needed schedule, sectioned trackers | Done |
 | 30 | 2.1.8 | Intervals: due after a time or an amount since the last log; learned rhythms | Done |
-| 31 | 2.1.9 | Consistency: year heat map, consistency ring, stat tiles; spending heat map | Planned |
-| 32 | 2.1.9 | Patterns: weekday breakdowns for trackers and spending, all-trackers overview | Planned |
-| 33 | 2.1.9 | Widgets: Today checklist and money summary; reminder and editor touches | Planned |
+| 31 | 2.1.9 | Consistency: year heat map, consistency ring, stat tiles; spending heat map | Done |
+| 32 | 2.1.9 | Patterns: weekday breakdowns for trackers and spending, all-trackers overview | Done |
+| 33 | 2.1.9 | Widgets: Today checklist and money summary; reminder and editor touches | Done |
+| 34 | 2.1.9 | Close the gaps: widget counts, week start, icons, wording, checked on the phone | Done |
+| 35 | 2.1.9 | Top bar with bell and profile, notifications, faster start, clear text fields | Done |
+| 36 | 2.2.0 | Account cards: kind and last digits, a card carousel, transactions bound to cards | Planned |
+| 37 | 2.2.0 | Parts: a choice field shown as sub trackers, each with its own last, next and log | Planned |
+| 38 | 2.2.0 | Onboarding: name, currency, first account and first tracker | Planned |
 
 ## v2.0.0 parity
 
@@ -200,21 +205,38 @@ From a stress test with a generated backup (40 subscriptions, 3,147 transactions
 - Nothing is specific to one use: a bike, haircuts or a shampoo bottle are all plain custom trackers
 
 ### 2.1.9 Consistency
-- [ ] Insights: a year heat map of logged days, coloured by amount or goal reached, tap a day for its entries
-- [ ] Insights: a consistency ring, the share of due days logged since the tracker started
-- [ ] Stat tiles: started on, best streak, current streak filling toward the best
-- [ ] Transactions: a spending heat map by day, tap a day to filter to it
-- [ ] Heat map colours from one sequential ramp, readable in light, dark and pure black
+- [x] Insights: a year heat map of logged days, coloured by amount or goal reached, tap a day for its entries
+- [x] Insights: a consistency ring, the share of due days logged since the tracker started
+- [x] Stat tiles: started on, best streak, current streak filling toward the best
+- [x] Transactions: a spending heat map by day, tap a day to filter to it
+- [x] Heat map colours from one sequential ramp, readable in light, dark and pure black
 
 ### 2.1.9 Patterns
-- [ ] Insights: entries by weekday
-- [ ] Transactions: spending by weekday for the shown range
-- [ ] Trackers tab: an overview card with consistency across all trackers and the most consistent ones
-- [ ] Overview filters by tag
+- [x] Insights: entries by weekday
+- [x] Transactions: spending by weekday for the shown range
+- [x] Trackers tab: an overview card with consistency across all trackers and the most consistent ones
+- [x] Overview filters by tag
 
 ### 2.1.9 Widgets and touches
-- [ ] Today widget: trackers due today, tap to log or open
-- [ ] Money widget: balance and spent this month in the shown currency
-- [ ] Widget previews in the launcher picker
-- [ ] A reminder notification clears when that tracker is logged in the app
-- [ ] New-item editors open with the keyboard on the first field
+- [x] Today widget: trackers due today, tap to log or open
+- [x] Money widget: balance and spent this month in the shown currency
+- [x] Widget previews in the launcher picker
+- [x] A reminder notification clears when that tracker is logged in the app
+- [x] New-item editors open with the keyboard on the first field
+
+### 2.1.9 Closing the gaps
+Checked on the moto with sample data holding goals, a weekday schedule and As needed trackers with and without intervals, in light and dark, with the widgets on the home screen.
+- [x] Today widget follows daily goals and due intervals, so it matches the Trackers tab
+- [x] Money widget uses the chosen number format
+- [x] Weekday chips in schedules and reminders start on the app's week start
+- [x] 52 tracker icons instead of 12, each with a spoken name
+- [x] Goal lines say the unit once; interval tiles lead with what is left
+- [x] Widget sizes and the money widget's name in the picker
+
+### 2.1.9 Top bar, notifications and speed
+- [x] Home bar: the mark and name; every tab ends with a bell and the profile picture
+- [x] Notifications: SMS finds, payments to confirm, budgets over, intervals due, payments coming up
+- [x] Profile: name, then Settings and the places visited now and then
+- [x] Filled tab icons when chosen
+- [x] Splash holds until Home has its figures; shared reads; sums off the main thread
+- [x] Text fields clear inside

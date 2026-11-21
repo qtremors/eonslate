@@ -1,5 +1,11 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.Surface
+import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
+import dev.qtremors.eonslate.core.ui.components.ProgressRing
+import dev.qtremors.eonslate.core.tracker.domain.insights.Consistency
 import dev.qtremors.eonslate.core.tracker.ui.rhythmText
 import dev.qtremors.eonslate.core.tracker.ui.intervalText
 import dev.qtremors.eonslate.core.tracker.ui.goalText
@@ -9,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
@@ -84,7 +91,7 @@ fun HomeScreen(
     onNewTracker: () -> Unit,
     onOpenTracker: (String) -> Unit,
     onLog: (String) -> Unit,
-    onArchived: () -> Unit,
+    onArchived: (() -> Unit)? = null,
     onEditTracker: (String) -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -97,6 +104,7 @@ fun HomeScreen(
     val dueToday by viewModel.dueToday.collectAsStateWithLifecycle()
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val upcoming by viewModel.upcoming.collectAsStateWithLifecycle()
+    val consistency by viewModel.consistency.collectAsStateWithLifecycle()
     val selectedTag by viewModel.homeTag.collectAsStateWithLifecycle(initialValue = null)
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -120,6 +128,7 @@ fun HomeScreen(
         dueToday = dueToday,
         goals = goals,
         upcoming = upcoming,
+        consistency = consistency,
         selectedTag = selectedTag,
         onTagChange = viewModel::setHomeTag,
         snackbar = snackbar,
@@ -164,6 +173,8 @@ fun HomeContent(
     goals: Map<String, GoalProgress> = emptyMap(),
     /** What comes next for trackers with intervals or a learned rhythm. */
     upcoming: Map<String, HomeViewModel.Upcoming> = emptyMap(),
+    /** Each scheduled tracker's consistency, for the overview. */
+    consistency: Map<String, Consistency> = emptyMap(),
     snackbar: SnackbarHostState? = null,
     actions: SlateActions? = null,
     /** Creates a tracker from a template in one tap; offered while Home is empty. */
@@ -221,7 +232,8 @@ fun HomeContent(
                     Icon(Icons.Rounded.Inventory2, contentDescription = stringResource(R.string.home_archived))
                 }
             }
-            if (onSettings != null) {
+            val account = LocalAccountActions.current
+            if (account != null) account() else if (onSettings != null) {
                 IconButton(shapes = IconButtonDefaults.shapes(), onClick = onSettings) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.home_settings))
                 }
@@ -273,6 +285,11 @@ fun HomeContent(
                 }
                 if (today != null && today.total > 0 && query.isBlank() && tag == null) {
                     item(key = "today", span = { GridItemSpan(maxLineSpan) }) { TodayLine(today) }
+                }
+                // Consistency across the trackers shown (a tag narrows it), once two or more have any.
+                val measured = shown.orEmpty().mapNotNull { s -> consistency[s.tracker.id]?.let { s.tracker to it } }
+                if (measured.size >= 2 && query.isBlank()) {
+                    item(key = "overview", span = { GridItemSpan(maxLineSpan) }) { ConsistencyOverview(measured) }
                 }
                 if (shown.isNullOrEmpty()) {
                     item(key = "none", span = { GridItemSpan(maxLineSpan) }) {
@@ -418,4 +435,35 @@ private fun summaryLine(summary: TrackerSummary, nowMillis: Long): String {
     else DateUtils.getRelativeTimeSpanString(last, nowMillis, DateUtils.MINUTE_IN_MILLIS).toString()
         .replaceFirstChar { it.lowercase(java.util.Locale.getDefault()) }
     return stringResource(R.string.home_entry_summary, count, relative)
+}
+
+/** All shown trackers' due days done, as one ring, beside the three most consistent ones. */
+@Composable
+private fun ConsistencyOverview(measured: List<Pair<Tracker, Consistency>>) {
+    val colors = MaterialTheme.colorScheme
+    val done = measured.sumOf { it.second.done }
+    val due = measured.sumOf { it.second.due }.coerceAtLeast(1)
+    val percent = done * 100 / due
+    val top = measured.sortedByDescending { it.second.share }.take(3)
+    Surface(color = colors.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ProgressRing(
+                fraction = done.toFloat() / due,
+                color = colors.primary,
+                contentDescription = stringResource(R.string.home_overview, percent, measured.size),
+                size = 72.dp,
+                thickness = 9.dp,
+            ) { Text("$percent%", style = MaterialTheme.typography.titleSmall) }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    pluralStringResource(R.plurals.home_overview_title, measured.size, measured.size),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onSurfaceVariant,
+                )
+                top.forEach { (tracker, c) ->
+                    Text("${tracker.name} · ${c.percent}%", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
 }

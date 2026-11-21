@@ -1,5 +1,11 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
+import dev.qtremors.eonslate.core.ui.components.rememberFocusOnOpen
+import dev.qtremors.eonslate.core.ui.components.WeekdayBars
+import dev.qtremors.eonslate.core.tracker.domain.insights.Weekdays
+import dev.qtremors.eonslate.core.ui.components.YearHeatMap
+import dev.qtremors.eonslate.core.tracker.domain.insights.HeatLevels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.rounded.DateRange
@@ -323,15 +329,17 @@ fun FinanceScreen(
                 onManageCategories?.let { MenuAction(stringResource(R.string.finance_manage_categories), financeIcon("Tag"), onClick = it) },
                 MenuAction(stringResource(R.string.finance_new_account), Icons.Rounded.AccountBalance) { open(Editor.ACCOUNT, null) },
             )
-            onSettings?.let {
-                IconButton(shapes = IconButtonDefaults.shapes(), onClick = it) {
-                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.finance_settings))
-                }
-            }
             FinanceCsvMenu(
                 ledger, csv, exportShown, more,
                 exportLabel = stringResource(if (page == FinancePage.ACTIVITY) R.string.finance_csv_export else R.string.finance_export_subscriptions),
             )
+            // The bell and profile when the app provides them; otherwise this tab's own settings button.
+            val account = LocalAccountActions.current
+            if (account != null) account() else onSettings?.let {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = it) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.finance_settings))
+                }
+            }
         },
         floatingActionButton = {
             ledger?.let { data ->
@@ -400,6 +408,7 @@ fun FinanceScreen(
                 scrollToTop = jumpToTop,
                 chosenCurrency = currency,
                 onCurrency = viewModel::showCurrency,
+                firstDay = firstDay,
                 onScrolledToTop = { jumpToTop = false },
                 detection = viewModel.detection,
                 onReviewPayments = { open(Editor.INBOX, null) },
@@ -558,6 +567,7 @@ private fun LedgerList(
     onScrolledToTop: () -> Unit = {},
     chosenCurrency: String = "",
     onCurrency: (String) -> Unit = {},
+    firstDay: java.time.DayOfWeek = java.time.DayOfWeek.MONDAY,
 ) {
     val sort = filter.sort
     val category = filter.category
@@ -690,6 +700,58 @@ private fun LedgerList(
                         CategoryBreakdown(
                             byCategory, slots, { ValueFormat.money(it, currency, numberLocale) }, category,
                             onPick = { picked -> onCategory(if (picked.equals(category, ignoreCase = true)) null else picked) },
+                        )
+                    }
+                }
+                // Which weekdays the shown spending falls on, for the range, currency and category shown.
+                item(key = "spending-weekday") {
+                    val totals = remember(transactions, firstDay) {
+                        Weekdays.totals(
+                            transactions.filter { it.kind == TransactionKind.EXPENSE }
+                                .groupBy { java.time.LocalDate.ofEpochDay(it.epochDay) }
+                                .mapValues { (_, list) -> list.sumOf { t -> t.minor.toDouble() } },
+                            firstDay,
+                        )
+                    }
+                    Weekdays.busiest(totals)?.let { busiest ->
+                        val name = busiest.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+                        val peak = ValueFormat.money(java.math.BigInteger.valueOf(totals.maxOf { it.second }.toLong()), currency, numberLocale)
+                        ChartCard(stringResource(R.string.finance_spending_by_weekday)) {
+                            WeekdayBars(
+                                totals = totals,
+                                color = MaterialTheme.colorScheme.primary,
+                                contentDescription = stringResource(R.string.finance_busiest, name, peak),
+                                peakLabel = peak,
+                            )
+                            Text(
+                                stringResource(R.string.finance_busiest, name, peak),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                // A year of spending by day, in the shown currency and category; a tap shows that day.
+                item(key = "spending-heat") {
+                    val since = today.minusYears(1).toEpochDay()
+                    val levels = remember(ledger.transactions, currency, category, today) {
+                        HeatLevels.of(
+                            ledger.transactions.asSequence()
+                                .filter { it.kind == TransactionKind.EXPENSE && it.epochDay >= since && accounts[it.accountId]?.currency == currency }
+                                .filter { category == null || it.category.equals(category, ignoreCase = true) }
+                                .groupBy { java.time.LocalDate.ofEpochDay(it.epochDay) }
+                                .mapValues { (_, list) -> list.sumOf { t -> t.minor.toDouble() } },
+                        )
+                    }
+                    if (levels.isNotEmpty()) ChartCard(stringResource(R.string.finance_spending_by_day)) {
+                        YearHeatMap(
+                            levels = levels,
+                            today = today,
+                            firstDay = firstDay,
+                            color = MaterialTheme.colorScheme.primary,
+                            contentDescription = stringResource(R.string.finance_spending_by_day),
+                            selected = custom?.takeIf { period == TransactionPeriod.CUSTOM && it.first == it.last }?.let { java.time.LocalDate.ofEpochDay(it.first) },
+                            onDay = { day -> onCustom(day.toEpochDay(), day.toEpochDay()) },
                         )
                     }
                 }
@@ -1232,6 +1294,7 @@ private fun TransactionEditor(
         FormField(
             amount, { amount = it }, stringResource(R.string.finance_amount),
             keyboardType = KeyboardType.Decimal, suffix = account.currency, maxLength = 24, enabled = !busy,
+            modifier = rememberFocusOnOpen(transaction == null && prefill == null),
         )
         DateField(date, { date = it }, stringResource(R.string.finance_date), busy)
         FormField(note, { note = it }, stringResource(R.string.finance_description), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)

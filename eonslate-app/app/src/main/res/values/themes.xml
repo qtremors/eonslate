@@ -7,4 +7,14 @@
         <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.Eonslate</item>
     </style>
+    <!-- One tappable line of a widget: a due tracker. -->
+    <style name="Widget.Eonslate.Row" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">15sp</item>
+    </style>
 </resources>

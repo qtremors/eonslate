@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.ui.components.rememberFocusOnOpen
 import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -98,7 +99,7 @@ internal fun RecurringEditor(
             if (service != null) color = null
         }, busy = busy)
         ColorChoice(color, icon, note, busy) { color = it }
-        AmountField(amount, { amount = it }, account.currency, busy)
+        AmountField(amount, { amount = it }, account.currency, busy, focus = existing == null)
         FormField(note, { note = it }, stringResource(R.string.finance_payment_name), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
         CategoryPicker(category, { category = it }, kind, busy)
         PeriodFields(interval, { interval = it }, every, { every = it }, busy, allowHourly = true)
@@ -204,7 +205,7 @@ internal fun CategoryBudgetEditor(
             accountId = it.id
         }
         CategoryPicker(category, { category = it }, TransactionKind.EXPENSE, busy)
-        AmountField(amount, { amount = it }, account.currency, busy)
+        AmountField(amount, { amount = it }, account.currency, busy, focus = existing == null)
         PeriodFields(interval, { interval = it }, every, { every = it }, busy, allowHourly = true)
         if (interval == PaymentInterval.HOURLY) {
             Text(stringResource(R.string.finance_budget_hourly), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -262,10 +263,11 @@ internal fun RecordPaymentEditor(
 }
 
 @Composable
-private fun AmountField(value: String, onChange: (String) -> Unit, currency: String, busy: Boolean) {
+private fun AmountField(value: String, onChange: (String) -> Unit, currency: String, busy: Boolean, focus: Boolean = false) {
     FormField(
         value, onChange, stringResource(R.string.finance_amount), suffix = currency,
         keyboardType = KeyboardType.Decimal, maxLength = 24, enabled = !busy,
+        modifier = rememberFocusOnOpen(focus),
     )
 }
 

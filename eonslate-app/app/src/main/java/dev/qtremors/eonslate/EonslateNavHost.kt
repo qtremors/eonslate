@@ -1,5 +1,17 @@
 package dev.qtremors.eonslate
 
+import dev.qtremors.eonslate.feature.finance.NotificationsScreen
+import dev.qtremors.eonslate.core.ui.components.ProfileAvatar
+import dev.qtremors.eonslate.core.ui.components.NotificationBell
+import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
+import androidx.compose.material.icons.rounded.Analytics
+import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +24,6 @@ import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material.icons.rounded.TrackChanges
-import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,10 +32,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.EventRepeat
 import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.SpaceDashboard
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -75,6 +83,10 @@ fun EonslateNavHost(
     sharedMessage: String? = null,
     onMessageOpened: () -> Unit = {},
     displayName: String = "",
+    /** Called once the first screen has what it shows, so the splash can go. */
+    onReady: () -> Unit = {},
+    /** What the bell's badge shows. */
+    alertCount: Int = 0,
 ) {
     val navController = rememberNavController()
     val latestMessage by rememberUpdatedState(sharedMessage)
@@ -96,14 +108,19 @@ fun EonslateNavHost(
     var openNew by remember { mutableStateOf<TransactionKind?>(null) }
     var openBudget by remember { mutableStateOf(false) }
     var openCategory by remember { mutableStateOf<String?>(null) }
+    var openProfile by remember { mutableStateOf(false) }
+    val accountActions: @Composable RowScope.() -> Unit = {
+        NotificationBell(alertCount) { navController.navigate(Destination.Notifications) { launchSingleTop = true } }
+        ProfileAvatar(homeName, onClick = { openProfile = true })
+    }
     val reduceMotion = LocalReduceMotion.current
     val tabs = listOf(
-        TabItem(Icons.Rounded.SpaceDashboard, stringResource(R.string.tab_home)),
-        TabItem(Icons.AutoMirrored.Rounded.ReceiptLong, stringResource(R.string.tab_transactions)),
-        TabItem(Icons.Rounded.Autorenew, stringResource(R.string.tab_subscriptions)),
-        TabItem(Icons.Rounded.TrackChanges, stringResource(R.string.tab_trackers)),
+        TabItem(Icons.Outlined.Home, stringResource(R.string.tab_home), Icons.Rounded.Home),
+        TabItem(Icons.Outlined.AccountBalanceWallet, stringResource(R.string.tab_transactions), Icons.Rounded.AccountBalanceWallet),
+        TabItem(Icons.Outlined.EventRepeat, stringResource(R.string.tab_subscriptions), Icons.Rounded.EventRepeat),
+        TabItem(Icons.Outlined.Analytics, stringResource(R.string.tab_trackers), Icons.Rounded.Analytics),
     )
-    CompositionLocalProvider(LocalShellHost provides shell) {
+    CompositionLocalProvider(LocalShellHost provides shell, LocalAccountActions provides accountActions) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
     // From 840 dp the tabs move to a rail at the side, as on tablets and in landscape.
     val wide = maxWidth >= WIDE_LAYOUT
@@ -120,10 +137,11 @@ fun EonslateNavHost(
         ) {
             Spacer(Modifier.weight(1f))
             tabs.forEachIndexed { index, tab ->
+                val selected = destination?.tabIndex() == index
                 NavigationRailItem(
-                    selected = destination?.tabIndex() == index,
+                    selected = selected,
                     onClick = { navController.navigateToTab(TABS[index]) },
-                    icon = { Icon(tab.icon, contentDescription = null) },
+                    icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
                     label = { Text(tab.label) },
                 )
             }
@@ -143,6 +161,7 @@ fun EonslateNavHost(
         predictivePopExitTransition = { shellPopExit(reduceMotion) },
     ) {
         composable<Destination.Welcome> {
+            LaunchedEffect(Unit) { onReady() }
             WelcomeScreen(
                 onDone = {
                     navController.navigate(Destination.Home) {
@@ -153,6 +172,7 @@ fun EonslateNavHost(
         }
         composable<Destination.Home> {
             HomeTab(
+                onLoaded = onReady,
                 onTransactions = { navController.navigateToTab(Destination.Transactions) },
                 onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
                 onTrackers = { navController.navigateToTab(Destination.Trackers) },
@@ -182,7 +202,6 @@ fun EonslateNavHost(
                 onNewTracker = { navController.navigate(Destination.Templates) },
                 onOpenTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
-                onArchived = { navController.navigate(Destination.Archived) },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
@@ -200,6 +219,18 @@ fun EonslateNavHost(
         }
         composable<Destination.Subscriptions> {
             FinanceScreen(FinanceSection.SUBSCRIPTIONS, onSettings = { navController.navigate(Destination.Settings) })
+        }
+        composable<Destination.Notifications> {
+            NotificationsScreen(
+                onBack = { navController.popBackStack() },
+                onReviewSms = {
+                    openInbox = true
+                    navController.navigateToTab(Destination.Transactions)
+                },
+                onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
+                onTransactions = { navController.navigateToTab(Destination.Transactions) },
+                onTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
+            )
         }
         composable<Destination.Settings> {
             SettingsScreen(
@@ -286,6 +317,21 @@ fun EonslateNavHost(
         }
     }
     }
+    }
+    if (openProfile) {
+        ProfileDialog(
+            name = homeName,
+            links = ProfileLinks(
+                settings = { navController.navigate(Destination.Settings) },
+                personalization = { navController.navigate(Destination.DisplaySettings) },
+                categories = { navController.navigate(Destination.Categories) },
+                archived = { navController.navigate(Destination.Archived) },
+                backup = { navController.navigate(Destination.Backup) },
+                privacy = { navController.navigate(Destination.Privacy) },
+                about = { navController.navigate(Destination.About) },
+            ),
+            onDismiss = { openProfile = false },
+        )
     }
     }
 }

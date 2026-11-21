@@ -65,6 +65,7 @@ data class FilterTop(
  * [content] receives padding that already includes the side gutter and toolbar clearance.
  * [onBack] adds a back arrow for pages below the top level. [floatingActionButton] floats over
  * the bottom of the page, inside the toolbar clearance, so it never covers the last row.
+ * [brand] swaps the large title for a small bar that leads with it, as on the start screen.
  */
 @Composable
 fun EonslateScaffold(
@@ -76,6 +77,7 @@ fun EonslateScaffold(
     filter: FilterTop? = null,
     onBack: (() -> Unit)? = null,
     floatingActionButton: @Composable () -> Unit = {},
+    brand: (@Composable () -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
@@ -107,7 +109,7 @@ fun EonslateScaffold(
             when {
                 filter != null -> AnimatedContent(targetState = filtering, label = "topBarFilter") { open ->
                     if (open) FilterTopBar(filter, onClose = closeFilter, requestFocus = focusPending, onFocused = { focusPending = false })
-                    else TitleTopBar(title, scrollBehavior, onBack) {
+                    else TitleTopBar(title, scrollBehavior, onBack, brand) {
                         IconButton(shapes = IconButtonDefaults.shapes(), onClick = {
                             filtering = true
                             focusPending = true
@@ -118,7 +120,7 @@ fun EonslateScaffold(
                         actions()
                     }
                 }
-                else -> TitleTopBar(title, scrollBehavior, onBack, actions)
+                else -> TitleTopBar(title, scrollBehavior, onBack, brand, actions)
             }
         }
     ) { inner ->
@@ -142,9 +144,19 @@ private fun TitleTopBar(
     title: String,
     scrollBehavior: TopAppBarScrollBehavior,
     onBack: (() -> Unit)?,
+    brand: (@Composable () -> Unit)?,
     actions: @Composable RowScope.() -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
+    if (brand != null) {
+        TopAppBar(
+            title = brand,
+            actions = actions,
+            scrollBehavior = scrollBehavior,
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceContainer, scrolledContainerColor = colors.surfaceContainer),
+        )
+        return
+    }
     // The Expressive large bar: a bigger title that settles into the small bar as the page scrolls.
     LargeFlexibleTopAppBar(
         title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },

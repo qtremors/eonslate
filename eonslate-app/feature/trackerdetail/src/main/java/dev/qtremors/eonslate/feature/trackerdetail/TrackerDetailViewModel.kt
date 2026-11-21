@@ -173,6 +173,12 @@ class TrackerDetailViewModel @Inject constructor(
 
     fun showMonth(month: YearMonth) = ui.update { it.copy(month = month, day = it.day?.takeIf { d -> YearMonth.from(d) == month }) }
 
+    /** Opens [day] in the calendar, as a tap on the heat map asks. */
+    fun openDay(day: LocalDate) {
+        ui.update { it.copy(view = DetailView.CALENDAR, month = YearMonth.from(day), day = day) }
+        handle[KEY_VIEW] = DetailView.CALENDAR.name
+    }
+
     /** Picks a day on the calendar, or clears the pick when the same day is tapped again. */
     fun selectDay(day: LocalDate) = ui.update { it.copy(day = if (it.day == day) null else day) }
 

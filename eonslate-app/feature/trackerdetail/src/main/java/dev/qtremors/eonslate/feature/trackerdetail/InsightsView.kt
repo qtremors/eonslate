@@ -1,5 +1,15 @@
 package dev.qtremors.eonslate.feature.trackerdetail
 
+import dev.qtremors.eonslate.core.tracker.ui.intervalDuePoint
+import dev.qtremors.eonslate.core.tracker.ui.intervalRemaining
+import dev.qtremors.eonslate.core.ui.components.WeekdayBars
+import dev.qtremors.eonslate.core.tracker.domain.insights.Weekdays
+import dev.qtremors.eonslate.core.ui.components.YearHeatMap
+import dev.qtremors.eonslate.core.ui.components.ProgressRing
+import dev.qtremors.eonslate.core.tracker.domain.model.goal
+import dev.qtremors.eonslate.core.tracker.domain.insights.localDay
+import dev.qtremors.eonslate.core.tracker.domain.insights.HeatLevels
+import dev.qtremors.eonslate.core.tracker.domain.insights.ConsistencyOf
 import dev.qtremors.eonslate.core.tracker.ui.rhythmText
 import dev.qtremors.eonslate.core.tracker.ui.intervalLastText
 import dev.qtremors.eonslate.core.tracker.ui.intervalText
@@ -76,7 +86,7 @@ import java.util.Locale
  * running period and records wear ember. Field stats cover the whole history.
  */
 @Composable
-internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate, modifier: Modifier = Modifier) {
+internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate, modifier: Modifier = Modifier, onDay: (LocalDate) -> Unit = {}) {
     val words = rememberValueWords()
     val colors = MaterialTheme.colorScheme
     val dark = colors.surface.luminance() < 0.5f
@@ -99,6 +109,9 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
                 value = pluralStringResource(unit, streak.current, streak.current),
                 accent = streak.longestIsCurrent,
                 modifier = Modifier.weight(1f),
+                // Fills toward the best run, so a number reads as progress.
+                progress = if (streak.longest > 0 && !streak.longestIsCurrent) streak.current.toFloat() / streak.longest else null,
+                progressColor = pigment,
             )
             val shortDay = remember(locale) { DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMM")) }
             StatTile(
@@ -112,6 +125,9 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
                 modifier = Modifier.weight(1f),
             )
         }
+
+        ConsistencyRow(tracker, days, logged, today, state.firstDay, pigment)
+        HeatMapCard(tracker, state, days, today, pigment, onDay)
 
         state.allEntries?.let { all ->
             IntervalTiles(tracker, all, today)
@@ -139,6 +155,26 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
         }
 
         ActivityCard(buckets = buckets, counts = counts, period = period, pigment = pigment)
+
+        // Which weekdays carry the most entries, over the whole history.
+        val weekdays = remember(state.times, state.firstDay) {
+            Weekdays.totals(state.times.groupingBy { it.day() }.eachCount().mapValues { it.value.toDouble() }, state.firstDay)
+        }
+        Weekdays.busiest(weekdays)?.let { busiest ->
+            val dayName = { d: java.time.DayOfWeek -> d.getDisplayName(java.time.format.TextStyle.FULL, locale) }
+            ChartCard(
+                title = stringResource(R.string.insights_by_weekday),
+                caption = stringResource(R.string.insights_busiest, dayName(busiest)),
+                rows = weekdays.map { (d, n) -> dayName(d) to n.toInt().toString() },
+            ) {
+                WeekdayBars(
+                    totals = weekdays,
+                    color = pigment,
+                    contentDescription = stringResource(R.string.insights_busiest, dayName(busiest)),
+                    peakLabel = weekdays.maxOf { it.second }.toInt().toString(),
+                )
+            }
+        }
 
         val all = state.allEntries
         if (all == null) {
@@ -184,7 +220,15 @@ private fun bucketLabel(bucket: Bucket, period: Period): String {
 }
 
 @Composable
-private fun StatTile(label: String, value: String, modifier: Modifier = Modifier, accent: Boolean = false, supporting: String? = null) {
+private fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    accent: Boolean = false,
+    supporting: String? = null,
+    progress: Float? = null,
+    progressColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+) {
     val colors = MaterialTheme.colorScheme
     Surface(color = if (accent) colors.tertiaryContainer else colors.surfaceBright, shape = SlateCardShape, modifier = modifier) {
         Column(Modifier.padding(16.dp)) {
@@ -198,6 +242,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
             if (supporting != null) {
                 Text(supporting, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
             }
+            if (progress != null) Meter(progress, progressColor, contentDescription = label, modifier = Modifier.padding(top = 10.dp))
         }
     }
 }
@@ -491,8 +536,8 @@ private fun IntervalTiles(tracker: Tracker, all: List<Entry>, today: LocalDate) 
     statuses.forEach { status ->
         StatTile(
             label = status.label ?: stringResource(R.string.insights_interval),
-            value = intervalText(status, tracker).removePrefix(status.label.orEmpty()).trim().replaceFirstChar { it.uppercase() },
-            supporting = intervalLastText(status, tracker),
+            value = if (status.last == null) stringResource(R.string.insights_interval_waiting) else intervalRemaining(status, tracker),
+            supporting = listOfNotNull(intervalDuePoint(status, tracker), intervalLastText(status, tracker)).joinToString(" · "),
             accent = status.due,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -507,5 +552,81 @@ private fun IntervalTiles(tracker: Tracker, all: List<Entry>, today: LocalDate) 
             supporting = stringResource(R.string.insights_rhythm_hint),
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/** The share of due days done since the tracker began, as a ring, beside the day it began. */
+@Composable
+private fun ConsistencyRow(tracker: Tracker, done: List<LocalDate>, logged: List<LocalDate>, today: LocalDate, firstDay: java.time.DayOfWeek, pigment: androidx.compose.ui.graphics.Color) {
+    val zone = java.time.ZoneId.systemDefault()
+    val created = java.time.Instant.ofEpochMilli(tracker.createdAt).atZone(zone).toLocalDate()
+    val start = (logged.minOrNull()?.let { minOf(it, created) } ?: created)
+    val consistency = remember(tracker.schedule, done, start, today, firstDay) { ConsistencyOf.of(tracker.schedule, done.toSet(), start, today, firstDay) }
+    val locale = Locale.getDefault()
+    val longDate = remember(locale) { DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMyyyy")) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (consistency != null && consistency.due > 0) {
+            Surface(color = MaterialTheme.colorScheme.surfaceBright, shape = SlateCardShape, modifier = Modifier.weight(1f)) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ProgressRing(
+                        fraction = consistency.share,
+                        color = pigment,
+                        contentDescription = stringResource(R.string.insights_consistency) + " " + consistency.percent + "%",
+                        size = 64.dp,
+                        thickness = 8.dp,
+                    ) { Text("${consistency.percent}%", style = MaterialTheme.typography.labelLarge) }
+                    Column {
+                        Text(stringResource(R.string.insights_consistency), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            pluralStringResource(
+                                if (consistency.inWeeks) R.plurals.insights_consistency_weeks else R.plurals.insights_consistency_days,
+                                consistency.due, consistency.done, consistency.due,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        StatTile(
+            label = stringResource(R.string.insights_started),
+            value = start.format(longDate),
+            modifier = if (consistency != null && consistency.due > 0) Modifier.weight(0.8f) else Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * A year of days, shaded by how much was logged, or by how far a daily goal got. A tap opens the
+ * day in the calendar.
+ */
+@Composable
+private fun HeatMapCard(tracker: Tracker, state: DetailState, done: List<LocalDate>, today: LocalDate, pigment: androidx.compose.ui.graphics.Color, onDay: (LocalDate) -> Unit) {
+    val daily = remember(tracker) { Goals.fields(tracker).firstOrNull { it.config.goal?.per == GoalPeriod.DAY } }
+    val all = state.allEntries
+    val levels = remember(state.times, all, daily) {
+        if (daily != null && all != null) {
+            // With a daily goal: a quarter step for each quarter of the way, full once met.
+            all.groupBy { it.localDay() }.mapValues { (_, list) ->
+                val progress = Goals.progress(tracker.copy(fields = listOf(daily)), list, list.first().localDay()).first()
+                if (progress.met) 4 else (progress.fraction * 4).toInt().coerceIn(1, 3)
+            }
+        } else {
+            HeatLevels.of(state.times.groupingBy { it.day() }.eachCount().mapValues { it.value.toDouble() })
+        }
+    }
+    Surface(color = MaterialTheme.colorScheme.surfaceBright, shape = SlateCardShape, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.insights_year), style = MaterialTheme.typography.titleSmall)
+            YearHeatMap(
+                levels = levels,
+                today = today,
+                firstDay = state.firstDay,
+                color = pigment,
+                contentDescription = done.count { it.isAfter(today.minusYears(1)) }.let { pluralStringResource(R.plurals.insights_year_summary, it, it) },
+                onDay = onDay,
+            )
+        }
     }
 }

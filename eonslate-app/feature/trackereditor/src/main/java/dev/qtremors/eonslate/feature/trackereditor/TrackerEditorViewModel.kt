@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import kotlinx.coroutines.flow.map
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -73,6 +74,9 @@ class TrackerEditorViewModel @Inject constructor(
 
     /** The currency new money fields start with; follows the setting as it changes. */
     private var defaultCurrency: String = defaultCurrencyCode()
+
+    /** The day weeks start on, for the weekday chips. */
+    val firstDay = settings.tracking.map { it.firstDayOfWeek() }
 
     private val _state = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _state.asStateFlow()

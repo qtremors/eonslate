@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.tracker.domain.model.Reminder
 import dev.qtremors.eonslate.core.tracker.domain.reminders.ReminderRepository
 import dev.qtremors.eonslate.core.tracker.domain.repository.TrackerRepository
@@ -24,6 +25,8 @@ data class RemindersUiState(
     val reminders: List<Reminder>,
     /** The days a new reminder starts on: the tracker's scheduled weekdays, or every day. */
     val defaultDays: Set<DayOfWeek> = DayOfWeek.entries.toSet(),
+    /** The day weeks start on, for the weekday chips. */
+    val firstDay: DayOfWeek = java.time.temporal.WeekFields.of(java.util.Locale.getDefault()).firstDayOfWeek,
 )
 
 @HiltViewModel
@@ -32,6 +35,7 @@ class RemindersViewModel @Inject constructor(
     trackers: TrackerRepository,
     private val repository: ReminderRepository,
     private val clock: AppClock,
+    settings: SettingsRepository,
     private val ids: IdGenerator,
 ) : ViewModel() {
     private val trackerId: String = checkNotNull(savedState[ARG_TRACKER_ID]) { "Reminders need a tracker" }
@@ -39,10 +43,11 @@ class RemindersViewModel @Inject constructor(
     val state: StateFlow<RemindersUiState?> = combine(
         trackers.observeTracker(trackerId),
         repository.observeReminders(trackerId),
-    ) { tracker, list ->
+        settings.tracking,
+    ) { tracker, list, tracking ->
         val schedule = tracker?.schedule
         val days = if (schedule == null || schedule.isWeekly || schedule.isAsNeeded) DayOfWeek.entries.toSet() else schedule.days
-        RemindersUiState(tracker?.name.orEmpty(), list, days)
+        RemindersUiState(tracker?.name.orEmpty(), list, days, tracking.firstDayOfWeek())
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

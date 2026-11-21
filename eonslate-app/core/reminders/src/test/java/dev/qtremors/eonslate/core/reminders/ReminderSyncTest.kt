@@ -33,12 +33,25 @@ private class FakeReminders : ReminderRepository {
     }
 }
 
+/** No entries: these tests are about alarms, not clearing shown notifications. */
+private object NoEntries : dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository {
+    override fun observeEntries(trackerId: String) = kotlinx.coroutines.flow.emptyFlow<List<dev.qtremors.eonslate.core.tracker.domain.model.Entry>>()
+    override fun observeEntriesBetween(trackerId: String, fromMillis: Long, untilMillis: Long) = kotlinx.coroutines.flow.emptyFlow<List<dev.qtremors.eonslate.core.tracker.domain.model.Entry>>()
+    override fun observeRecentEntries(trackerId: String, limit: Int) = kotlinx.coroutines.flow.emptyFlow<List<dev.qtremors.eonslate.core.tracker.domain.model.Entry>>()
+    override fun observeEntryTimes(trackerId: String) = kotlinx.coroutines.flow.emptyFlow<List<dev.qtremors.eonslate.core.tracker.domain.model.EntryTime>>()
+    override suspend fun getEntry(id: String): dev.qtremors.eonslate.core.tracker.domain.model.Entry? = null
+    override fun observeEntryTimesByTracker() = kotlinx.coroutines.flow.emptyFlow<Map<String, List<dev.qtremors.eonslate.core.tracker.domain.model.EntryTime>>>()
+    override suspend fun getLatestEntry(trackerId: String): dev.qtremors.eonslate.core.tracker.domain.model.Entry? = null
+    override suspend fun saveEntry(entry: dev.qtremors.eonslate.core.tracker.domain.model.Entry) = dev.qtremors.eonslate.core.tracker.domain.validation.ValidationResult.Valid
+    override suspend fun deleteEntry(id: String) = Unit
+}
+
 @RunWith(RobolectricTestRunner::class)
 class ReminderSyncTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val alarms = shadowOf(context.getSystemService(AlarmManager::class.java))
     private val repo = FakeReminders()
-    private val sync = ReminderSync(context, repo)
+    private val sync = ReminderSync(context, repo, NoEntries)
     private val now = ZonedDateTime.of(2026, 11, 11, 9, 0, 0, 0, ZoneId.of("Asia/Kolkata"))
 
     private fun reminder(id: String, minute: Int = 20 * 60, enabled: Boolean = true, days: Set<DayOfWeek> = DayOfWeek.entries.toSet()) =

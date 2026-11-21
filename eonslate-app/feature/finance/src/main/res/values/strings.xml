@@ -1,5 +1,23 @@
 <resources>
     <string name="finance_title">Finance</string>
+    <string name="alerts_title">Notifications</string>
+    <string name="alerts_empty_title">All caught up</string>
+    <string name="alerts_empty_message">Payments to confirm, budgets gone over and things due show up here.</string>
+    <string name="alerts_section_due">Payments to confirm</string>
+    <string name="alerts_section_budgets">Over budget</string>
+    <string name="alerts_section_trackers">Due</string>
+    <string name="alerts_section_soon">Coming up</string>
+    <string name="alerts_payment">Payment</string>
+    <string name="alerts_due_today">Due today</string>
+    <string name="alerts_over">%1$d%% of %2$s</string>
+    <plurals name="alerts_waiting_days">
+        <item quantity="one">Waiting %d day</item>
+        <item quantity="other">Waiting %d days</item>
+    </plurals>
+    <plurals name="alerts_in_days">
+        <item quantity="one">In %d day</item>
+        <item quantity="other">In %d days</item>
+    </plurals>
     <string name="finance_accounts">Accounts</string>
     <string name="finance_activity">Transactions</string>
     <string name="finance_empty">No accounts</string>
@@ -323,6 +341,9 @@
     <string name="finance_costs_per_month">Costs per month</string>
     <string name="finance_income_per_month">Income per month</string>
     <string name="finance_shown_currency">Shown in %1$s</string>
+    <string name="finance_spending_by_day">Spending by day</string>
+    <string name="finance_spending_by_weekday">Spending by weekday</string>
+    <string name="finance_busiest">Most on %1$s: %2$s</string>
     <string name="finance_discard_title">Discard changes?</string>
     <string name="finance_discard_message">What you entered here won\'t be saved.</string>
     <string name="finance_discard">Discard</string>

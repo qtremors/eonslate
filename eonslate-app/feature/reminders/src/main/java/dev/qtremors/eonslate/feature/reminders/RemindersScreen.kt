@@ -138,6 +138,7 @@ fun RemindersContent(
         ReminderSheet(
             reminder = existing,
             defaultDays = state.defaultDays,
+            firstDay = state.firstDay,
             onSave = { minute, days, skip ->
                 onSave(existing?.id, minute, days, skip)
                 editing = null
@@ -222,6 +223,7 @@ fun RemindersContent(
 private fun ReminderSheet(
     reminder: Reminder?,
     defaultDays: Set<DayOfWeek>,
+    firstDay: DayOfWeek,
     onSave: (minuteOfDay: Int, days: Set<DayOfWeek>, skipIfLogged: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
@@ -239,7 +241,7 @@ private fun ReminderSheet(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             TimeInput(state = time)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                weekOrder().forEach { day ->
+                weekOrder(firstDay).forEach { day ->
                     val on = day in days
                     FilterChip(
                         selected = on,
@@ -281,10 +283,8 @@ private fun ReminderSheet(
 }
 
 /** The week starting on the locale's first day. */
-private fun weekOrder(): List<DayOfWeek> {
-    val first = WeekFields.of(Locale.getDefault()).firstDayOfWeek
-    return (0L until 7L).map { first.plus(it) }
-}
+private fun weekOrder(first: DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek): List<DayOfWeek> =
+    (0L until 7L).map { first.plus(it) }
 
 private fun timeText(minuteOfDay: Int): String =
     LocalTime.of(minuteOfDay / 60, minuteOfDay % 60).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))

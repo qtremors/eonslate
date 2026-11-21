@@ -27,6 +27,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import dev.qtremors.eonslate.core.tracker.domain.finance.MoneySummary
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -45,6 +50,13 @@ class FinanceViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val currency = settings.tracking.map { it.currencyCode() }
+
+    /** Home's money card: worked out off the main thread from the ledger and the shown currency. */
+    val overview: StateFlow<Overview?> = combine(ledger.filterNotNull(), currency) { data, code ->
+        Overview(MoneySummary.of(data, today(), data.shownCurrency(code)), chartSlots(data), data.currencies(), data.accounts.isEmpty())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    data class Overview(val summary: MoneySummary?, val slots: Map<String, Int>, val currencies: List<String>, val noAccounts: Boolean)
 
     /** Shows totals and charts in [code] on every tab; it is the app's currency setting. */
     fun showCurrency(code: String) {

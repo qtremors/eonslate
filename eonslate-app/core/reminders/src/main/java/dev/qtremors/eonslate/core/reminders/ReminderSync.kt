@@ -1,5 +1,9 @@
 package dev.qtremors.eonslate.core.reminders
 
+import java.time.LocalDate
+import dev.qtremors.eonslate.core.tracker.domain.insights.localDay
+import dev.qtremors.eonslate.core.tracker.domain.repository.EntryRepository
+import androidx.core.app.NotificationManagerCompat
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
@@ -27,6 +31,7 @@ import javax.inject.Singleton
 class ReminderSync @Inject constructor(
     @ApplicationContext private val context: Context,
     private val reminders: ReminderRepository,
+    private val entries: EntryRepository,
 ) {
     private val lock = Mutex()
     private val alarms = context.getSystemService(AlarmManager::class.java)
@@ -35,6 +40,17 @@ class ReminderSync @Inject constructor(
     /** Follows the database for the life of the process, so every edit reschedules. */
     fun start(scope: CoroutineScope) {
         scope.launch { reminders.observeActive().collect { sync() } }
+        // A reminder that already went off is cleared once its tracker is logged today, from
+        // anywhere: the app, the widget or the tile.
+        scope.launch {
+            entries.observeEntryTimesByTracker().collect { times ->
+                val today = LocalDate.now()
+                val logged = times.filterValues { list -> list.any { it.localDay() == today } }.keys
+                if (logged.isEmpty()) return@collect
+                val shade = NotificationManagerCompat.from(context)
+                reminders.getActive().filter { it.trackerId in logged }.forEach { shade.cancel(it.id.hashCode()) }
+            }
+        }
     }
 
     suspend fun sync(now: ZonedDateTime = ZonedDateTime.now()) = lock.withLock {

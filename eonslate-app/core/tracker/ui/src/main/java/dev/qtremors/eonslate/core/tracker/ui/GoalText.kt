@@ -3,6 +3,7 @@ package dev.qtremors.eonslate.core.tracker.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.qtremors.eonslate.core.tracker.domain.insights.GoalProgress
+import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldType
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
@@ -19,8 +20,9 @@ fun goalAmount(field: FieldDefinition, amount: Long): String {
 /** Where a goal stands: "5 glasses of 8 glasses today", "1 coffee, at most 2 coffees today". */
 @Composable
 fun goalText(progress: GoalProgress): String {
-    val total = goalAmount(progress.field, progress.total)
     val target = goalAmount(progress.field, progress.goal.target)
+    val unit = (progress.field.config as? FieldConfig.Number)?.unit?.trim().orEmpty()
+    val total = goalAmount(progress.field, progress.total).let { if (unit.isNotEmpty()) it.removeSuffix(" $unit") else it }
     val week = progress.goal.per == GoalPeriod.WEEK
     return stringResource(
         when {

@@ -21,6 +21,24 @@
     </plurals>
     <string name="insights_goal">Goal: %1$s</string>
     <string name="insights_interval">Due again</string>
+    <string name="insights_interval_waiting">Waiting</string>
+    <string name="insights_consistency">Consistency</string>
+    <string name="insights_by_weekday">By weekday</string>
+    <string name="insights_busiest">Most on %1$s</string>
+    <string name="insights_started">Started</string>
+    <string name="insights_year">The last year</string>
+    <plurals name="insights_consistency_days">
+        <item quantity="one">%1$d of %2$d due day</item>
+        <item quantity="other">%1$d of %2$d due days</item>
+    </plurals>
+    <plurals name="insights_consistency_weeks">
+        <item quantity="one">%1$d of %2$d week met</item>
+        <item quantity="other">%1$d of %2$d weeks met</item>
+    </plurals>
+    <plurals name="insights_year_summary">
+        <item quantity="one">%d day done in the last year</item>
+        <item quantity="other">%d days done in the last year</item>
+    </plurals>
     <string name="insights_rhythm">Usual rhythm</string>
     <string name="insights_rhythm_hint">Learned from your logs</string>
     <string name="insights_goal_run">%1$s in a row</string>

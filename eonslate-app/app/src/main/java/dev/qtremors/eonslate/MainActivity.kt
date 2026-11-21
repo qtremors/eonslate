@@ -29,6 +29,7 @@ import dev.qtremors.eonslate.core.ui.theme.EonslateTheme
 import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 import dev.qtremors.eonslate.core.ui.theme.ValueDisplay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.time.LocalDateTime
@@ -47,6 +48,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var detection: dev.qtremors.eonslate.feature.finance.SmsDetection
 
+    @Inject
+    lateinit var alerts: dev.qtremors.eonslate.feature.finance.AlertCenter
+
     /** Null until the start is decided; the splash stays up until then, so nothing flashes. */
     private var showWelcome by mutableStateOf<Boolean?>(null)
 
@@ -54,14 +58,22 @@ class MainActivity : ComponentActivity() {
     private var openLog by mutableStateOf<String?>(null)
     private var sharedMessage by mutableStateOf<String?>(null)
 
+    /** True once the first screen has its data, or after [SPLASH_LIMIT_MILLIS] at most. */
+    private var ready = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen().setKeepOnScreenCondition { showWelcome == null }
+        // The splash holds until Home has its figures, so the app opens filled in rather than loading.
+        installSplashScreen().setKeepOnScreenCondition { showWelcome == null || !ready }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         applyScreenshotPolicy(settings)
         if (savedInstanceState == null) {
             openLog = intent.getStringExtra(EXTRA_LOG_TRACKER)
             sharedMessage = takePaymentMessage(intent)
+        }
+        lifecycleScope.launch {
+            delay(SPLASH_LIMIT_MILLIS)
+            ready = true
         }
         lifecycleScope.launch {
             val seen = settings.welcomeSeen.first()
@@ -73,6 +85,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appearance by settings.appearance.collectAsState(initial = Appearance())
             val display by settings.display.collectAsState(initial = DisplayPreferences())
+            val alertCount by alerts.count.collectAsState(initial = 0)
             EonslateTheme(options = appearance.toThemeOptions()) {
                 val lightBars = MaterialTheme.colorScheme.surface.luminance() > 0.5f
                 SideEffect {
@@ -90,6 +103,8 @@ class MainActivity : ComponentActivity() {
                             sharedMessage = sharedMessage,
                             onMessageOpened = { sharedMessage = null },
                             displayName = display.name,
+                            onReady = { ready = true },
+                            alertCount = alertCount,
                         )
                     }
                 }
@@ -110,6 +125,10 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         intent.getStringExtra(EXTRA_LOG_TRACKER)?.let { openLog = it }
         takePaymentMessage(intent)?.let { sharedMessage = it }
+    }
+
+    private companion object {
+        const val SPLASH_LIMIT_MILLIS = 1_500L
     }
 
     private fun takePaymentMessage(intent: Intent): String? {

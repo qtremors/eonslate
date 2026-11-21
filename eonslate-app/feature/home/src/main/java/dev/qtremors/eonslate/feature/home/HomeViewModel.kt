@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.tracker.domain.insights.ConsistencyOf
+import dev.qtremors.eonslate.core.tracker.domain.insights.Consistency
 import dev.qtremors.eonslate.core.tracker.domain.insights.Rhythm
 import dev.qtremors.eonslate.core.tracker.domain.insights.Intervals
 import dev.qtremors.eonslate.core.tracker.domain.insights.IntervalStatus
@@ -36,6 +38,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
@@ -50,7 +55,9 @@ class HomeViewModel @Inject constructor(
     private val settings: SettingsRepository,
 ) : ViewModel() {
     /** Active trackers in home order; null until the first read, so loading never looks empty. */
-    val trackers: StateFlow<List<TrackerSummary>?> = repository.observeSummaries()
+    // One read of each query for every card on this screen, not one per flow that uses it.
+    private val summaries = repository.observeSummaries().shared()
+    val trackers: StateFlow<List<TrackerSummary>?> = summaries
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
     val homeTag = settings.homeTag
@@ -61,7 +68,7 @@ class HomeViewModel @Inject constructor(
 
     // The device's week start until the setting is read, so nothing waits on it.
     private val weekStart = settings.tracking.map { it.firstDayOfWeek() }.onStart { emit(Tracking().firstDayOfWeek()) }.distinctUntilChanged()
-    private val trackersById = repository.observeSummaries().map { list -> list.associate { it.tracker.id to it.tracker } }
+    private val trackersById = summaries.map { list -> list.associate { it.tracker.id to it.tracker } }.shared()
     private val schedules = trackersById.map { trackers -> trackers.mapValues { (_, tracker) -> tracker.schedule } }
 
     /**
@@ -76,6 +83,7 @@ class HomeViewModel @Inject constructor(
             if (ids.isEmpty()) flowOf(emptyMap())
             else combine(ids.map { id -> entries.observeEntries(id).map { id to it } }) { pairs -> pairs.toMap() }
         }
+        .shared()
 
     /**
      * The days each tracker counts as done: days with an entry, or for a tracker with daily goals
@@ -88,13 +96,13 @@ class HomeViewModel @Inject constructor(
     ) { times, trackers, withValues ->
         val days = times.mapValues { (_, list) -> list.map { it.localDay() } }
         days + withValues.mapNotNull { (id, list) -> trackers[id]?.let { id to Goals.doneDays(it, list).toList() } }
-    }
+    }.flowOn(Dispatchers.Default).shared()
 
     /** Each tracker's progress toward its first goal, for the meter on its card. */
     val goals: StateFlow<Map<String, GoalProgress>> = combine(trackersById, goalEntries, weekStart) { trackers, withValues, weekStart ->
         val today = LocalDate.now(ZoneId.of(clock.zoneId()))
         withValues.mapNotNull { (id, list) -> trackers[id]?.let { Goals.progress(it, list, today, weekStart).firstOrNull() }?.let { id to it } }.toMap()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
     /** Trackers, the days each was logged, and the week start, read together. */
     private val logged = combine(schedules, loggedDays, weekStart, ::Logged)
@@ -108,7 +116,7 @@ class HomeViewModel @Inject constructor(
             val today = LocalDate.now(ZoneId.of(clock.zoneId()))
             days.mapValues { (id, logged) -> Streaks.of(logged, today, schedules[id] ?: Schedule.DAILY, weekStart).current }.filterValues { it > 0 }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+        .flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
     /** What comes next for each tracker: its most pressing set interval, or else its learned rhythm. */
     val upcoming: StateFlow<Map<String, Upcoming>> = combine(trackersById, goalEntries) { trackers, withValues ->
@@ -120,7 +128,7 @@ class HomeViewModel @Inject constructor(
             val rhythm = if (next == null && tracker.schedule.isAsNeeded) Intervals.learned(tracker, list, today).minByOrNull { it.daysLeft } else null
             if (next == null && rhythm == null) null else id to Upcoming(next, rhythm, statuses.any { it.due })
         }.toMap()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
     /** The trackers due today: by schedule, or because a set interval has come round. */
     val dueToday: StateFlow<Set<String>?> = combine(logged, upcoming) { (schedules, days, weekStart), next ->
@@ -131,6 +139,21 @@ class HomeViewModel @Inject constructor(
     val today: StateFlow<TodayProgress?> = logged
         .map { (schedules, days, weekStart) -> Today.progress(schedules, days, LocalDate.now(ZoneId.of(clock.zoneId())), weekStart) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
+    /** Each scheduled tracker's consistency since it began, for the overview; As needed ones have none. */
+    val consistency: StateFlow<Map<String, Consistency>> = combine(trackersById, loggedDays, weekStart) { trackers, days, weekStart ->
+        val zone = ZoneId.of(clock.zoneId())
+        val today = LocalDate.now(zone)
+        trackers.mapNotNull { (id, tracker) ->
+            val done = days[id].orEmpty()
+            val created = java.time.Instant.ofEpochMilli(tracker.createdAt).atZone(zone).toLocalDate()
+            val start = done.minOrNull()?.let { minOf(it, created) } ?: created
+            ConsistencyOf.of(tracker.schedule, done.toSet(), start, today, weekStart)?.takeIf { it.due > 0 }?.let { id to it }
+        }.toMap()
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+
+    private fun <T> Flow<T>.shared(): Flow<T> =
+        shareIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), replay = 1)
 
     /** The next interval or learned rhythm of a tracker, and whether an interval is due. */
     data class Upcoming(val interval: IntervalStatus?, val rhythm: Rhythm?, val due: Boolean)
