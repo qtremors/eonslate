@@ -1,5 +1,15 @@
 <resources>
     <string name="finance_title">Finance</string>
+    <string name="account_kind_bank">Bank</string>
+    <string name="account_kind_card">Card</string>
+    <string name="account_kind_wallet">Wallet</string>
+    <string name="account_kind_cash">Cash</string>
+    <string name="account_card_open">Show its transactions</string>
+    <string name="account_card_add">Add account</string>
+    <string name="finance_account_all">All accounts</string>
+    <string name="finance_digits">Last 4 digits</string>
+    <string name="finance_digits_hint">Payment SMS naming them go to this account</string>
+    <string name="finance_digits_error">Enter 4 digits</string>
     <string name="alerts_title">Notifications</string>
     <string name="alerts_empty_title">All caught up</string>
     <string name="alerts_empty_message">Payments to confirm, budgets gone over and things due show up here.</string>

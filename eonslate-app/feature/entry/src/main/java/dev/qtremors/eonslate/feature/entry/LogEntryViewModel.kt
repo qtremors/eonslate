@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.entry
 
+import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
+import dev.qtremors.eonslate.core.tracker.domain.insights.Parts
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,6 +64,7 @@ class LogEntryViewModel @Inject constructor(
 ) : ViewModel() {
     private val trackerId: String = checkNotNull(savedState[ARG_TRACKER_ID]) { "LogEntry needs a tracker" }
     private val entryId: String? = savedState[ARG_ENTRY_ID]
+    private val optionId: String? = savedState[ARG_OPTION_ID]
 
     private val _state = MutableStateFlow(LogState())
     val state: StateFlow<LogState> = _state.asStateFlow()
@@ -81,7 +84,12 @@ class LogEntryViewModel @Inject constructor(
                 _state.value = LogState(loading = false, missing = true)
                 return@launch
             } else {
-                EntryDraft(id = ids.newId(), trackerId = trackerId, occurredAt = clock.nowMillis(), zoneId = clock.zoneId())
+                // Logged from one of its parts: that part is already picked.
+                val part = optionId?.let { id -> Parts.field(tracker)?.takeIf { field -> (field.config as FieldConfig.SingleChoice).options.any { it.id == id } } }
+                EntryDraft(
+                    id = ids.newId(), trackerId = trackerId, occurredAt = clock.nowMillis(), zoneId = clock.zoneId(),
+                    inputs = part?.let { mapOf(it.id to FieldInput(choices = setOf(optionId!!))) }.orEmpty(),
+                )
             }
             val last = if (draft.isNew) entries.getLatestEntry(trackerId) else null
             _state.value = LogState(
@@ -177,6 +185,7 @@ class LogEntryViewModel @Inject constructor(
     companion object {
         const val ARG_TRACKER_ID = "trackerId"
         const val ARG_ENTRY_ID = "entryId"
+        const val ARG_OPTION_ID = "optionId"
         private const val KEY_DRAFT = "log.draft"
         private const val KEY_DIRTY = "log.dirty"
     }

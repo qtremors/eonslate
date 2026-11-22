@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.domain.insights
 
+import kotlin.math.roundToLong
+import kotlin.math.ceil
 import dev.qtremors.eonslate.core.tracker.domain.model.Entry
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldConfig
 import dev.qtremors.eonslate.core.tracker.domain.model.FieldValue
@@ -27,12 +29,43 @@ data class IntervalStatus(
     val dueAt: Long?,
     val current: Long?,
     val today: LocalDate,
+    /** The day of the newest reading, [current]. */
+    val readAt: LocalDate? = null,
+    /** How much the number field grows in a day, learned from its readings; null until two are far enough apart. */
+    val pace: Double? = null,
+    /** The weekdays the reading grows on, as a mask; null for every day. */
+    val countDays: Int? = null,
 ) {
+    /**
+     * The reading today: the newest one, carried forward at the usual [pace] when it is days old.
+     * An odometer logged only at each oil change still counts down between them.
+     */
+    val estimate: Long?
+        get() {
+            val reading = current ?: return null
+            val perDay = pace ?: return reading
+            val days = readAt?.let { Intervals.countedDays(it, today, countDays) } ?: return reading
+            return if (days > 0) reading + (perDay * days).roundToLong() else reading
+        }
+
+    /** True when what is left comes from the usual pace rather than a reading made today. */
+    val estimated: Boolean get() = estimate != current
+
+    /** The day [dueAt] should be reached at the usual pace. */
+    val amountDueOn: LocalDate?
+        get() {
+            val perDay = pace?.takeIf { it > 0 } ?: return null
+            val at = dueAt ?: return null
+            val reading = current ?: return null
+            val from = readAt ?: return null
+            return Intervals.afterCountedDays(from, ceil((at - reading) / perDay).toLong().coerceAtLeast(0), countDays)
+        }
+
     /** Days until [dueOn]; zero or less once it has come. */
     val daysLeft: Long? get() = dueOn?.let { ChronoUnit.DAYS.between(today, it) }
 
     /** How much more the field can grow before [dueAt]; zero or less once reached. */
-    val amountLeft: Long? get() = if (dueAt != null && current != null) dueAt - current else null
+    val amountLeft: Long? get() = estimate?.let { now -> dueAt?.minus(now) }
 
     /** Due once either the day or the amount is reached. Never-logged jobs are not due, only waiting. */
     val due: Boolean get() = last != null && ((daysLeft ?: 1) <= 0 || (amountLeft ?: 1) <= 0)
@@ -65,9 +98,14 @@ object Intervals {
             val amountField = interval.amountFieldId
             val lastAmount = amountField?.let { (job?.values?.get(it) as? FieldValue.Number)?.scaled }
             // The newest reading in any entry, such as a fuel log's odometer.
-            val current = amountField?.let { id -> newestFirst.firstNotNullOfOrNull { (it.values[id] as? FieldValue.Number)?.scaled } }
+            val readings = amountField?.let { readings(entries, it) }.orEmpty()
+            val current = readings.lastOrNull()?.second
             val dueAt = if (interval.amount != null && lastAmount != null) lastAmount + interval.amount else null
-            IntervalStatus(interval, label, last, lastAmount, dueOn, dueAt, current, today)
+            IntervalStatus(interval, label, last, lastAmount, dueOn, dueAt, current, today, readings.lastOrNull()?.first,
+                // The usual daily amount when it is set, else the pace the readings show.
+                interval.perDay?.toDouble() ?: pace(readings, today, interval.countDays),
+                interval.countDays,
+            )
         }
     }
 
@@ -82,7 +120,7 @@ object Intervals {
      * A job needs three logs, two gaps, before it has a rhythm.
      */
     fun learned(tracker: Tracker, entries: List<Entry>, today: LocalDate): List<Rhythm> {
-        val choice = tracker.fields.firstOrNull { it.config is FieldConfig.SingleChoice }
+        val choice = Parts.field(tracker) ?: tracker.fields.firstOrNull { it.config is FieldConfig.SingleChoice }
         val meter = tracker.fields.firstOrNull { field ->
             field.config is FieldConfig.Number && entries.sortedBy { it.occurredAt }
                 .mapNotNull { (it.values[field.id] as? FieldValue.Number)?.scaled }
@@ -102,6 +140,7 @@ object Intervals {
             val last = days.last()
             val lastReading = readings.lastOrNull()
             Rhythm(
+                optionId = optionId,
                 label = label,
                 days = gap,
                 nextOn = last.plusDays(gap),
@@ -116,6 +155,58 @@ object Intervals {
 
     private fun median(values: List<Long>): Long = values.sorted().let { it[it.size / 2] }
 
+    /** Each day's last reading of a number field, oldest first. */
+    private fun readings(entries: List<Entry>, fieldId: String): List<Pair<LocalDate, Long>> =
+        entries.sortedBy { it.occurredAt }
+            .mapNotNull { entry -> (entry.values[fieldId] as? FieldValue.Number)?.scaled?.let { entry.localDay() to it } }
+            .associate { it }.toList()
+
+    /**
+     * How much a growing reading rises in a day: from the oldest to the newest reading of the last
+     * two years (or of all time with fewer), once they are at least [PACE_MIN_DAYS] apart.
+     */
+    private fun pace(readings: List<Pair<LocalDate, Long>>, today: LocalDate, mask: Int?): Double? {
+        val recent = readings.filter { it.first >= today.minusYears(2) }.takeIf { it.size >= 2 } ?: readings
+        val first = recent.firstOrNull() ?: return null
+        val last = recent.last()
+        if (ChronoUnit.DAYS.between(first.first, last.first) < PACE_MIN_DAYS || last.second <= first.second) return null
+        // Per day it grows on: riding only on workdays makes each of those count for more.
+        val days = countedDays(first.first, last.first, mask).takeIf { it > 0 } ?: return null
+        return (last.second - first.second).toDouble() / days
+    }
+
+    private fun counts(day: LocalDate, mask: Int?): Boolean = mask == null || mask and (1 shl (day.dayOfWeek.value - 1)) != 0
+
+    /** The days after [after] up to and including [through] that fall on [mask]'s weekdays. */
+    fun countedDays(after: LocalDate, through: LocalDate, mask: Int?): Long {
+        val total = ChronoUnit.DAYS.between(after, through)
+        if (total <= 0) return 0
+        if (mask == null) return total
+        val weeks = total / 7
+        var counted = weeks * Integer.bitCount(mask)
+        var day = after.plusWeeks(weeks)
+        while (day < through) {
+            day = day.plusDays(1)
+            if (counts(day, mask)) counted++
+        }
+        return counted
+    }
+
+    /** The day [count] of [mask]'s weekdays after [from] have passed. */
+    fun afterCountedDays(from: LocalDate, count: Long, mask: Int?): LocalDate {
+        if (mask == null || count <= 0) return from.plusDays(count.coerceAtLeast(0))
+        val perWeek = Integer.bitCount(mask).coerceAtLeast(1)
+        var day = from.plusWeeks((count - 1) / perWeek)
+        var left = count - (count - 1) / perWeek * perWeek
+        while (left > 0) {
+            day = day.plusDays(1)
+            if (counts(day, mask)) left--
+        }
+        return day
+    }
+
+    private const val PACE_MIN_DAYS = 14L
+
     fun advance(day: LocalDate, every: Int, unit: IntervalUnit): LocalDate = when (unit) {
         IntervalUnit.DAY -> day.plusDays(every.toLong())
         IntervalUnit.WEEK -> day.plusWeeks(every.toLong())
@@ -129,6 +220,7 @@ object Intervals {
  * number field, the typical [growth] between them. A hint of what is next, never a deadline.
  */
 data class Rhythm(
+    val optionId: String? = null,
     val label: String?,
     val days: Long,
     val nextOn: LocalDate,

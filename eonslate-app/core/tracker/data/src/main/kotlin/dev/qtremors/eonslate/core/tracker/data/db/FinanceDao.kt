@@ -21,6 +21,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction as LedgerTransaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
 
 @Entity(tableName = "finance_accounts")
 data class AccountEntity(
@@ -29,8 +30,10 @@ data class AccountEntity(
     val currency: String,
     @ColumnInfo(name = "opening_minor") val openingMinor: Long,
     @ColumnInfo(name = "monthly_budget_minor") val monthlyBudgetMinor: Long?,
+    @ColumnInfo(defaultValue = "bank") val kind: String = AccountKind.BANK.storageKey,
+    val digits: String? = null,
 ) {
-    fun toDomain() = Account(id, name, currency, openingMinor, monthlyBudgetMinor)
+    fun toDomain() = Account(id, name, currency, openingMinor, monthlyBudgetMinor, AccountKind.fromKey(kind), digits)
 }
 
 @Entity(
@@ -128,7 +131,7 @@ data class CategoryEntity(
     fun toDomain() = CategoryChoice(name, CategoryKind.valueOf(kind), id, icon, color, deleted)
 }
 
-internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor)
+internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor, kind.storageKey, digits)
 
 internal fun RecurringPayment.toEntity() =
     RecurringEntity(

@@ -1,5 +1,19 @@
 package dev.qtremors.eonslate.feature.welcome
 
+import dev.qtremors.eonslate.core.ui.components.rememberFocusOnOpen
+import dev.qtremors.eonslate.core.ui.components.FormField
+import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
+import dev.qtremors.eonslate.core.ui.components.Avatar
+import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
@@ -71,20 +85,23 @@ import dev.qtremors.eonslate.core.ui.theme.SlateTileShape
 internal val STARTERS = listOf("habit", "mood", "water", "expenses", "sleep", "workout", "reading", "journal")
 
 /**
- * The first run, two pages at most: what Eonslate is, then a few trackers to start with. Both
- * can be skipped, and nothing here is needed to use the app.
+ * The first run: what Eonslate is, your name, your money, and a few trackers to start with.
+ * Every page can be skipped, and nothing here is needed to use the app. Someone moving from
+ * another phone can restore a backup instead.
  */
 @Composable
-fun WelcomeScreen(onDone: () -> Unit, viewModel: WelcomeViewModel = hiltViewModel()) {
+fun WelcomeScreen(onDone: () -> Unit, onRestore: () -> Unit = onDone, viewModel: WelcomeViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val haptics = rememberAppHaptics()
-    LaunchedEffect(state.done) { if (state.done) onDone() }
-    BackHandler(enabled = state.page == 1) { viewModel.showPage(0) }
+    LaunchedEffect(state.done) { if (state.done) (if (state.restore) onRestore else onDone)() }
+    BackHandler(enabled = state.page != WelcomePage.INTRO) { viewModel.back() }
 
-    val finish: (List<String>) -> Unit = { ids ->
-        viewModel.finish { currency ->
-            ids.mapNotNull(Templates::byId).map { spec ->
+    val defaultAccount = stringResource(R.string.welcome_account_default)
+    val finish: () -> Unit = {
+        haptics.confirm()
+        viewModel.finish(defaultAccount) { currency ->
+            state.picked.mapNotNull(Templates::byId).map { spec ->
                 Templates.instantiate(spec, context::getString, UuidIdGenerator, currency, now = 0)
             }
         }
@@ -93,30 +110,160 @@ fun WelcomeScreen(onDone: () -> Unit, viewModel: WelcomeViewModel = hiltViewMode
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxSize()) {
         AnimatedContent(targetState = state.page, label = "welcomePage") { page ->
             when (page) {
-                0 -> IntroPage(
-                    onNext = { viewModel.showPage(1) },
-                    onSkip = { finish(emptyList()) },
-                )
-                else -> StartersPage(
-                    picked = state.picked,
-                    saving = state.saving,
-                    onToggle = { id ->
-                        haptics.toggle(id !in state.picked)
-                        viewModel.toggle(id)
-                    },
-                    onStart = {
-                        haptics.confirm()
-                        finish(state.picked)
-                    },
-                    onSkip = { finish(emptyList()) },
-                )
+                WelcomePage.INTRO -> IntroPage(onNext = viewModel::next, onSkip = viewModel::skip, onRestore = viewModel::restore)
+                WelcomePage.YOU -> Step(
+                    page, onBack = viewModel::back, onSkip = viewModel::skip,
+                    nextLabel = stringResource(R.string.welcome_continue), onNext = viewModel::next,
+                ) { YouPage(state.name, viewModel::setName) }
+                WelcomePage.MONEY -> Step(
+                    page, onBack = viewModel::back, onSkip = viewModel::skip,
+                    nextLabel = stringResource(R.string.welcome_continue), onNext = viewModel::next, nextEnabled = state.moneyReady,
+                ) { MoneyPage(state, viewModel) }
+                WelcomePage.TRACKERS -> Step(
+                    page, onBack = viewModel::back, onSkip = viewModel::skip,
+                    nextLabel = if (state.picked.isEmpty()) stringResource(R.string.welcome_start_empty)
+                    else pluralStringResource(R.plurals.welcome_start_with, state.picked.size, state.picked.size),
+                    onNext = finish, nextEnabled = !state.saving, scrolls = false,
+                ) {
+                    StartersGrid(
+                        picked = state.picked,
+                        onToggle = { id ->
+                            haptics.toggle(id !in state.picked)
+                            viewModel.toggle(id)
+                        },
+                    )
+                }
             }
         }
     }
 }
 
+/**
+ * One step after the intro: a back arrow and how far along it is at the top, the page, then
+ * the button that moves on. Skip leaves the rest to the app's defaults.
+ */
 @Composable
-private fun IntroPage(onNext: () -> Unit, onSkip: () -> Unit) {
+private fun Step(
+    page: WelcomePage,
+    onBack: () -> Unit,
+    onSkip: () -> Unit,
+    nextLabel: String,
+    onNext: () -> Unit,
+    nextEnabled: Boolean = true,
+    scrolls: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val steps = WelcomePage.entries.size - 1
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(shapes = IconButtonDefaults.shapes(), onClick = onBack) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.welcome_back))
+            }
+            LinearWavyProgressIndicator(
+                progress = { page.ordinal.toFloat() / steps },
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
+            TextButton(shapes = ButtonDefaults.shapes(), onClick = onSkip) { Text(stringResource(R.string.welcome_skip)) }
+        }
+        Column(
+            Modifier.weight(1f).fillMaxWidth()
+                .then(if (scrolls) Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp) else Modifier),
+            content = content,
+        )
+        Button(
+            shapes = ButtonDefaults.shapes(),
+            onClick = onNext,
+            enabled = nextEnabled,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+        ) { Text(nextLabel) }
+    }
+}
+
+/** What to call you, shown in your profile. */
+@Composable
+private fun ColumnScope.YouPage(name: String, onName: (String) -> Unit) {
+    val focus = rememberFocusOnOpen(enabled = true)
+    PageTitle(stringResource(R.string.welcome_you_title), stringResource(R.string.welcome_you_subtitle))
+    Avatar(name, size = 88.dp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 24.dp))
+    FormField(
+        value = name,
+        onValueChange = onName,
+        label = stringResource(R.string.welcome_you_name),
+        supporting = stringResource(R.string.welcome_you_hint),
+        capitalization = KeyboardCapitalization.Words,
+        imeAction = ImeAction.Done,
+        modifier = focus,
+    )
+}
+
+/** The currency money is kept in, and the first account with what it holds today. */
+@Composable
+private fun MoneyPage(state: WelcomeState, viewModel: WelcomeViewModel) {
+    val numbered = state.accountKind == AccountKind.BANK || state.accountKind == AccountKind.CARD
+    PageTitle(stringResource(R.string.welcome_money_title), stringResource(R.string.welcome_money_subtitle))
+    Column(Modifier.padding(top = 24.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        FormField(
+            value = state.currency,
+            onValueChange = viewModel::setCurrency,
+            label = stringResource(R.string.welcome_money_currency),
+            supporting = stringResource(R.string.welcome_money_currency_hint),
+            error = if (state.currency.length == 3 && !state.currencyKnown) stringResource(R.string.welcome_money_currency_unknown) else null,
+            capitalization = KeyboardCapitalization.Characters,
+            maxLength = 3,
+        )
+        Text(
+            stringResource(R.string.welcome_money_account),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+        )
+        ConnectedChoices(AccountKind.entries, state.accountKind, { kindLabel(it) }, viewModel::setAccountKind)
+        FormField(
+            value = state.accountName,
+            onValueChange = viewModel::setAccountName,
+            label = stringResource(R.string.welcome_money_account_name),
+            placeholder = stringResource(R.string.welcome_account_default),
+        )
+        FormField(
+            value = state.opening,
+            onValueChange = viewModel::setOpening,
+            label = stringResource(R.string.welcome_money_opening),
+            supporting = stringResource(R.string.welcome_money_opening_hint),
+            error = if (state.openingMinor == null) stringResource(R.string.welcome_money_opening_invalid) else null,
+            keyboardType = KeyboardType.Decimal,
+            suffix = state.currency.takeIf { state.currencyKnown },
+        )
+        if (numbered) FormField(
+            value = state.digits,
+            onValueChange = viewModel::setDigits,
+            label = stringResource(R.string.welcome_money_digits),
+            supporting = stringResource(R.string.welcome_money_digits_hint),
+            error = if (state.digitsValid) null else stringResource(R.string.welcome_money_digits_invalid),
+            keyboardType = KeyboardType.NumberPassword,
+            imeAction = ImeAction.Done,
+            maxLength = 4,
+        )
+    }
+}
+
+@Composable
+private fun kindLabel(kind: AccountKind): String = stringResource(
+    when (kind) {
+        AccountKind.BANK -> R.string.welcome_kind_bank
+        AccountKind.CARD -> R.string.welcome_kind_card
+        AccountKind.WALLET -> R.string.welcome_kind_wallet
+        AccountKind.CASH -> R.string.welcome_kind_cash
+    },
+)
+
+@Composable
+private fun PageTitle(title: String, subtitle: String) {
+    Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 16.dp))
+    Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+}
+
+@Composable
+private fun IntroPage(onNext: () -> Unit, onSkip: () -> Unit, onRestore: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
@@ -150,6 +297,7 @@ private fun IntroPage(onNext: () -> Unit, onSkip: () -> Unit) {
             colors = ButtonDefaults.buttonColors(),
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         ) { Text(stringResource(R.string.welcome_next)) }
+        TextButton(shapes = ButtonDefaults.shapes(), onClick = onRestore) { Text(stringResource(R.string.welcome_restore)) }
         TextButton(shapes = ButtonDefaults.shapes(), onClick = onSkip) { Text(stringResource(R.string.welcome_skip)) }
     }
 }
@@ -190,74 +338,52 @@ private fun Point(icon: ImageVector, title: String, text: String, colorIndex: In
     }
 }
 
+/** A few common trackers to start with; picked ones carry a check. */
 @Composable
-private fun StartersPage(
-    picked: List<String>,
-    saving: Boolean,
-    onToggle: (String) -> Unit,
-    onStart: () -> Unit,
-    onSkip: () -> Unit,
-) {
+private fun StartersGrid(picked: List<String>, onToggle: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 160.dp),
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
-                Column(Modifier.padding(top = 32.dp, bottom = 8.dp)) {
-                    Text(stringResource(R.string.welcome_starters_title), style = MaterialTheme.typography.headlineLarge, color = colors.onSurface)
-                    Text(stringResource(R.string.welcome_starters_subtitle), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-                }
-            }
-            items(STARTERS.mapNotNull(Templates::byId), key = { it.id }) { spec ->
-                val isPicked = spec.id in picked
-                Box(
-                    Modifier
-                        .then(if (isPicked) Modifier.border(3.dp, colors.primary, SlateCardShape) else Modifier)
-                        .semantics {
-                            selected = isPicked
-                            role = Role.Checkbox
-                        }
-                ) {
-                    TrackerSlate(
-                        name = stringResource(spec.name),
-                        iconName = spec.iconName,
-                        colorIndex = spec.colorIndex,
-                        key = spec.id,
-                        supporting = stringResource(spec.description),
-                        onClick = { onToggle(spec.id) },
-                        action = {
-                            if (isPicked) {
-                                Box(
-                                    Modifier.size(32.dp).clip(SlateTileShape).background(colors.primary),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onPrimary)
-                                }
-                            }
-                        },
-                    )
-                }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 160.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
+            Column(Modifier.padding(top = 8.dp, bottom = 8.dp)) {
+                Text(stringResource(R.string.welcome_starters_title), style = MaterialTheme.typography.headlineLarge, color = colors.onSurface)
+                Text(stringResource(R.string.welcome_starters_subtitle), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
             }
         }
-        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Button(
-                shapes = ButtonDefaults.shapes(),
-                onClick = onStart,
-                enabled = !saving,
-                colors = ButtonDefaults.buttonColors(),
-                modifier = Modifier.fillMaxWidth(),
+        items(STARTERS.mapNotNull(Templates::byId), key = { it.id }) { spec ->
+            val isPicked = spec.id in picked
+            Box(
+                Modifier
+                    .then(if (isPicked) Modifier.border(3.dp, colors.primary, SlateCardShape) else Modifier)
+                    .semantics {
+                        selected = isPicked
+                        role = Role.Checkbox
+                    }
             ) {
-                Text(
-                    if (picked.isEmpty()) stringResource(R.string.welcome_start_empty)
-                    else pluralStringResource(R.plurals.welcome_start_with, picked.size, picked.size)
+                TrackerSlate(
+                    name = stringResource(spec.name),
+                    iconName = spec.iconName,
+                    colorIndex = spec.colorIndex,
+                    key = spec.id,
+                    supporting = stringResource(spec.description),
+                    onClick = { onToggle(spec.id) },
+                    action = {
+                        if (isPicked) {
+                            Box(
+                                Modifier.size(32.dp).clip(SlateTileShape).background(colors.primary),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onPrimary)
+                            }
+                        }
+                    },
                 )
             }
-            TextButton(shapes = ButtonDefaults.shapes(), onClick = onSkip, enabled = !saving) { Text(stringResource(R.string.welcome_skip)) }
         }
     }
 }

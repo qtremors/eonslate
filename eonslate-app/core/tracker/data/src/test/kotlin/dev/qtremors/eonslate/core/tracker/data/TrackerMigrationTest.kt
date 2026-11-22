@@ -42,6 +42,21 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version14AccountsAreBanksWithoutDigits() = runTest {
+        ExportedSchema.create(context, name, 14).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('hdfc', 'HDFC 4821', 'INR', 0)")
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val account = RoomFinanceRepository(db).observeLedger().first().accounts.single()
+            assertEquals(dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind.BANK, account.kind)
+            assertEquals(null, account.digits)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version13TrackersHaveNoIntervals() = runTest {
         ExportedSchema.create(context, name, 13).use {
             it.execSQL(

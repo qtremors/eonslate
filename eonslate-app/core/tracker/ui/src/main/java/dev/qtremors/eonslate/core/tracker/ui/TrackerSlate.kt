@@ -72,7 +72,9 @@ fun TrackerSlate(
     goal: Float? = null,
     /** What the meter says, such as "5 of 8 glasses". */
     goalText: String? = null,
-    action: (@Composable RowScope.() -> Unit)? = null
+    action: (@Composable RowScope.() -> Unit)? = null,
+    /** The tracker's parts, as rows under its name. */
+    parts: (@Composable () -> Unit)? = null,
 ) {
     val haptics = rememberAppHaptics()
     val colors = MaterialTheme.colorScheme
@@ -155,6 +157,7 @@ fun TrackerSlate(
                         Text(goalText, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
+                if (parts != null) Box(Modifier.padding(top = 12.dp)) { parts() }
             }
         }
     }

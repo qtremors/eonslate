@@ -20,14 +20,14 @@ private fun reading(field: FieldDefinition?, amount: Long): String =
     else ValueFormat.format(field, FieldValue.Number(amount), rememberValueWords(), LocalValueDisplay.current.numberLocale)
 
 @Composable
-private fun shortDate(day: LocalDate): String {
+internal fun shortDate(day: LocalDate): String {
     val locale = Locale.getDefault()
     return day.format(DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMM"), locale))
 }
 
 /** "in 12 days", "today", "3 days ago". */
 @Composable
-private fun relativeDays(days: Long): String = when {
+internal fun relativeDays(days: Long): String = when {
     days == 0L -> stringResource(R.string.interval_today)
     days > 0 -> pluralStringResource(R.plurals.interval_in_days, days.toInt(), days.toInt())
     else -> pluralStringResource(R.plurals.interval_days_ago, (-days).toInt(), (-days).toInt())
@@ -53,8 +53,7 @@ fun intervalText(status: IntervalStatus, tracker: Tracker): String {
     val byAmount = status.dueAt != null && amountLeft != null && status.leadsByAmount
     val due = if (byAmount) {
         val at = reading(field, status.dueAt!!)
-        val left = if (amountLeft!! >= 0) stringResource(R.string.interval_left, reading(field, amountLeft))
-        else stringResource(R.string.interval_over, reading(field, abs(amountLeft)))
+        val left = leftText(status, field, amountLeft!!)
         stringResource(R.string.interval_due_at, at) + " · " + left
     } else {
         stringResource(R.string.interval_due, relativeDays(status.daysLeft ?: 0))
@@ -89,7 +88,7 @@ fun intervalRemaining(status: IntervalStatus, tracker: Tracker): String {
     val field = status.interval.amountFieldId?.let(tracker::field)
     val left = status.amountLeft
     return if (status.dueAt != null && left != null && status.leadsByAmount) {
-        if (left >= 0) stringResource(R.string.interval_left, reading(field, left)) else stringResource(R.string.interval_over, reading(field, abs(left)))
+        leftText(status, field, left).replaceFirstChar { it.uppercase() }
     } else {
         relativeDays(status.daysLeft ?: 0).replaceFirstChar { it.uppercase() }
     }
@@ -100,8 +99,21 @@ fun intervalRemaining(status: IntervalStatus, tracker: Tracker): String {
 fun intervalDuePoint(status: IntervalStatus, tracker: Tracker): String? {
     val field = status.interval.amountFieldId?.let(tracker::field)
     return when {
-        status.dueAt != null && status.amountLeft != null && status.leadsByAmount -> stringResource(R.string.interval_due_at, reading(field, status.dueAt!!)).replaceFirstChar { it.uppercase() }
+        status.dueAt != null && status.amountLeft != null && status.leadsByAmount -> {
+            val at = stringResource(R.string.interval_due_at, reading(field, status.dueAt!!)).replaceFirstChar { it.uppercase() }
+            // At the usual pace, when that reading should come round.
+            status.amountDueOn?.takeIf { status.estimated && it >= status.today }?.let { at + " · " + stringResource(R.string.interval_around, shortDate(it)) } ?: at
+        }
         status.dueOn != null -> stringResource(R.string.interval_due, shortDate(status.dueOn!!)).replaceFirstChar { it.uppercase() }
         else -> null
     }
+}
+
+/** What is left of the amount, "1,240 km left" or "50 km over", with "about" when it is estimated. */
+@Composable
+private fun leftText(status: IntervalStatus, field: FieldDefinition?, left: Long): String = when {
+    left >= 0 && status.estimated -> stringResource(R.string.interval_about_left, reading(field, left))
+    left >= 0 -> stringResource(R.string.interval_left, reading(field, left))
+    status.estimated -> stringResource(R.string.interval_about_over, reading(field, abs(left)))
+    else -> stringResource(R.string.interval_over, reading(field, abs(left)))
 }

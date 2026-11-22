@@ -1,10 +1,38 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.1.9
-> **Last Updated:** 2026-11-21
+> **Version:** 2.2.0
+> **Last Updated:** 2026-11-22
 
 ---
+
+## [2.2.0] - 2026-11-22
+
+- **Account cards**: Home shows each account as a card you swipe through, with its balance, what it is and its last digits; the last card adds one.
+- Accounts are a bank, card, wallet or cash, and banks and cards can hold their last 4 digits.
+- Payment SMS go to the account whose last digits they name.
+- Tap a card to see only its transactions; Transactions has an account filter, and every row names its account with its digits.
+- Database version 15.
+- **Parts**: turn on Show as parts for a single choice, and each choice becomes a part of the tracker, such as a bike's oil, servicing, battery, tyres and fuel.
+- Each part shows on the tracker's card and atop Insights with where it stands: what is left before its interval, when its rhythm says it comes next, or when it was last logged.
+- Each part has its own log button that opens the entry with that part picked.
+- Far-off dates read in months: "In 22 months", "8 months ago".
+- The tab bar keeps its original icons.
+- **Onboarding**: after the intro, set your name, your currency and first account (its kind, balance and last digits), then pick trackers to start with. A wavy bar shows how far along you are; every step can be skipped.
+- **Restore a backup** right from the first screen, for moving from another phone.
+- **Odometer between logs**: an interval by distance counts on at your usual pace, so the odometer needs logging only at each job. "About 1,120 km left", due "around 3 Dec".
+- **Usual amount a day**: set it on an interval, such as 30 km; leave it empty and the pace is learned from your readings.
+- An interval falls due by that estimate too, so the bell says when the oil is due.
+- **Parts in the editor**: a tracker with parts lists them under Parts, each with when it is due again. Tap one to set its interval with that part already chosen.
+- **Counts on**: pick the weekdays the usual amount a day applies, such as Monday to Friday for a commute. Estimates and due dates skip the other days, and a learned pace counts only those days.
+- The separate interval list steps aside for trackers with parts.
+The first release of Eonslate. See [RELEASES.md](RELEASES.md).
+
+- The splash follows the theme: the logo on the app's light page color by day and on black at night, with no flash before the first screen.
+- The mark in Home's top bar takes the theme's text color and lets the page show through.
+- Every build scans the SMS inbox once SMS detection is turned on; `-Peonslate.smsInbox=false` builds without the SMS permission.
+- The As needed hint no longer points below for intervals that parts set above.
+- README and website for the release: download links, live version and stats, developer and credits.
 
 ## [2.1.9] - 2026-11-21
 
@@ -30,7 +58,6 @@
 - **New top bar**: Home leads with the Eonslate mark; every tab ends with a bell and your profile picture.
 - **Notifications**: payments found in SMS, payments to confirm, budgets gone over, intervals due, and payments in the next three days. The bell shows how many want doing.
 - **Profile**: your name, then Settings, Personalization, Categories, Archived trackers, Backup and restore, Privacy and About.
-- Tabs show filled icons when chosen, with new icons for Home, Transactions, Subscriptions and Trackers.
 - Faster start: the splash waits until Home has its figures, so the app opens filled in. Screens share one read of each list instead of reading it for every card, and the heavy sums run off the main thread.
 - Text fields are clear inside, so labels no longer sit on a shaded patch.
 

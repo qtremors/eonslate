@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.tracker.domain.insights.PartStatus
+import dev.qtremors.eonslate.core.tracker.domain.insights.Parts
 import dev.qtremors.eonslate.core.tracker.domain.insights.ConsistencyOf
 import dev.qtremors.eonslate.core.tracker.domain.insights.Consistency
 import dev.qtremors.eonslate.core.tracker.domain.insights.Rhythm
@@ -77,7 +79,9 @@ class HomeViewModel @Inject constructor(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private val goalEntries: Flow<Map<String, List<Entry>>> = trackersById
-        .map { trackers -> trackers.filterValues { Goals.fields(it).isNotEmpty() || it.intervals.isNotEmpty() || it.schedule.isAsNeeded }.keys }
+        .map { trackers ->
+            trackers.filterValues { Goals.fields(it).isNotEmpty() || it.intervals.isNotEmpty() || it.schedule.isAsNeeded || Parts.field(it) != null }.keys
+        }
         .distinctUntilChanged()
         .flatMapLatest { ids ->
             if (ids.isEmpty()) flowOf(emptyMap())
@@ -128,6 +132,12 @@ class HomeViewModel @Inject constructor(
             val rhythm = if (next == null && tracker.schedule.isAsNeeded) Intervals.learned(tracker, list, today).minByOrNull { it.daysLeft } else null
             if (next == null && rhythm == null) null else id to Upcoming(next, rhythm, statuses.any { it.due })
         }.toMap()
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+
+    /** Each tracker with parts, and where every part stands. */
+    val parts: StateFlow<Map<String, List<PartStatus>>> = combine(trackersById, goalEntries) { trackers, withValues ->
+        val today = LocalDate.now(ZoneId.of(clock.zoneId()))
+        trackers.values.filter { Parts.field(it) != null }.associate { it.id to Parts.of(it, withValues[it.id].orEmpty(), today) }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
     /** The trackers due today: by schedule, or because a set interval has come round. */

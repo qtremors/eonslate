@@ -40,6 +40,8 @@ data class FieldDraft(
     val goalTarget: String = "",
     val goalPer: GoalPeriod = GoalPeriod.DAY,
     val goalAtMost: Boolean = false,
+    /** A single choice whose options show as parts of the tracker. */
+    val parts: Boolean = false,
 )
 
 /** Which typed limits of a [FieldDraft] could not be read. */
@@ -73,7 +75,7 @@ fun FieldDraft.build(trackerId: String, position: Int = 0): FieldBuild {
         FieldType.DURATION -> FieldConfig.Duration(maxDurationSeconds, goal)
         FieldType.RATING -> FieldConfig.Rating(ratingMax)
         FieldType.YES_NO -> FieldConfig.YesNo
-        FieldType.SINGLE_CHOICE -> FieldConfig.SingleChoice(options.map { it.copy(label = it.label.trim()) })
+        FieldType.SINGLE_CHOICE -> FieldConfig.SingleChoice(options.map { it.copy(label = it.label.trim()) }, parts = parts)
         FieldType.MULTI_CHOICE -> FieldConfig.MultiChoice(options.map { it.copy(label = it.label.trim()) })
         FieldType.TEXT -> FieldConfig.Text(multiline = multiline, maxLength = textMaxLength)
         FieldType.DATE -> FieldConfig.Date
@@ -122,7 +124,7 @@ fun FieldDefinition.toDraft(defaultCurrency: String): FieldDraft {
         is FieldConfig.Duration -> base.copy(maxDurationSeconds = c.maxSeconds).withGoal(c.goal) { (it / 60).toString() }
         is FieldConfig.Rating -> base.copy(ratingMax = c.max)
         FieldConfig.YesNo, FieldConfig.Date -> base
-        is FieldConfig.SingleChoice -> base.copy(options = c.options)
+        is FieldConfig.SingleChoice -> base.copy(options = c.options, parts = c.parts)
         is FieldConfig.MultiChoice -> base.copy(options = c.options)
         is FieldConfig.Text -> base.copy(multiline = c.multiline, textMaxLength = c.maxLength)
     }

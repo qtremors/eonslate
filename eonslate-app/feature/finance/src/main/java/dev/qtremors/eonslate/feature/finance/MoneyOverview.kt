@@ -83,7 +83,6 @@ private val LOADING_HEIGHT = 260.dp
 @Composable
 fun MoneyOverview(
     onTransactions: () -> Unit,
-    onReviewSms: () -> Unit,
     onAdd: (TransactionKind) -> Unit = {},
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
@@ -92,6 +91,9 @@ fun MoneyOverview(
     onCategory: (String) -> Unit = { onTransactions() },
     /** Called once the figures are on screen; the launch splash waits for it. */
     onLoaded: () -> Unit = {},
+    /** Opens Transactions showing only this account. */
+    onAccount: (String) -> Unit = { onTransactions() },
+    onAddAccount: () -> Unit = {},
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val overview by viewModel.overview.collectAsStateWithLifecycle()
@@ -110,6 +112,9 @@ fun MoneyOverview(
         MoneyOverviewContent(
             summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory,
             slots = overview?.slots.orEmpty(), currencies = overview?.currencies.orEmpty(), onCurrency = viewModel::showCurrency,
+            cards = {
+                overview?.let { AccountCarousel(it.accounts, it.balances, onAccount, onAddAccount) }
+            },
         )
     }
 }
@@ -129,6 +134,8 @@ fun MoneyOverviewContent(
     /** The currencies the accounts use; with several, the tag picks which one Home shows. */
     currencies: List<String> = emptyList(),
     onCurrency: (String) -> Unit = {},
+    /** The account cards, under the balance. */
+    cards: @Composable () -> Unit = {},
 ) {
     val locale = LocalValueDisplay.current.numberLocale
     val money = { minor: BigInteger -> ValueFormat.money(minor, summary.currency, locale) }
@@ -155,6 +162,8 @@ fun MoneyOverviewContent(
                 }
             }
         }
+
+        cards()
 
         if (summary.entries.isNotEmpty()) Card { CashFlowContent(summary, today, money) }
 

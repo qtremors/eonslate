@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.home
 
+import dev.qtremors.eonslate.core.tracker.ui.PartRows
+import dev.qtremors.eonslate.core.tracker.domain.insights.PartStatus
 import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Surface
@@ -91,6 +93,8 @@ fun HomeScreen(
     onNewTracker: () -> Unit,
     onOpenTracker: (String) -> Unit,
     onLog: (String) -> Unit,
+    /** Logs one part of a tracker, with that part picked. */
+    onLogPart: (String, String) -> Unit = { id, _ -> onLog(id) },
     onArchived: (() -> Unit)? = null,
     onEditTracker: (String) -> Unit,
     onSettings: () -> Unit,
@@ -104,6 +108,7 @@ fun HomeScreen(
     val dueToday by viewModel.dueToday.collectAsStateWithLifecycle()
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val upcoming by viewModel.upcoming.collectAsStateWithLifecycle()
+    val parts by viewModel.parts.collectAsStateWithLifecycle()
     val consistency by viewModel.consistency.collectAsStateWithLifecycle()
     val selectedTag by viewModel.homeTag.collectAsStateWithLifecycle(initialValue = null)
     val snackbar = remember { SnackbarHostState() }
@@ -128,6 +133,8 @@ fun HomeScreen(
         dueToday = dueToday,
         goals = goals,
         upcoming = upcoming,
+        parts = parts,
+        onLogPart = onLogPart,
         consistency = consistency,
         selectedTag = selectedTag,
         onTagChange = viewModel::setHomeTag,
@@ -173,6 +180,9 @@ fun HomeContent(
     goals: Map<String, GoalProgress> = emptyMap(),
     /** What comes next for trackers with intervals or a learned rhythm. */
     upcoming: Map<String, HomeViewModel.Upcoming> = emptyMap(),
+    /** Each tracker with parts, and where every part stands. */
+    parts: Map<String, List<PartStatus>> = emptyMap(),
+    onLogPart: (String, String) -> Unit = { _, _ -> },
     /** Each scheduled tracker's consistency, for the overview. */
     consistency: Map<String, Consistency> = emptyMap(),
     snackbar: SnackbarHostState? = null,
@@ -305,7 +315,8 @@ fun HomeContent(
                         modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                     )
                 }
-                items(list, key = { s -> s.tracker.id }) { summary ->
+                // A tracker with parts takes the full width, so its rows have room.
+                items(list, key = { s -> s.tracker.id }, span = { s -> GridItemSpan(if (parts[s.tracker.id].isNullOrEmpty()) 1 else maxLineSpan) }) { summary ->
                     // The position in the full list, so moving still works while searching.
                     val index = trackers.indexOf(summary)
                     var menu by rememberSaveable { mutableStateOf(false) }
@@ -316,7 +327,8 @@ fun HomeContent(
                             colorIndex = summary.tracker.colorIndex,
                             key = summary.tracker.id,
                             // What comes next, when an interval or a rhythm says; otherwise the latest entry.
-                            supporting = upcoming[summary.tracker.id]?.let { next ->
+                            // With parts, each part says its own, so the line keeps to the latest entry.
+                            supporting = upcoming[summary.tracker.id]?.takeIf { parts[summary.tracker.id].isNullOrEmpty() }?.let { next ->
                                 next.interval?.let { intervalText(it, summary.tracker) } ?: next.rhythm?.let { rhythmText(it, summary.tracker) }
                             } ?: summaryLine(summary, nowMillis),
                             streak = streaks[summary.tracker.id] ?: 0,
@@ -324,6 +336,9 @@ fun HomeContent(
                             goalText = goals[summary.tracker.id]?.let { goalText(it) },
                             onClick = { onOpenTracker(summary.tracker.id) },
                             onLongClick = if (actions != null) ({ menu = true }) else null,
+                            parts = parts[summary.tracker.id]?.takeIf { it.isNotEmpty() }?.let { list ->
+                                { PartRows(list, summary.tracker, onLog = { option -> onLogPart(summary.tracker.id, option) }) }
+                            },
                             action = {
                                 val quick = HomeViewModel.isQuickLog(summary.tracker)
                                 FilledIconButton(

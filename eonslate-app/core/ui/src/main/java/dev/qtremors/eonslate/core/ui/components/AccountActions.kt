@@ -1,6 +1,5 @@
 package dev.qtremors.eonslate.core.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
@@ -22,7 +21,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -37,13 +35,18 @@ import dev.qtremors.eonslate.core.ui.theme.EonslateDisplay
  */
 val LocalAccountActions = staticCompositionLocalOf<(@Composable RowScope.() -> Unit)?> { null }
 
-/** The app's mark on its white tile, as on the launcher. */
+/**
+ * The app's mark on its own, drawn in the theme's text color: dark on light, light on dark and
+ * pure black, with the page showing through around it. The drawing keeps the launcher's padding,
+ * so it is drawn larger than an icon.
+ */
 @Composable
-fun BrandMark(modifier: Modifier = Modifier, size: Dp = 36.dp) {
-    Image(
+fun BrandMark(modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    Icon(
         painter = painterResource(R.drawable.eonslate_mark),
         contentDescription = null,
-        modifier = modifier.size(size).clip(CircleShape).background(Color.White),
+        tint = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier.size(size),
     )
 }
 

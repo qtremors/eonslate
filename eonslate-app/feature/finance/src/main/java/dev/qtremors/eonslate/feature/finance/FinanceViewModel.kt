@@ -53,10 +53,17 @@ class FinanceViewModel @Inject constructor(
 
     /** Home's money card: worked out off the main thread from the ledger and the shown currency. */
     val overview: StateFlow<Overview?> = combine(ledger.filterNotNull(), currency) { data, code ->
-        Overview(MoneySummary.of(data, today(), data.shownCurrency(code)), chartSlots(data), data.currencies(), data.accounts.isEmpty())
+        Overview(MoneySummary.of(data, today(), data.shownCurrency(code)), chartSlots(data), data.currencies(), data.accounts.isEmpty(), data.accounts, data.balances())
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    data class Overview(val summary: MoneySummary?, val slots: Map<String, Int>, val currencies: List<String>, val noAccounts: Boolean)
+    data class Overview(
+        val summary: MoneySummary?,
+        val slots: Map<String, Int>,
+        val currencies: List<String>,
+        val noAccounts: Boolean,
+        val accounts: List<dev.qtremors.eonslate.core.tracker.domain.finance.Account> = emptyList(),
+        val balances: Map<String, java.math.BigInteger> = emptyMap(),
+    )
 
     /** Shows totals and charts in [code] on every tab; it is the app's currency setting. */
     fun showCurrency(code: String) {

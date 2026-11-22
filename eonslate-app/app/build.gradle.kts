@@ -16,8 +16,8 @@ android {
         applicationId = "dev.qtremors.eonslate"
         minSdk = 26
         targetSdk = 37
-        versionCode = 219
-        versionName = "2.1.9"
+        versionCode = 220
+        versionName = "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -119,7 +119,8 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:backup"))
     implementation(project(":feature:finance"))
-    if (providers.gradleProperty("eonslate.smsInbox").orNull == "true") {
+    // Inbox scanning ships by default; -Peonslate.smsInbox=false builds without the SMS permission.
+    if (providers.gradleProperty("eonslate.smsInbox").orNull != "false") {
         implementation(project(":feature:smsinbox"))
     }
     implementation(project(":feature:reminders"))

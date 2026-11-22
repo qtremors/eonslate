@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Eonslate" parent="android:Theme.Material.NoActionBar" />
+    <!-- The window behind the first frame matches the splash, so nothing flashes between them. -->
+    <style name="Theme.Eonslate" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
 
+    <!-- The launch splash: the logo on the app's page color, light by day and black at night. -->
     <style name="Theme.Eonslate.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.Eonslate</item>
     </style>
     <!-- One tappable line of a widget: a due tracker. -->

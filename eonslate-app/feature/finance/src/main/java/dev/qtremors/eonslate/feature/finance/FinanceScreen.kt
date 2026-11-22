@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.forPayment
+import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
 import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
 import dev.qtremors.eonslate.core.ui.components.rememberFocusOnOpen
 import dev.qtremors.eonslate.core.ui.components.WeekdayBars
@@ -165,6 +167,11 @@ fun FinanceScreen(
     /** Shows this month in one category, as a tap on the Home category chart asks. */
     openCategory: String? = null,
     onCategoryOpened: () -> Unit = {},
+    /** Shows only this account's transactions, from its card on Home. */
+    openAccount: String? = null,
+    onAccountOpened: () -> Unit = {},
+    openNewAccount: Boolean = false,
+    onNewAccountOpened: () -> Unit = {},
 ) {
     var newKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -187,6 +194,7 @@ fun FinanceScreen(
     var customFrom by rememberSaveable { mutableStateOf<Long?>(null) }
     var customTo by rememberSaveable { mutableStateOf<Long?>(null) }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
+    var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var sort by rememberSaveable { mutableStateOf(TransactionSort.NEWEST) }
     val startDay = when (period) {
         TransactionPeriod.ALL -> Transaction.DATES.first
@@ -201,7 +209,9 @@ fun FinanceScreen(
         TransactionPeriod.CUSTOM -> customTo ?: Transaction.DATES.last
         else -> today.toEpochDay()
     }
-    val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort)
+    // A deleted account no longer filters anything.
+    val accountShown = accountFilter?.takeIf { id -> ledger?.accounts?.any { it.id == id } != false }
+    val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort, accountShown)
     var planKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     var jumpToTop by remember { mutableStateOf(false) }
     val plans = remember(ledger, query, planKind) { ledger?.plans(query, planKind).orEmpty() }
@@ -271,6 +281,22 @@ fun FinanceScreen(
             period = TransactionPeriod.MONTH
             query = ""
             onCategoryOpened()
+        }
+    }
+    LaunchedEffect(openAccount) {
+        if (openAccount != null) {
+            accountFilter = openAccount
+            category = null
+            kindFilter = null
+            period = TransactionPeriod.ALL
+            query = ""
+            onAccountOpened()
+        }
+    }
+    LaunchedEffect(openNewAccount) {
+        if (openNewAccount) {
+            open(Editor.ACCOUNT, null)
+            onNewAccountOpened()
         }
     }
     LaunchedEffect(openBudget) {
@@ -392,6 +418,7 @@ fun FinanceScreen(
                 },
                 onSort = { sort = it },
                 onCategory = { category = it },
+                onAccount = { accountFilter = it },
                 open = open,
                 onDeleteMany = viewModel::deleteTransactions,
                 onDeleteOne = deleteOne,
@@ -432,8 +459,8 @@ fun FinanceScreen(
                     busy = busy,
                     failed = failed,
                     onDismiss = dismiss,
-                    onSave = { name, code, opening, budget ->
-                        viewModel.save(Account(account?.id ?: viewModel.newId(), name, code, opening, budget), done)
+                    onSave = { name, code, opening, budget, kind, digits ->
+                        viewModel.save(Account(account?.id ?: viewModel.newId(), name, code, opening, budget, kind, digits), done)
                     },
                     onDelete = if (account != null && canDelete) ({ viewModel.delete(account, done) }) else null,
                 )
@@ -555,6 +582,7 @@ private fun LedgerList(
     onSort: (TransactionSort) -> Unit,
     onCategory: (String?) -> Unit,
     open: (Editor, String?) -> Unit,
+    onAccount: (String?) -> Unit = {},
     onDeleteMany: (Set<String>, () -> Unit) -> Unit = { _, _ -> },
     onDeleteOne: (Transaction) -> Unit = {},
     plans: List<RecurringPayment> = emptyList(),
@@ -614,20 +642,23 @@ private fun LedgerList(
             planItems(ledger, plans, planKind, onPlanKind, today, planActions, chosenCurrency, onCurrency)
             return@LazyColumn
         }
-        // One account is the whole balance; the list matters only once there are several.
-        if (ledger.accounts.size > 1) item { SectionHeader(stringResource(R.string.finance_accounts)) }
-        if (ledger.accounts.size > 1) itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
+        // One account is the whole balance; the list matters only once there are several. With one
+        // account picked, its transactions lead and the overall accounts and budgets step aside.
+        val overall = filter.accountId == null
+        if (overall && ledger.accounts.size > 1) item { SectionHeader(stringResource(R.string.finance_accounts)) }
+        if (overall && ledger.accounts.size > 1) itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
             val balance = ValueFormat.money(balances.getValue(account.id), account.currency, numberLocale)
             ConnectedItem(index, ledger.accounts.size) {
                 ConnectedRow(
-                    title = account.name,
+                    title = account.label,
                     supporting = balance,
+                    leading = { IconBadge(account.kind.icon(), account.id) },
                     onClick = { open(Editor.ACCOUNT, account.id) },
                 )
             }
         }
         // Budgets lead the page, as meters for this month; there is no heading when there are none.
-        if (budgetHealth.isNotEmpty()) {
+        if (overall && budgetHealth.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.finance_budgets)) }
             val openBudget = { health: BudgetHealth ->
                 health.budget?.let { open(Editor.BUDGET, it.id) } ?: health.account?.let { open(Editor.ACCOUNT, it.id) }
@@ -658,7 +689,7 @@ private fun LedgerList(
             }
         }
         if (ledger.transactions.isNotEmpty()) {
-            item(key = "periods") { PeriodChips(period, custom, filter.kind, sort, onSort, onPeriod, onCustom, onKind) }
+            item(key = "periods") { PeriodChips(period, custom, filter.kind, sort, onSort, onPeriod, onCustom, onKind, ledger.accounts, filter.accountId, onAccount) }
             // Every category that suits the kind shown: used ones first, then the rest set up.
             val choices = (filter.kind?.let(::listOf) ?: listOf(TransactionKind.EXPENSE, TransactionKind.INCOME))
                 .flatMap { Categories.suggestions(ledger, it) }
@@ -731,14 +762,16 @@ private fun LedgerList(
                         }
                     }
                 }
-                // A year of spending by day, in the shown currency and category; a tap shows that day.
+                // A year of spending by day, in the shown currency, category and account; a tap shows that day.
                 item(key = "spending-heat") {
                     val since = today.minusYears(1).toEpochDay()
-                    val levels = remember(ledger.transactions, currency, category, today) {
+                    val account = filter.accountId
+                    val levels = remember(ledger.transactions, currency, category, account, today) {
                         HeatLevels.of(
                             ledger.transactions.asSequence()
                                 .filter { it.kind == TransactionKind.EXPENSE && it.epochDay >= since && accounts[it.accountId]?.currency == currency }
                                 .filter { category == null || it.category.equals(category, ignoreCase = true) }
+                                .filter { account == null || it.accountId == account }
                                 .groupBy { java.time.LocalDate.ofEpochDay(it.epochDay) }
                                 .mapValues { (_, list) -> list.sumOf { t -> t.minor.toDouble() } },
                         )
@@ -772,8 +805,8 @@ private fun LedgerList(
             itemsIndexed(day, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
                 val source = accounts.getValue(transaction.accountId)
                 val target = transaction.destinationId?.let(accounts::getValue)
-                val accountNames = if (target == null) source.name
-                else stringResource(R.string.finance_transfer_accounts, source.name, target.name)
+                val accountNames = if (target == null) source.label
+                else stringResource(R.string.finance_transfer_accounts, source.label, target.label)
                 // The note names it best, then the category, then the kind.
                 val title = transaction.note.ifBlank { transaction.category.ifBlank { transaction.kind.label() } }
                 val details = listOfNotNull(
@@ -920,8 +953,12 @@ private fun PeriodChips(
     onPick: (TransactionPeriod) -> Unit,
     onCustom: (Long, Long) -> Unit,
     onKind: (TransactionKind?) -> Unit,
+    accounts: List<Account> = emptyList(),
+    accountId: String? = null,
+    onAccount: (String?) -> Unit = {},
 ) {
     var sorting by remember { mutableStateOf(false) }
+    var choosingAccount by remember { mutableStateOf(false) }
     var kinds by remember { mutableStateOf(false) }
     var picking by rememberSaveable { mutableStateOf(false) }
     val selectedColors = FilterChipDefaults.filterChipColors(
@@ -965,6 +1002,27 @@ private fun PeriodChips(
                     listOf(null, TransactionKind.EXPENSE, TransactionKind.INCOME).map { option ->
                         MenuAction(option?.label() ?: stringResource(R.string.finance_kind_all), selected = option == kind) { onKind(option) }
                     },
+                ),
+            )
+        }
+        // With several accounts, one can be picked; its card on Home opens here with it picked.
+        if (accounts.size > 1) Box {
+            val chosen = accounts.firstOrNull { it.id == accountId }
+            FilterChip(
+                selected = chosen != null,
+                onClick = { choosingAccount = true },
+                label = { Text(chosen?.label ?: stringResource(R.string.finance_account_all)) },
+                leadingIcon = chosen?.let { { Icon(it.kind.icon(), contentDescription = null, modifier = Modifier.size(18.dp)) } },
+                trailingIcon = { Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                shape = MaterialTheme.shapes.medium,
+                colors = selectedColors,
+            )
+            EonslateMenu(
+                expanded = choosingAccount,
+                onDismissRequest = { choosingAccount = false },
+                groups = listOf(
+                    listOf(MenuAction(stringResource(R.string.finance_account_all), selected = chosen == null) { onAccount(null) }) +
+                        accounts.map { account -> MenuAction(account.label, account.kind.icon(), selected = account.id == accountId) { onAccount(account.id) } },
                 ),
             )
         }
@@ -1163,10 +1221,16 @@ private fun AccountEditor(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, String, Long, Long?) -> Unit,
+    onSave: (String, String, Long, Long?, AccountKind, String?) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
     var name by rememberSaveable { mutableStateOf(account?.name.orEmpty()) }
+    var kind by rememberSaveable { mutableStateOf(account?.kind ?: AccountKind.BANK) }
+    var digits by rememberSaveable { mutableStateOf(account?.digits.orEmpty()) }
+    // Banks and cards have numbers payment messages name; wallets and cash do not.
+    val numbered = kind == AccountKind.BANK || kind == AccountKind.CARD
+    val lastDigits = digits.trim().takeIf { numbered && it.isNotEmpty() }
+    val digitsValid = lastDigits == null || Account.DIGITS.matches(lastDigits)
     var code by rememberSaveable { mutableStateOf(account?.currency ?: defaultCurrency) }
     var opening by rememberSaveable { mutableStateOf(account?.let { moneyInput(it.openingMinor, it.currency) }.orEmpty()) }
     var budget by rememberSaveable {
@@ -1177,10 +1241,17 @@ private fun AccountEditor(
     val balance = if (opening.isBlank()) 0L else parseMoney(opening, currency)
     val monthly = parseMoney(budget, currency)?.takeIf { it > 0 }
     val title = stringResource(if (account == null) R.string.finance_new_account else R.string.finance_edit_account)
-    val entered = listOf<Any?>(name, code, opening, budget)
+    val entered = listOf<Any?>(name, code, opening, budget, kind, digits)
     val opened = remember { entered }
     EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
+        ConnectedChoices(AccountKind.entries, kind, { it.label() }, { kind = it })
         FormField(name, { name = it }, stringResource(R.string.finance_name), maxLength = Account.NAME_LIMIT, enabled = !busy)
+        if (numbered) FormField(
+            digits, { next -> digits = next.filter(Char::isDigit) }, stringResource(R.string.finance_digits),
+            supporting = stringResource(R.string.finance_digits_hint),
+            error = if (digitsValid) null else stringResource(R.string.finance_digits_error),
+            maxLength = 4, keyboardType = KeyboardType.NumberPassword, enabled = !busy,
+        )
         FormField(
             code, { code = it }, stringResource(R.string.finance_currency),
             maxLength = 3, enabled = account == null && !busy, capitalization = KeyboardCapitalization.Characters,
@@ -1194,8 +1265,8 @@ private fun AccountEditor(
             maxLength = 24, keyboardType = KeyboardType.Decimal, enabled = !busy, suffix = currency.takeIf { known },
         )
         SaveRow(
-            canSave = !busy && name.isNotBlank() && known && balance != null && (budget.isBlank() || monthly != null),
-            onSave = { balance?.let { onSave(name.trim(), currency, it, monthly) } },
+            canSave = !busy && name.isNotBlank() && known && balance != null && (budget.isBlank() || monthly != null) && digitsValid,
+            onSave = { balance?.let { onSave(name.trim(), currency, it, monthly, kind, lastDigits) } },
             delete = onDelete?.let {
                 Deletion(stringResource(R.string.finance_delete_account, account!!.name), R.string.finance_delete_account_message, it)
             },
@@ -1220,9 +1291,8 @@ private fun TransactionEditor(
     val suggest = LocalCategorySuggestions.current
     var kind by rememberSaveable { mutableStateOf(transaction?.kind ?: prefill?.kind ?: initialKind ?: TransactionKind.EXPENSE) }
     var accountId by rememberSaveable {
-        val matching = accounts.filter { it.currency == prefill?.currency }
-        val byEnding = prefill?.accountEnding?.let { ending -> matching.firstOrNull { it.name.trim().endsWith(ending) } }
-        mutableStateOf(transaction?.accountId ?: byEnding?.id ?: matching.firstOrNull()?.id ?: accounts.first().id)
+        val byEnding = prefill?.let { accounts.forPayment(it.currency, it.accountEnding) }
+        mutableStateOf(transaction?.accountId ?: byEnding?.id ?: accounts.first().id)
     }
     var destinationId by rememberSaveable { mutableStateOf(transaction?.destinationId) }
     val account = accounts.firstOrNull { it.id == accountId } ?: accounts.first()
@@ -1416,8 +1486,9 @@ internal fun AccountChoice(label: String, selected: Account, accounts: List<Acco
     var expanded by remember { mutableStateOf(false) }
     Box {
         ConnectedRow(
-            title = selected.name,
+            title = selected.label,
             supporting = label,
+            leading = { Icon(selected.kind.icon(), contentDescription = null) },
             trailing = { Icon(Icons.Rounded.ExpandMore, null) },
             enabled = enabled,
             onClick = { expanded = true },
@@ -1426,7 +1497,7 @@ internal fun AccountChoice(label: String, selected: Account, accounts: List<Acco
             expanded = expanded,
             onDismissRequest = { expanded = false },
             groups = listOf(accounts.map {
-                MenuAction(it.name, supporting = it.currency, selected = it.id == selected.id, onClick = { onPick(it) })
+                MenuAction(it.label, it.kind.icon(), supporting = it.currency, selected = it.id == selected.id, onClick = { onPick(it) })
             }),
         )
     }

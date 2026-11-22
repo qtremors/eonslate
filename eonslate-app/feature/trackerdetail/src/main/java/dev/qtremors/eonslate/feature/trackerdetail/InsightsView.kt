@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.trackerdetail
 
+import dev.qtremors.eonslate.core.tracker.ui.PartRows
+import dev.qtremors.eonslate.core.tracker.domain.insights.Parts
 import dev.qtremors.eonslate.core.tracker.ui.intervalDuePoint
 import dev.qtremors.eonslate.core.tracker.ui.intervalRemaining
 import dev.qtremors.eonslate.core.ui.components.WeekdayBars
@@ -86,7 +88,14 @@ import java.util.Locale
  * running period and records wear ember. Field stats cover the whole history.
  */
 @Composable
-internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate, modifier: Modifier = Modifier, onDay: (LocalDate) -> Unit = {}) {
+internal fun InsightsView(
+    state: DetailState,
+    tracker: Tracker,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+    onDay: (LocalDate) -> Unit = {},
+    onLogPart: (String) -> Unit = {},
+) {
     val words = rememberValueWords()
     val colors = MaterialTheme.colorScheme
     val dark = colors.surface.luminance() < 0.5f
@@ -101,7 +110,13 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
     val buckets = remember(period, today, state.firstDay) { Periods.buckets(period, today, state.firstDay) }
     val counts = remember(state.times, buckets) { Periods.counts(state.times, buckets) }
 
+    val parts = remember(state.allEntries, tracker, today) { state.allEntries?.let { Parts.of(tracker, it, today) }.orEmpty() }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Each part first, with where it stands and a button to log it.
+        if (parts.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.insights_parts), style = MaterialTheme.typography.titleSmall, color = colors.primary, modifier = Modifier.padding(start = 4.dp))
+            PartRows(parts, tracker, onLog = onLogPart, rowColor = colors.surfaceBright)
+        }
         // As needed is never due, so it has no streak to show.
         if (!tracker.schedule.isAsNeeded) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile(
@@ -130,7 +145,8 @@ internal fun InsightsView(state: DetailState, tracker: Tracker, today: LocalDate
         HeatMapCard(tracker, state, days, today, pigment, onDay)
 
         state.allEntries?.let { all ->
-            IntervalTiles(tracker, all, today)
+            // The parts above already say where each interval stands.
+            if (parts.isEmpty()) IntervalTiles(tracker, all, today)
             GoalTiles(tracker, all, today, state.firstDay)
         }
 

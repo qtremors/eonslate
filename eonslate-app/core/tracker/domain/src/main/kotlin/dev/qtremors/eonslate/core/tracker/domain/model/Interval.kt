@@ -31,6 +31,16 @@ data class Interval(
     val unit: IntervalUnit = IntervalUnit.DAY,
     @SerialName("amount_field_id") val amountFieldId: String? = null,
     val amount: Long? = null,
+    /**
+     * How much the number field usually grows in a day, such as 30 km, in the field's decimals.
+     * When set it stands in for the pace learned from readings.
+     */
+    @SerialName("per_day") val perDay: Long? = null,
+    /**
+     * The weekdays the number field grows on, such as workdays for a commute, as a mask with
+     * Monday as bit 0; null for every day.
+     */
+    @SerialName("count_days") val countDays: Int? = null,
 ) {
     val timed: Boolean get() = every != null
     val metered: Boolean get() = amountFieldId != null && amount != null
@@ -40,6 +50,8 @@ data class Interval(
         if (!timed && !metered) return false
         if (every != null && every !in 1..MAX_EVERY) return false
         if (amount != null && amount <= 0) return false
+        if (perDay != null && (perDay <= 0 || amountFieldId == null)) return false
+        if (countDays != null && (countDays !in 1 until ALL_DAYS || amountFieldId == null)) return false
         if ((choiceFieldId == null) != (optionId == null)) return false
         if (choiceFieldId != null) {
             val config = fields.firstOrNull { it.id == choiceFieldId }?.config as? FieldConfig.SingleChoice ?: return false
@@ -52,5 +64,6 @@ data class Interval(
     companion object {
         const val MAX_EVERY = 1000
         const val MAX_COUNT = 12
+        const val ALL_DAYS = 0b1111111
     }
 }

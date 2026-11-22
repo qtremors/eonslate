@@ -73,6 +73,8 @@ fun TrackerDetailScreen(
     onBack: () -> Unit,
     onEditTracker: (String) -> Unit,
     onLog: (String) -> Unit,
+    /** Logs one part of the tracker, with that part picked. */
+    onLogPart: (String, String) -> Unit = { id, _ -> onLog(id) },
     onEditEntry: (trackerId: String, entryId: String) -> Unit,
     modifier: Modifier = Modifier,
     onReminders: (String) -> Unit = {},
@@ -140,6 +142,7 @@ fun TrackerDetailScreen(
                 viewModel = viewModel,
                 onEditEntry = { onEditEntry(tracker.id, it.id) },
                 padding = padding,
+                onLogPart = { option -> onLogPart(tracker.id, option) },
             )
         }
     }
@@ -152,6 +155,7 @@ private fun DetailContent(
     viewModel: TrackerDetailViewModel,
     onEditEntry: (Entry) -> Unit,
     padding: PaddingValues,
+    onLogPart: (String) -> Unit = {},
 ) {
     val today = LocalDate.now()
     val totals = remember(state.times, today) { DetailModels.totals(state.times, today) }
@@ -247,7 +251,9 @@ private fun DetailContent(
 
         if (state.view == DetailView.INSIGHTS) {
             item(key = "insights") {
-                InsightsView(state = state, tracker = tracker, today = today, modifier = Modifier.padding(top = 12.dp), onDay = viewModel::openDay)
+                InsightsView(state = state, tracker = tracker, today = today, modifier = Modifier.padding(top = 12.dp), onDay = viewModel::openDay,
+                    onLogPart = onLogPart,
+                )
             }
             return@LazyColumn
         }

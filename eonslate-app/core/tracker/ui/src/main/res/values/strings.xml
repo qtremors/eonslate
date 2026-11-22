@@ -97,4 +97,11 @@
     <string name="error_date_range">Pick a real date</string>
     <string name="error_not_a_number">Not a number</string>
     <string name="error_too_precise">Use up to %1$d decimals</string>
+    <string name="part_not_yet">Not logged yet</string>
+    <string name="part_log">Log %1$s</string>
+    <string name="part_in">In %1$s</string>
+    <string name="part_ago">%1$s ago</string>
+    <string name="interval_about_left">about %1$s left</string>
+    <string name="interval_about_over">about %1$s over</string>
+    <string name="interval_around">around %1$s</string>
 </resources>

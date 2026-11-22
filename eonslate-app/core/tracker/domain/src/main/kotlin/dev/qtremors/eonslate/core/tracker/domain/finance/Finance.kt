@@ -15,14 +15,44 @@ data class Account(
     val currency: String,
     @SerialName("opening_minor") val openingMinor: Long = 0,
     @SerialName("monthly_budget_minor") val monthlyBudgetMinor: Long? = null,
+    val kind: AccountKind = AccountKind.BANK,
+    /** The last four digits of the card or account number, which payment SMS name. */
+    val digits: String? = null,
 ) {
     fun isValid(): Boolean = id.isNotBlank() && name.isNotBlank() &&
         name.length <= NAME_LIMIT && MoneyAmount.isKnownCurrency(currency) &&
-        (monthlyBudgetMinor == null || monthlyBudgetMinor > 0)
+        (monthlyBudgetMinor == null || monthlyBudgetMinor > 0) && (digits == null || DIGITS.matches(digits))
+
+    /** The name, with its last digits when it has them: "HDFC •4821". */
+    val label: String get() = digits?.let { "$name •$it" } ?: name
 
     companion object {
         const val NAME_LIMIT = 60
+        val DIGITS = Regex("[0-9]{4}")
     }
+}
+
+/** What an account is, for its card and icon. */
+@Serializable
+enum class AccountKind(val storageKey: String) {
+    @SerialName("bank") BANK("bank"),
+    @SerialName("card") CARD("card"),
+    @SerialName("wallet") WALLET("wallet"),
+    @SerialName("cash") CASH("cash");
+
+    companion object {
+        fun fromKey(key: String?): AccountKind = entries.firstOrNull { it.storageKey == key } ?: BANK
+    }
+}
+
+/**
+ * The account a payment message names by [ending], among those in [currency]: the one with those
+ * last digits, else one whose name ends with them, else the first in that currency.
+ */
+fun List<Account>.forPayment(currency: String, ending: String?): Account? {
+    val matching = filter { it.currency == currency }
+    return ending?.let { end -> matching.firstOrNull { it.digits == end } ?: matching.firstOrNull { it.name.trim().endsWith(end) } }
+        ?: matching.firstOrNull()
 }
 
 @Serializable
@@ -95,7 +125,8 @@ data class Ledger(
                 (term.isEmpty() || transaction.note.contains(term, ignoreCase = true) ||
                     transaction.details.contains(term, ignoreCase = true) ||
                     transaction.category.contains(term, ignoreCase = true) ||
-                    names[transaction.accountId]?.contains(term, ignoreCase = true) == true)
+                    names[transaction.accountId]?.contains(term, ignoreCase = true) == true) &&
+                (filter.accountId == null || transaction.accountId == filter.accountId || transaction.destinationId == filter.accountId)
         }.sortedWith(order).toList()
     }
 
@@ -162,6 +193,8 @@ data class TransactionFilter(
     val category: String? = null,
     val query: String = "",
     val sort: TransactionSort = TransactionSort.NEWEST,
+    /** Only what moved money in or out of this account. */
+    val accountId: String? = null,
 )
 
 interface FinanceRepository {

@@ -1,8 +1,8 @@
 # Eonslate - Developer Documentation
 
 > **Project:** Eonslate
-> **Version:** 2.1.4
-> **Last Updated:** 2026-11-19
+> **Version:** 2.2.0
+> **Last Updated:** 2026-11-22
 
 ## Architecture
 
@@ -24,10 +24,10 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
 | `:feature:backup` | Android library | Creating, restoring and undoing backups |
 | `:feature:finance` | Android library | Accounts, income, expenses and transfers |
-| `:feature:smsinbox` | Android library | Optional SMS permission manifest for inbox-enabled builds |
+| `:feature:smsinbox` | Android library | The SMS permission manifest, left out with `-Peonslate.smsInbox=false` |
 | `:feature:reminders` | Android library | A tracker's reminders: time, days, skip if logged |
 | `:core:reminders` | Android library | Alarm sync, receivers and reminder notifications |
-| `:feature:welcome` | Android library | The first run: what Eonslate is, then starter trackers |
+| `:feature:welcome` | Android library | The first run: intro, name, currency and first account, starter trackers |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
 
@@ -95,7 +95,7 @@ Schema 6 adds transaction categories, category budgets, and custom recurring int
 
 Schema 8 stores budget names, icons, and colors and adds the finance category catalog. Category renames update transactions, recurring payments, and budgets in one Room transaction. The schema also keeps the next billing minute for hourly subscriptions. Automatic hourly postings keep one transaction per local day.
 
-Finance reviews payment SMS from pasted or shared text and can also scan the inbox in builds that include the SMS permission. Build an inbox-enabled APK with `./gradlew :app:assembleDebug -Peonslate.smsInbox=true`. The standard build reads pasted or shared text. The parser recognizes sender aliases, payees, account and card endings, and payment references. It suggests a category and keeps a fingerprint for duplicate detection. Auto-add uses high-confidence matches. Raw SMS stays in memory during import.
+Finance reviews payment SMS from pasted or shared text and scans the inbox once SMS detection is turned on, which is when Android asks for the SMS permission. Every build includes inbox scanning; `-Peonslate.smsInbox=false` builds an APK without the SMS permission that reads pasted or shared text only. The parser recognizes sender aliases, payees, account and card endings, and payment references. It suggests a category and keeps a fingerprint for duplicate detection. Auto-add uses high-confidence matches. Raw SMS stays in memory during import.
 
 ## CSV
 

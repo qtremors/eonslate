@@ -229,12 +229,19 @@ private fun EditorContent(
             }
         }
 
+        // Each part with when it is due again, set right on its row.
+        if (partJobs(draft.fields).isNotEmpty()) item(key = "parts") {
+            SectionHeader(stringResource(R.string.editor_section_parts))
+            val partsFirstDay by viewModel.firstDay.collectAsStateWithLifecycle(initialValue = WeekFields.of(Locale.getDefault()).firstDayOfWeek)
+            PartIntervals(draft, viewModel::saveInterval, viewModel::removeInterval, viewModel::newIntervalId, partsFirstDay)
+        }
+
         item(key = "schedule") {
             SectionHeader(stringResource(R.string.editor_section_schedule))
             val firstDay by viewModel.firstDay.collectAsStateWithLifecycle(initialValue = WeekFields.of(Locale.getDefault()).firstDayOfWeek)
             ScheduleEditor(draft, viewModel::setScheduleMode, viewModel::toggleScheduleDay, viewModel::setTimesPerWeek, firstDay)
             if (draft.scheduleMode == ScheduleMode.AS_NEEDED) {
-                IntervalList(draft, viewModel::saveInterval, viewModel::removeInterval, viewModel::newIntervalId)
+                IntervalList(draft, viewModel::saveInterval, viewModel::removeInterval, viewModel::newIntervalId, firstDay)
             }
         }
 

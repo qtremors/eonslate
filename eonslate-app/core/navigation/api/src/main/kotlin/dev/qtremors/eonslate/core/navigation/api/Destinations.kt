@@ -73,7 +73,10 @@ sealed interface Destination {
     @Serializable
     data object Privacy : Destination
 
-    /** Logs a new entry to [trackerId], or edits the entry [entryId] when it is set. */
+    /**
+     * Logs a new entry to [trackerId], or edits the entry [entryId] when it is set. [optionId]
+     * starts a new entry on that part of the tracker.
+     */
     @Serializable
-    data class LogEntry(val trackerId: String, val entryId: String? = null) : Destination
+    data class LogEntry(val trackerId: String, val entryId: String? = null, val optionId: String? = null) : Destination
 }

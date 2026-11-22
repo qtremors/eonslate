@@ -5,12 +5,14 @@
 <h1 align="center">Eonslate</h1>
 
 <p align="center">
-  A private, offline tracker for almost anything, built with Material 3 Expressive.
+  A private, offline slate for your money and anything else you track, built with Material 3 Expressive.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Android-8.0%2B-34A853?logo=android" alt="Android 8.0+">
   <img src="https://img.shields.io/badge/License-TSL%202.0-red" alt="License">
+  <a href="https://github.com/qtremors/eonslate/releases/latest"><img src="https://img.shields.io/github/v/release/qtremors/eonslate" alt="Latest release"></a>
+  <img src="https://img.shields.io/github/downloads/qtremors/eonslate/total" alt="Downloads">
 </p>
 
 > [!NOTE]
@@ -18,26 +20,27 @@
 
 ## Why Eonslate
 
-Most trackers do one thing, or they need an account and the cloud. Eonslate lets you track whatever matters to you, such as money, habits, mood, workouts, reading, water or medication, in one calm, beautiful app that works fully offline.
+Eon and slate: a slate you write on as time passes. Money, habits, a bike's oil changes, haircuts, mood or sleep, each is a record of what happened, where it stands now and what comes next. Eonslate keeps them in one calm app that works fully offline.
 
-## Status
+## Download
 
-Eonslate is in early development. The roadmap lives in [TASKS.md](TASKS.md) and changes are listed in [CHANGELOG.md](CHANGELOG.md).
+Get the latest APK from [Releases](https://github.com/qtremors/eonslate/releases/latest). Android 8.0 or newer. Release notes are in [RELEASES.md](RELEASES.md), every change in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 
-Available now:
-
+- **Money:** account cards for banks, cards, wallets and cash; transactions, transfers, budgets, subscriptions and bills, with charts for cash flow, categories, weekdays and the whole year.
+- **Payment SMS:** scan the inbox or share a message in, offline; payments land on the account whose last digits they name.
 - **Your own trackers:** build trackers from typed fields: number, money, duration, rating, yes or no, one or several choices, text and date.
+- **Schedules and goals:** every day, some days, times a week or as needed; daily or weekly goals for numbers and durations.
+- **Intervals and parts:** due again after a time or an amount, such as an oil change every 3,000 km, counted on at your usual pace; a choice can become parts with their own status and log button.
+- **Notifications:** one bell for SMS finds, bills to confirm, budgets over, intervals due and payments coming up.
 - **Ready-made templates:** start from twenty templates such as expenses, habits, mood, workouts, reading, water and sleep, then make them your own.
-- **Quick logging:** log from Home, a widget or a Quick Settings tile.
-- **Views that fit:** every tracker has a list by day, a month calendar and insights with streaks, totals, averages, records and charts.
+- **Quick logging:** log from Home, a widget or a Quick Settings tile; Today and Money widgets keep up as you log.
+- **Views that fit:** every tracker has a list by day, a month calendar and insights with streaks, consistency, a year heat map, weekday patterns, totals, averages, records and charts.
 - **Search and tags:** search trackers and entries, with a saved tag filter on Home.
 - **Exact numbers:** decimals, money and time are stored exactly, never as rounded floating point values.
-- **Finance:** track accounts, transfers, monthly budgets and recurring payments.
-- **Payment SMS:** review payment alerts offline, with inbox scanning in enabled builds.
 - **Backups:** one file, optionally encrypted, with undoable restores.
-- **CSV:** import and export tracker entries and finance transactions.
+- **CSV:** import and export tracker entries and transactions; export budgets and subscriptions.
 - **Reminders:** per tracker, on chosen days, skipped when already logged.
 - **Its own look:** monochrome by default, or your wallpaper's colors or one of eight accents. Material 3 Expressive.
 - **Private by design:** optional screenshot blocking. No ads, accounts or telemetry.

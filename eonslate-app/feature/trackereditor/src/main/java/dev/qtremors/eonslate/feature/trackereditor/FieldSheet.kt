@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import androidx.compose.material.icons.rounded.ViewAgenda
 import dev.qtremors.eonslate.core.tracker.domain.model.GoalPeriod
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.foundation.layout.Arrangement
@@ -147,7 +148,20 @@ private fun TypeSettings(
                 onSelect = { max -> viewModel.updateSheet { it.copy(ratingMax = max) } },
             )
         }
-        FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> OptionsEditor(draft, errors, viewModel)
+        FieldType.SINGLE_CHOICE -> {
+            OptionsEditor(draft, errors, viewModel)
+            // Each option becomes a part with its own row, such as a bike's oil, fuel and battery.
+            ConnectedGroup {
+                ToggleRow(
+                    title = stringResource(R.string.sheet_parts),
+                    supporting = stringResource(R.string.sheet_parts_hint),
+                    checked = draft.parts,
+                    onCheckedChange = { on -> viewModel.updateSheet { it.copy(parts = on) } },
+                    icon = Icons.Rounded.ViewAgenda,
+                )
+            }
+        }
+        FieldType.MULTI_CHOICE -> OptionsEditor(draft, errors, viewModel)
         FieldType.TEXT -> ConnectedGroup {
             ToggleRow(
                 title = stringResource(R.string.sheet_text_multiline),

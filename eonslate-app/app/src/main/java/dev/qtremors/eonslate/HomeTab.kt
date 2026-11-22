@@ -32,19 +32,20 @@ fun HomeTab(
     onTrackers: () -> Unit,
     onLog: (String) -> Unit,
     onSettings: () -> Unit,
-    onReviewSms: () -> Unit,
     onAdd: (TransactionKind) -> Unit,
     onAddBudget: () -> Unit,
     onCategory: (String) -> Unit,
     displayName: String = "",
     onLoaded: () -> Unit = {},
+    onAccount: (String) -> Unit = {},
+    onAddAccount: () -> Unit = {},
 ) {
     val title = stringResource(R.string.app_title)
     EonslateScaffold(
         title = title,
         // The mark and name lead the bar, as an app's start screen does; the bell and profile end it.
         brand = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 BrandMark()
                 Text(title, style = MaterialTheme.typography.titleLarge.copy(fontFamily = EonslateDisplay))
             }
@@ -57,7 +58,7 @@ fun HomeTab(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onReviewSms = onReviewSms, onSubscriptions = onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory, onLoaded = onLoaded) }
+            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onSubscriptions = onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory, onLoaded = onLoaded, onAccount = onAccount, onAddAccount = onAddAccount) }
             item(key = "today") { TodayStrip(onLog = onLog, onAll = onTrackers) }
         }
     }

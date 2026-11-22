@@ -58,8 +58,7 @@ import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.ui.R
 
 @Immutable
-/** A tab: its outlined [icon], and the filled [selectedIcon] it shows while chosen. */
-data class TabItem(val icon: ImageVector, val label: String, val selectedIcon: ImageVector = icon)
+data class TabItem(val icon: ImageVector, val label: String)
 
 /**
  * The floating toolbar at the bottom of every screen, built on Material 3's floating toolbar. On a
@@ -187,7 +186,7 @@ fun FloatingTabBar(
                                     IconButtonDefaults.iconButtonColors(containerColor = colors.primary, contentColor = colors.onPrimary)
                                 }
                             ) {
-                                Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = tab.label)
+                                Icon(tab.icon, contentDescription = tab.label)
                             }
                             if (index < tabs.lastIndex) Spacer(Modifier.width(TAB_GAP))
                         }

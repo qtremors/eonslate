@@ -20,6 +20,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -54,7 +55,9 @@ class WelcomeTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun vm(handle: SavedStateHandle = SavedStateHandle()) = WelcomeViewModel(handle, repo, settings, clock)
+    private val finance = Finance()
+    private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
+        WelcomeViewModel(handle, repo, settings, clock, finance, dev.qtremors.eonslate.core.tracker.domain.time.IdGenerator { "acc" })
 
     private fun tracker(id: String) = Tracker(id = id, name = id, fields = listOf(FieldDefinition("$id-f", id, "F", FieldConfig.YesNo)), createdAt = 0)
 
@@ -78,22 +81,66 @@ class WelcomeTest {
 
     @Test
     fun skippingSavesNothingButStillCounts() = runTest {
-        vm().finish { emptyList() }
+        vm().skip()
         assertTrue(repo.saved.isEmpty())
+        assertTrue(finance.accounts.isEmpty())
         assertTrue(settings.seen.value)
+    }
+
+    @Test
+    fun settingUpSavesTheNameTheCurrencyAndTheFirstAccount() = runTest {
+        val vm = vm()
+        vm.setName("Asha")
+        vm.setCurrency("inr")
+        vm.setAccountKind(dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind.CARD)
+        vm.setAccountName("HDFC Millennia")
+        vm.setOpening("1500.50")
+        vm.setDigits("12a34")
+        assertTrue(vm.state.value.moneyReady)
+        vm.finish("Main account") { emptyList() }
+        val account = finance.accounts.single()
+        assertEquals("HDFC Millennia", account.name)
+        assertEquals("INR", account.currency)
+        assertEquals(150_050L, account.openingMinor)
+        assertEquals("1234", account.digits)
+        assertEquals("Asha", settings.display.first().name)
+    }
+
+    @Test
+    fun aBlankAccountNameTakesTheDefaultAndABadAmountHoldsTheMoneyPage() = runTest {
+        val vm = vm()
+        vm.setOpening("12,5,0")
+        assertTrue(!vm.state.value.moneyReady)
+        vm.setOpening("")
+        vm.finish("Main account") { emptyList() }
+        assertEquals("Main account", finance.accounts.single().name)
+        assertEquals(0L, finance.accounts.single().openingMinor)
+    }
+
+    @Test
+    fun restoringLeavesWithoutSettingAnythingUp() = runTest {
+        val vm = vm()
+        vm.setName("Asha")
+        vm.restore()
+        assertTrue(vm.state.value.restore)
+        assertTrue(vm.state.value.done)
+        assertTrue(finance.accounts.isEmpty())
+        assertEquals("", settings.display.first().name)
     }
 
     @Test
     fun picksAndPageSurviveProcessDeath() = runTest {
         val handle = SavedStateHandle()
         val first = vm(handle)
-        first.showPage(1)
+        first.showPage(WelcomePage.MONEY)
         first.toggle("water")
         first.toggle("mood")
         first.toggle("water")
+        first.setDigits("4821")
         val restored = vm(handle).state.value
-        assertEquals(1, restored.page)
+        assertEquals(WelcomePage.MONEY, restored.page)
         assertEquals(listOf("mood"), restored.picked)
+        assertEquals("4821", restored.digits)
     }
 
     @Test
@@ -102,6 +149,10 @@ class WelcomeTest {
         compose.setContent { EonslateTheme { WelcomeScreen(onDone = {}, viewModel = vm) } }
         compose.onNodeWithText("Private by design").assertIsDisplayed()
         compose.onNodeWithText("Get started").performClick()
+        compose.onNodeWithText("What should we call you?").assertIsDisplayed()
+        compose.onNodeWithText("Continue").performClick()
+        compose.onNodeWithText("Your money").assertIsDisplayed()
+        compose.onNodeWithText("Continue").performClick()
         compose.onNodeWithText("Pick a few to start").assertIsDisplayed()
         compose.onNodeWithText("Start with nothing").assertIsDisplayed()
         compose.onNodeWithText("Mood").performClick()
@@ -128,11 +179,13 @@ class WelcomeTest {
     @Test
     fun backOnTheSecondPageReturnsToTheFirst() = runTest {
         val vm = vm()
-        vm.showPage(1)
-        vm.showPage(0)
-        assertEquals(0, vm.state.value.page)
-        vm.showPage(5)
-        assertEquals(1, vm.state.value.page)
+        vm.next()
+        vm.back()
+        assertEquals(WelcomePage.INTRO, vm.state.value.page)
+        vm.back()
+        assertEquals(WelcomePage.INTRO, vm.state.value.page)
+        repeat(5) { vm.next() }
+        assertEquals(WelcomePage.TRACKERS, vm.state.value.page)
     }
 
     private class Repo : TrackerRepository {
@@ -162,5 +215,31 @@ class WelcomeTest {
         override suspend fun updateAppearance(change: (dev.qtremors.eonslate.core.settings.Appearance) -> dev.qtremors.eonslate.core.settings.Appearance) = Unit
         override val tracking: Flow<dev.qtremors.eonslate.core.settings.Tracking> = MutableStateFlow(dev.qtremors.eonslate.core.settings.Tracking(currency = "JPY"))
         override suspend fun updateTracking(change: (dev.qtremors.eonslate.core.settings.Tracking) -> dev.qtremors.eonslate.core.settings.Tracking) = Unit
+    }
+
+    private class Finance : dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository {
+        val accounts = mutableListOf<dev.qtremors.eonslate.core.tracker.domain.finance.Account>()
+        override fun observeLedger(): Flow<dev.qtremors.eonslate.core.tracker.domain.finance.Ledger> =
+            MutableStateFlow(dev.qtremors.eonslate.core.tracker.domain.finance.Ledger(accounts = accounts.toList()))
+        override suspend fun saveAccount(account: dev.qtremors.eonslate.core.tracker.domain.finance.Account) = account.isValid().also { if (it) accounts += account }
+        override suspend fun deleteAccount(id: String) = false
+        override suspend fun saveTransaction(transaction: dev.qtremors.eonslate.core.tracker.domain.finance.Transaction) = false
+        override suspend fun appendTransactions(transactions: List<dev.qtremors.eonslate.core.tracker.domain.finance.Transaction>) = false
+        override suspend fun deleteTransaction(id: String) = Unit
+        override suspend fun deleteTransactions(ids: Collection<String>) = Unit
+        override suspend fun addRecurring(payment: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment, throughDay: Long, throughMinute: Int) = false
+        override suspend fun updateRecurring(
+            expected: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment,
+            payment: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment,
+            throughDay: Long,
+            throughMinute: Int,
+        ) = false
+        override suspend fun deleteRecurring(id: String) = Unit
+        override suspend fun recordRecurring(expected: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment, minor: Long, day: Long) = false
+        override suspend fun postDue(throughDay: Long, throughMinute: Int) = Unit
+        override suspend fun saveBudget(budget: dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget) = false
+        override suspend fun deleteBudget(id: String) = Unit
+        override suspend fun saveCategory(category: dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice, previous: dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice?) = false
+        override suspend fun deleteCategory(category: dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice) = false
     }
 }

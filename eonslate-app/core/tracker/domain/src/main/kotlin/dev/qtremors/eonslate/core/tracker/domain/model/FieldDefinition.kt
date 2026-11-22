@@ -129,6 +129,8 @@ sealed interface FieldConfig {
     @SerialName("single_choice")
     data class SingleChoice(
         val options: List<ChoiceOption>,
+        /** Each option is a part of the tracker, such as a bike's oil, fuel and battery, shown on its own. */
+        val parts: Boolean = false,
     ) : FieldConfig {
         override val type: FieldType get() = FieldType.SINGLE_CHOICE
     }

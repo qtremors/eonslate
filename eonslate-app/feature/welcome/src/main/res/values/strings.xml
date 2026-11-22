@@ -17,4 +17,29 @@
         <item quantity="one">Start with %d tracker</item>
         <item quantity="other">Start with %d trackers</item>
     </plurals>
+    <string name="welcome_restore">Restore a backup</string>
+    <string name="welcome_continue">Continue</string>
+    <string name="welcome_back">Back</string>
+    <string name="welcome_you_title">What should we call you?</string>
+    <string name="welcome_you_subtitle">It shows on your profile.</string>
+    <string name="welcome_you_name">Your name</string>
+    <string name="welcome_you_hint">Kept on this phone. You can leave it empty.</string>
+    <string name="welcome_money_title">Your money</string>
+    <string name="welcome_money_subtitle">Start with the account you use most. Add the rest later.</string>
+    <string name="welcome_money_currency">Currency</string>
+    <string name="welcome_money_currency_hint">A code such as INR, USD or EUR</string>
+    <string name="welcome_money_currency_unknown">Not a currency this phone knows</string>
+    <string name="welcome_money_account">First account</string>
+    <string name="welcome_money_account_name">Name</string>
+    <string name="welcome_account_default">Main account</string>
+    <string name="welcome_money_opening">Balance today</string>
+    <string name="welcome_money_opening_hint">What it holds now; leave empty for zero</string>
+    <string name="welcome_money_opening_invalid">Enter an amount</string>
+    <string name="welcome_money_digits">Last 4 digits</string>
+    <string name="welcome_money_digits_hint">Payment SMS naming them go to this account</string>
+    <string name="welcome_money_digits_invalid">Enter 4 digits</string>
+    <string name="welcome_kind_bank">Bank</string>
+    <string name="welcome_kind_card">Card</string>
+    <string name="welcome_kind_wallet">Wallet</string>
+    <string name="welcome_kind_cash">Cash</string>
 </resources>

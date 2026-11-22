@@ -50,7 +50,10 @@ class IntervalsTest {
         val status = Intervals.status(bike, entries, LocalDate.of(2026, 11, 14)).first { it.interval == oil }
         assertEquals("Oil change", status.label)
         assertEquals(30_000L, status.dueAt)
-        assertEquals(1_240L, status.amountLeft)
+        assertEquals(28_760L, status.current)
+        // 4,760 km over 214 days is about 22 km a day, so 13 days on the odometer reads about 29,049.
+        assertEquals(951L, status.amountLeft)
+        assertTrue(status.estimated)
         assertFalse(status.due)
         val later = entries + e(LocalDate.of(2026, 12, 1), "fuel", 30_050)
         assertTrue(Intervals.status(bike, later, LocalDate.of(2026, 12, 2)).first { it.interval == oil }.due)
@@ -92,5 +95,85 @@ class IntervalsTest {
         assertFalse(oil.copy(optionId = "missing").isValid(bike.fields))
         assertFalse(Interval("x").isValid(bike.fields))
         assertFalse(oil.copy(amountFieldId = "what").isValid(bike.fields))
+    }
+
+    @Test
+    fun partsListEveryOptionWithItsLastLogIntervalAndRhythm() {
+        val parted = bike.copy(fields = listOf(what.copy(config = (what.config as FieldConfig.SingleChoice).copy(parts = true)), km))
+        val entries = listOf(
+            e(LocalDate.of(2026, 4, 1), "oil", 24_000),
+            e(LocalDate.of(2026, 8, 1), "oil", 27_000),
+            e(LocalDate.of(2026, 10, 1), "fuel", 28_000),
+            e(LocalDate.of(2026, 10, 15), "fuel", 28_400),
+            e(LocalDate.of(2026, 11, 1), "fuel", 28_760),
+        )
+        val parts = Parts.of(parted, entries, LocalDate.of(2026, 11, 14))
+        assertEquals(listOf("oil", "service", "fuel"), parts.map { it.optionId })
+        assertEquals(951L, parts[0].interval?.amountLeft)
+        assertEquals(LocalDate.of(2026, 8, 1), parts[0].last)
+        assertEquals(0, parts[1].count)
+        assertNull(parts[1].last)
+        assertEquals(3, parts[2].count)
+        assertEquals("fuel", parts[2].rhythm?.optionId)
+        assertTrue(Parts.of(bike, entries, LocalDate.of(2026, 11, 14)).isEmpty())
+    }
+
+    @Test
+    fun withTheOdometerReadOnlyAtOilChangesTheUsualPaceCountsDown() {
+        // Read only at each change: 3,000 km every four months, about 24.6 km a day.
+        val entries = listOf(
+            e(LocalDate.of(2026, 4, 1), "oil", 24_000),
+            e(LocalDate.of(2026, 8, 1), "oil", 27_000),
+        )
+        val status = Intervals.status(bike, entries, LocalDate.of(2026, 10, 1)).first { it.interval == oil }
+        assertEquals(27_000L, status.current)
+        assertTrue(status.estimated)
+        assertTrue(status.amountLeft!! in 1_400L..1_600L)
+        assertEquals(LocalDate.of(2026, 12, 1), status.amountDueOn)
+        // Past the usual day it falls due with no new reading.
+        assertTrue(Intervals.status(bike, entries, LocalDate.of(2026, 12, 5)).first { it.interval == oil }.due)
+        // A reading made today is taken as it is.
+        val today = entries + e(LocalDate.of(2026, 10, 1), "fuel", 28_000)
+        val read = Intervals.status(bike, today, LocalDate.of(2026, 10, 1)).first { it.interval == oil }
+        assertFalse(read.estimated)
+        assertEquals(2_000L, read.amountLeft)
+    }
+
+    @Test
+    fun oneReadingHasNoPace() {
+        val status = Intervals.status(bike, listOf(e(LocalDate.of(2026, 8, 1), "oil", 27_000)), LocalDate.of(2026, 10, 1)).first { it.interval == oil }
+        assertFalse(status.estimated)
+        assertEquals(3_000L, status.amountLeft)
+    }
+
+    @Test
+    fun aSetDailyAmountStandsInForTheLearnedPace() {
+        val thirty = bike.copy(intervals = listOf(oil.copy(perDay = 30), service))
+        val entries = listOf(e(LocalDate.of(2026, 8, 1), "oil", 27_000))
+        val status = Intervals.status(thirty, entries, LocalDate.of(2026, 9, 1)).first { it.interval.id == "i1" }
+        // 31 days at 30 km a day: about 27,930, so about 2,070 left, due 100 days after the change.
+        assertEquals(2_070L, status.amountLeft)
+        assertEquals(LocalDate.of(2026, 11, 9), status.amountDueOn)
+        assertFalse(oil.copy(perDay = 0).isValid(bike.fields))
+        assertFalse(service.copy(perDay = 30).isValid(bike.fields))
+    }
+
+    @Test
+    fun aCommuteOnWorkdaysCountsOnlyThoseDays() {
+        val workdays = 0b0011111
+        val commute = bike.copy(intervals = listOf(oil.copy(perDay = 30, countDays = workdays), service))
+        // Changed on Monday 3 Aug at 27,000 km.
+        val entries = listOf(e(LocalDate.of(2026, 8, 3), "oil", 27_000))
+        // Two weeks later, Monday 17 Aug: ten workdays, 300 km.
+        val status = Intervals.status(commute, entries, LocalDate.of(2026, 8, 17)).first { it.interval.id == "i1" }
+        assertEquals(2_700L, status.amountLeft)
+        // 3,000 km is 100 workdays, 20 weeks: Monday 21 Dec.
+        assertEquals(LocalDate.of(2026, 12, 21), status.amountDueOn)
+        assertEquals(5L, Intervals.countedDays(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 10), workdays))
+        assertEquals(LocalDate.of(2026, 8, 4), Intervals.afterCountedDays(LocalDate.of(2026, 8, 3), 1, workdays))
+        // Friday plus one workday is Monday.
+        assertEquals(LocalDate.of(2026, 8, 10), Intervals.afterCountedDays(LocalDate.of(2026, 8, 7), 1, workdays))
+        assertFalse(oil.copy(countDays = 0).isValid(bike.fields))
+        assertFalse(service.copy(countDays = workdays).isValid(bike.fields))
     }
 }

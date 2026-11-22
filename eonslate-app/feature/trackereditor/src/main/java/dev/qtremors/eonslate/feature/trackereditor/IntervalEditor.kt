@@ -1,5 +1,10 @@
 package dev.qtremors.eonslate.feature.trackereditor
 
+import androidx.compose.ui.res.pluralStringResource
+import java.time.DayOfWeek
+import dev.qtremors.eonslate.core.ui.components.IconBadge
+import androidx.compose.material.icons.rounded.EventBusy
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -59,6 +64,10 @@ data class IntervalDraft(
     val amountOn: Boolean = false,
     val amountFieldId: String = "",
     val amount: String = "",
+    /** The usual amount a day, such as 30 km; empty to learn it from the logs. */
+    val perDay: String = "",
+    /** The weekdays the amount grows on, as a mask; every day by default. */
+    val countDays: Int = Interval.ALL_DAYS,
 )
 
 /** The interval to save, or null when it is not complete. Amounts use the number field's decimals. */
@@ -67,6 +76,8 @@ internal fun IntervalDraft.build(fields: List<FieldDraft>): Interval? {
     val every = if (timeOn) every.trim().toIntOrNull()?.takeIf { it in 1..Interval.MAX_EVERY } else null
     val field = fields.firstOrNull { it.id == amountFieldId && it.type == FieldType.NUMBER }
     val amount = if (amountOn && field != null) ScaledDecimal.parse(amount, field.decimals)?.takeIf { it > 0 } else null
+    val perDay = if (amount != null && perDay.isNotBlank()) ScaledDecimal.parse(perDay, field!!.decimals)?.takeIf { it > 0 } ?: return null else null
+    if (amount != null && countDays !in 1..Interval.ALL_DAYS) return null
     if ((timeOn && every == null) || (amountOn && amount == null) || (every == null && amount == null)) return null
     return Interval(
         id = id,
@@ -76,6 +87,8 @@ internal fun IntervalDraft.build(fields: List<FieldDraft>): Interval? {
         unit = unit,
         amountFieldId = field?.id.takeIf { amount != null },
         amount = amount,
+        perDay = perDay,
+        countDays = countDays.takeIf { amount != null && it != Interval.ALL_DAYS },
     )
 }
 
@@ -88,6 +101,8 @@ internal fun Interval.toDraft(fields: List<FieldDraft>): IntervalDraft = Interva
     amountOn = amount != null,
     amountFieldId = amountFieldId.orEmpty(),
     amount = amount?.let { a -> ScaledDecimal.format(a, fields.firstOrNull { it.id == amountFieldId }?.decimals ?: 0) }.orEmpty(),
+    perDay = perDay?.let { a -> ScaledDecimal.format(a, fields.firstOrNull { it.id == amountFieldId }?.decimals ?: 0) }.orEmpty(),
+    countDays = countDays ?: Interval.ALL_DAYS,
 )
 
 /** The jobs an interval can follow: any log, or one option of a single choice field. */
@@ -120,19 +135,108 @@ private fun summary(draft: IntervalDraft, fields: List<FieldDraft>): String {
     return job + " · " + parts.joinToString(stringResource(R.string.interval_or))
 }
 
+/** A part's interval without the job: "Every 3000 km · 30 km a day", "Every 6 months". */
+@Composable
+private fun partSummary(draft: IntervalDraft, fields: List<FieldDraft>): String {
+    val unit = fields.firstOrNull { it.id == draft.amountFieldId }?.unit?.trim().orEmpty()
+    val after = buildList {
+        if (draft.timeOn) add("${draft.every.trim()} ${unitLabel(draft.unit).lowercase()}")
+        if (draft.amountOn) add("${draft.amount.trim()} $unit".trim())
+    }.joinToString(stringResource(R.string.interval_or))
+    val days = Integer.bitCount(draft.countDays).takeIf { draft.amountOn && draft.countDays != Interval.ALL_DAYS }
+    val pace = draft.perDay.trim().takeIf { draft.amountOn && it.isNotEmpty() }?.let { amount ->
+        val perDay = stringResource(R.string.interval_per_day_short, "$amount $unit".trim())
+        days?.let { perDay + ", " + pluralStringResource(R.plurals.interval_days_a_week, it, it) } ?: perDay
+    }
+    return listOfNotNull(stringResource(R.string.interval_every_value, after), pace).joinToString(" · ")
+}
+
+/** The job keys of a tracker's parts, "fieldId/optionId", with each part's name, in order. */
+internal fun partJobs(fields: List<FieldDraft>): List<Pair<String, String>> =
+    fields.firstOrNull { it.type == FieldType.SINGLE_CHOICE && it.parts }?.let { field ->
+        field.options.filter { it.label.isNotBlank() }.map { "${field.id}/${it.id}" to it.label.trim() }
+    }.orEmpty()
+
+/**
+ * A tracker's parts, each with when it is due again: tap one to set or change its interval, with
+ * that part already chosen. Parts without one show their last log only.
+ */
+@Composable
+internal fun PartIntervals(
+    draft: TrackerDraft,
+    onSave: (IntervalDraft) -> Unit,
+    onRemove: (String) -> Unit,
+    newId: () -> String,
+    firstDay: DayOfWeek = DayOfWeek.MONDAY,
+) {
+    val parts = partJobs(draft.fields)
+    if (parts.isEmpty()) return
+    var editing by remember { mutableStateOf<Pair<IntervalDraft, String>?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.editor_parts_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ConnectedGroup {
+            parts.forEachIndexed { index, (key, label) ->
+                val interval = draft.intervals.firstOrNull { it.job == key }
+                ConnectedItem(index, parts.size) {
+                    ConnectedRow(
+                        title = label,
+                        supporting = when {
+                            interval == null -> stringResource(R.string.editor_part_no_interval)
+                            interval.build(draft.fields) == null -> stringResource(R.string.interval_incomplete)
+                            else -> partSummary(interval, draft.fields)
+                        },
+                        leading = { IconBadge(if (interval == null) Icons.Rounded.EventBusy else Icons.Rounded.Update, key) },
+                        trailing = { Icon(Icons.Rounded.ChevronRight, contentDescription = null) },
+                        onClick = { editing = (interval ?: IntervalDraft(id = newId(), job = key)) to label },
+                    )
+                }
+            }
+        }
+    }
+    editing?.let { (current, label) ->
+        IntervalSheet(
+            initial = current,
+            fields = draft.fields,
+            isNew = draft.intervals.none { it.id == current.id },
+            part = label,
+            firstDay = firstDay,
+            onSave = {
+                onSave(it)
+                editing = null
+            },
+            onRemove = {
+                onRemove(current.id)
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
 /**
  * The As needed tracker's "Due again" list: each interval as a row, and a button to add one.
  * Nothing shows beyond the button until an interval exists.
  */
 @Composable
-internal fun IntervalList(draft: TrackerDraft, onSave: (IntervalDraft) -> Unit, onRemove: (String) -> Unit, newId: () -> String) {
+internal fun IntervalList(
+    draft: TrackerDraft,
+    onSave: (IntervalDraft) -> Unit,
+    onRemove: (String) -> Unit,
+    newId: () -> String,
+    firstDay: DayOfWeek = DayOfWeek.MONDAY,
+) {
     var editing by remember { mutableStateOf<IntervalDraft?>(null) }
+    // A part's interval is set on its row under Parts, so it is not listed twice.
+    val partKeys = partJobs(draft.fields).map { it.first }.toSet()
+    val shown = draft.intervals.filter { it.job !in partKeys }
+    // A tracker with parts sets its intervals there; this list stays for any it already had.
+    if (partKeys.isNotEmpty() && shown.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (draft.intervals.isNotEmpty()) {
+        if (shown.isNotEmpty()) {
             Text(stringResource(R.string.interval_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             ConnectedGroup {
-                draft.intervals.forEachIndexed { index, interval ->
-                    ConnectedItem(index, draft.intervals.size) {
+                shown.forEachIndexed { index, interval ->
+                    ConnectedItem(index, shown.size) {
                         val complete = interval.build(draft.fields) != null
                         ConnectedRow(
                             title = summary(interval, draft.fields),
@@ -155,6 +259,7 @@ internal fun IntervalList(draft: TrackerDraft, onSave: (IntervalDraft) -> Unit, 
             initial = current,
             fields = draft.fields,
             isNew = draft.intervals.none { it.id == current.id },
+            firstDay = firstDay,
             onSave = {
                 onSave(it)
                 editing = null
@@ -177,13 +282,17 @@ private fun IntervalSheet(
     onSave: (IntervalDraft) -> Unit,
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
+    /** The part this interval belongs to; its job is then fixed. */
+    part: String? = null,
+    firstDay: DayOfWeek = DayOfWeek.MONDAY,
 ) {
     var d by remember { mutableStateOf(initial) }
     val numbers = fields.filter { it.type == FieldType.NUMBER && it.name.isNotBlank() }
-    EonslateBottomSheet(onDismissRequest = onDismiss, title = stringResource(if (isNew) R.string.interval_new else R.string.interval_edit)) {
+    val title = part?.let { stringResource(R.string.interval_part_title, it) } ?: stringResource(if (isNew) R.string.interval_new else R.string.interval_edit)
+    EonslateBottomSheet(onDismissRequest = onDismiss, title = title) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.interval_for), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            if (part == null) Text(stringResource(R.string.interval_for), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            if (part == null) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 jobs(fields).forEach { job ->
                     FilterChip(
                         selected = d.job == job.key,
@@ -239,6 +348,33 @@ private fun IntervalSheet(
                     supporting = numbers.firstOrNull { it.id == d.amountFieldId }?.unit?.trim()?.ifEmpty { null },
                     keyboardType = KeyboardType.Decimal,
                 )
+                // Between readings the amount counts on at this pace, so it needs logging only now and then.
+                FormField(
+                    value = d.perDay,
+                    onValueChange = { d = d.copy(perDay = it) },
+                    label = stringResource(R.string.interval_per_day),
+                    supporting = stringResource(R.string.interval_per_day_hint),
+                    suffix = numbers.firstOrNull { it.id == d.amountFieldId }?.unit?.trim()?.ifEmpty { null },
+                    keyboardType = KeyboardType.Decimal,
+                )
+                // Only the days it grows on count, such as workdays for a commute.
+                Text(stringResource(R.string.interval_count_days), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    (0L until 7L).map { firstDay.plus(it) }.forEach { day ->
+                        val bit = 1 shl (day.value - 1)
+                        val on = d.countDays and bit != 0
+                        FilterChip(
+                            selected = on,
+                            onClick = { d = d.copy(countDays = d.countDays xor bit) },
+                            label = { Text(day.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())) },
+                            shape = MaterialTheme.shapes.medium,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        )
+                    }
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 if (!isNew) {

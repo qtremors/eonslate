@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.1.9
-> **Last Updated:** 2026-11-21
+> **Version:** 2.2.0
+> **Last Updated:** 2026-11-22
 
 ## Roadmap
 
@@ -45,9 +45,11 @@ Each step is planned as one release commit.
 | 33 | 2.1.9 | Widgets: Today checklist and money summary; reminder and editor touches | Done |
 | 34 | 2.1.9 | Close the gaps: widget counts, week start, icons, wording, checked on the phone | Done |
 | 35 | 2.1.9 | Top bar with bell and profile, notifications, faster start, clear text fields | Done |
-| 36 | 2.2.0 | Account cards: kind and last digits, a card carousel, transactions bound to cards | Planned |
-| 37 | 2.2.0 | Parts: a choice field shown as sub trackers, each with its own last, next and log | Planned |
-| 38 | 2.2.0 | Onboarding: name, currency, first account and first tracker | Planned |
+| 36 | 2.2.0 | Account cards: kind and last digits, a card carousel, transactions bound to cards | Done |
+| 37 | 2.2.0 | Parts: a choice field shown as sub trackers, each with its own last, next and log | Done |
+| 38 | 2.2.0 | Onboarding: name, currency, first account, starters; odometer pace between logs | Done |
+| 39 | 2.2.0 | Parts set up in place in the editor; usual amount counts only on chosen weekdays | Done |
+| 40 | 2.2.0 | Release: theme-aware splash and mark, SMS in every build, docs and website | Done |
 
 ## v2.0.0 parity
 
@@ -237,6 +239,35 @@ Checked on the moto with sample data holding goals, a weekday schedule and As ne
 - [x] Home bar: the mark and name; every tab ends with a bell and the profile picture
 - [x] Notifications: SMS finds, payments to confirm, budgets over, intervals due, payments coming up
 - [x] Profile: name, then Settings and the places visited now and then
-- [x] Filled tab icons when chosen
 - [x] Splash holds until Home has its figures; shared reads; sums off the main thread
 - [x] Text fields clear inside
+
+### 2.2.0 Account cards
+Checked on the moto with a bank, a credit card, a wallet and cash.
+- [x] Account kind and last 4 digits (database version 15)
+- [x] Card carousel on Home; a tap filters Transactions to that account
+- [x] Account filter chip; rows and pickers show the digits
+- [x] Payment SMS match an account by its last digits
+
+### 2.2.0 Parts
+Checked on the moto with the Bike: oil by kilometres, servicing and battery by time, tyre and fuel by last log.
+- [x] Show as parts on a single choice field (no database change)
+- [x] Part rows on the tracker card and atop Insights
+- [x] A part's log button opens the entry with that part picked
+
+### 2.2.0 Onboarding and odometer pace
+- [x] Steps: intro, name, currency and first account, starters; skip anytime; restore a backup
+- [x] Distance intervals count on at the learned pace between readings
+- [x] Optional usual amount a day on an interval
+- [ ] Walk the onboarding on the phone from a fresh install (covered by the screen test so far)
+
+### 2.2.0 Parts in the editor
+Checked on the moto: the Bike's oil at 30 km a day on workdays reads about 1,150 km left on a Saturday.
+- [x] Parts section in the tracker editor; a part's sheet has its job fixed
+- [x] Counts on weekdays for the usual amount a day and the learned pace
+
+### 2.2.0 Release
+- [x] Theme-aware splash with the logo; matching window background
+- [x] Top bar mark tinted by theme with its transparency
+- [x] SMS inbox scanning in every build
+- [x] RELEASES.md, README and website

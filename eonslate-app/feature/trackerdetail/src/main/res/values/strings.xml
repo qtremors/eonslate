@@ -171,4 +171,5 @@
         <item quantity="one">Added %d entry</item>
         <item quantity="other">Added %d entries</item>
     </plurals>
+    <string name="insights_parts">Parts</string>
 </resources>

@@ -1,16 +1,13 @@
 package dev.qtremors.eonslate
 
+import androidx.compose.material.icons.rounded.SpaceDashboard
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.TrackChanges
 import dev.qtremors.eonslate.feature.finance.NotificationsScreen
 import dev.qtremors.eonslate.core.ui.components.ProfileAvatar
 import dev.qtremors.eonslate.core.ui.components.NotificationBell
 import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
-import androidx.compose.material.icons.rounded.Analytics
-import androidx.compose.material.icons.outlined.Analytics
-import androidx.compose.material.icons.outlined.EventRepeat
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -109,16 +106,18 @@ fun EonslateNavHost(
     var openBudget by remember { mutableStateOf(false) }
     var openCategory by remember { mutableStateOf<String?>(null) }
     var openProfile by remember { mutableStateOf(false) }
+    var openAccount by remember { mutableStateOf<String?>(null) }
+    var openNewAccount by remember { mutableStateOf(false) }
     val accountActions: @Composable RowScope.() -> Unit = {
         NotificationBell(alertCount) { navController.navigate(Destination.Notifications) { launchSingleTop = true } }
         ProfileAvatar(homeName, onClick = { openProfile = true })
     }
     val reduceMotion = LocalReduceMotion.current
     val tabs = listOf(
-        TabItem(Icons.Outlined.Home, stringResource(R.string.tab_home), Icons.Rounded.Home),
-        TabItem(Icons.Outlined.AccountBalanceWallet, stringResource(R.string.tab_transactions), Icons.Rounded.AccountBalanceWallet),
-        TabItem(Icons.Outlined.EventRepeat, stringResource(R.string.tab_subscriptions), Icons.Rounded.EventRepeat),
-        TabItem(Icons.Outlined.Analytics, stringResource(R.string.tab_trackers), Icons.Rounded.Analytics),
+        TabItem(Icons.Rounded.SpaceDashboard, stringResource(R.string.tab_home)),
+        TabItem(Icons.AutoMirrored.Rounded.ReceiptLong, stringResource(R.string.tab_transactions)),
+        TabItem(Icons.Rounded.Autorenew, stringResource(R.string.tab_subscriptions)),
+        TabItem(Icons.Rounded.TrackChanges, stringResource(R.string.tab_trackers)),
     )
     CompositionLocalProvider(LocalShellHost provides shell, LocalAccountActions provides accountActions) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -137,11 +136,10 @@ fun EonslateNavHost(
         ) {
             Spacer(Modifier.weight(1f))
             tabs.forEachIndexed { index, tab ->
-                val selected = destination?.tabIndex() == index
                 NavigationRailItem(
-                    selected = selected,
+                    selected = destination?.tabIndex() == index,
                     onClick = { navController.navigateToTab(TABS[index]) },
-                    icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
+                    icon = { Icon(tab.icon, contentDescription = null) },
                     label = { Text(tab.label) },
                 )
             }
@@ -168,20 +166,31 @@ fun EonslateNavHost(
                         popUpTo<Destination.Welcome> { inclusive = true }
                     }
                 },
+                // Restoring from the first run: Home, with Backup open on top of it.
+                onRestore = {
+                    navController.navigate(Destination.Home) {
+                        popUpTo<Destination.Welcome> { inclusive = true }
+                    }
+                    navController.navigate(Destination.Backup)
+                },
             )
         }
         composable<Destination.Home> {
             HomeTab(
                 onLoaded = onReady,
+                onAccount = { id ->
+                    openAccount = id
+                    navController.navigateToTab(Destination.Transactions)
+                },
+                onAddAccount = {
+                    openNewAccount = true
+                    navController.navigateToTab(Destination.Transactions)
+                },
                 onTransactions = { navController.navigateToTab(Destination.Transactions) },
                 onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
                 onTrackers = { navController.navigateToTab(Destination.Trackers) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
-                onReviewSms = {
-                    openInbox = true
-                    navController.navigateToTab(Destination.Transactions)
-                },
                 onAdd = { kind ->
                     openNew = kind
                     navController.navigateToTab(Destination.Transactions)
@@ -202,6 +211,7 @@ fun EonslateNavHost(
                 onNewTracker = { navController.navigate(Destination.Templates) },
                 onOpenTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
+                onLogPart = { id, option -> navController.navigate(Destination.LogEntry(id, optionId = option)) },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
@@ -213,6 +223,8 @@ fun EonslateNavHost(
                 openNew = openNew, onNewOpened = { openNew = null },
                 openBudget = openBudget, onBudgetOpened = { openBudget = false },
                 openCategory = openCategory, onCategoryOpened = { openCategory = null },
+                openAccount = openAccount, onAccountOpened = { openAccount = null },
+                openNewAccount = openNewAccount, onNewAccountOpened = { openNewAccount = false },
                 onManageCategories = { navController.navigate(Destination.Categories) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
@@ -275,6 +287,7 @@ fun EonslateNavHost(
                 onBack = { navController.popBackStack() },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
+                onLogPart = { id, option -> navController.navigate(Destination.LogEntry(id, optionId = option)) },
                 onEditEntry = { trackerId, entryId -> navController.navigate(Destination.LogEntry(trackerId, entryId)) },
                 onReminders = { id -> navController.navigate(Destination.Reminders(id)) },
             )

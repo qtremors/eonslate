@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Eonslate is a private, offline tracker for almost anything on Android, built with Material 3 Expressive.">
-  <meta property="og:title" content="Eonslate: A private tracker for almost anything">
-  <meta property="og:description" content="Track money, habits, mood, workouts and more on Android. No accounts, no ads, no internet permission.">
+  <meta name="description" content="Eonslate is a private, offline slate for your money and anything else you track, on Android, built with Material 3 Expressive.">
+  <meta property="og:title" content="Eonslate: your money and anything else, offline">
+  <meta property="og:description" content="Money, habits, a bike's oil changes, sleep and more on Android. No accounts, no ads, no internet permission.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://qtremors.github.io/eonslate/">
   <meta name="theme-color" content="#f4f9fb" media="(prefers-color-scheme: light)">
@@ -52,6 +52,7 @@
       line-height: 1.55;
     }
     main { max-width: 880px; margin: 0 auto; padding: 56px 16px 72px; }
+    a { color: var(--primary); }
     .hero {
       background: var(--primary-container);
       color: var(--on-primary-container);
@@ -71,7 +72,9 @@
       border-radius: var(--radius-l);
       background: #f4f9fb;
     }
-    .hero p { font-size: 1.2rem; margin: 0 0 28px; max-width: 34ch; }
+    .hero p { font-size: 1.2rem; margin: 0 0 8px; max-width: 36ch; }
+    .version { font-weight: 650; opacity: .85; margin-bottom: 28px !important; font-size: 1rem !important; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
     .pill {
       display: inline-block;
       background: var(--primary);
@@ -82,7 +85,13 @@
       text-decoration: none;
       transition: border-radius 220ms cubic-bezier(.2, 1.4, .4, 1);
     }
+    .pill.tonal { background: var(--surface-bright); color: var(--on-surface); }
     .pill:active { border-radius: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+    .stat { background: var(--surface-bright); border-radius: var(--radius-l); padding: 16px 20px; }
+    .stat b { display: block; font-size: 1.6rem; font-weight: 750; line-height: 1.2; }
+    .stat span { color: var(--on-surface-variant); font-size: .95rem; }
+    @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
     h2 { font-size: 1.4rem; font-weight: 700; margin: 48px 4px 16px; }
     .group { display: flex; flex-direction: column; gap: var(--gap); }
     .row {
@@ -94,8 +103,8 @@
     .row:last-child { border-bottom-left-radius: var(--radius-l); border-bottom-right-radius: var(--radius-l); }
     .row strong { display: block; font-weight: 650; }
     .row span { color: var(--on-surface-variant); }
+    .row a { text-decoration: none; font-weight: 650; }
     footer { color: var(--on-surface-variant); margin-top: 48px; padding: 0 4px; font-size: .95rem; }
-    footer a { color: var(--primary); }
     @media (prefers-reduced-motion: reduce) { .pill { transition: none; } }
   </style>
 </head>
@@ -104,22 +113,78 @@
     <section class="hero">
       <img class="hero-logo" src="assets/Eonslate.svg" alt="" width="88" height="88">
       <h1>Eonslate</h1>
-      <p>A private, offline tracker for almost anything. Coming soon to Android.</p>
-      <a class="pill" href="https://github.com/qtremors/eonslate">Follow on GitHub</a>
+      <p>A slate you write on as time passes: your money and anything else you track, private and offline.</p>
+      <p class="version" id="version">Android 8.0 or newer</p>
+      <div class="actions">
+        <a class="pill" id="download" href="https://github.com/qtremors/eonslate/releases/latest">Download APK</a>
+        <a class="pill tonal" href="https://github.com/qtremors/eonslate">GitHub</a>
+      </div>
     </section>
 
-    <h2>What it will do</h2>
+    <div class="stats" aria-label="GitHub stats">
+      <div class="stat"><b id="stars">–</b><span>Stars</span></div>
+      <div class="stat"><b id="forks">–</b><span>Forks</span></div>
+      <div class="stat"><b id="downloads">–</b><span>Downloads</span></div>
+      <div class="stat"><b id="latest-downloads">–</b><span>This version</span></div>
+    </div>
+
+    <h2>What it does</h2>
     <div class="group">
-      <div class="row"><strong>Track anything</strong><span>Build trackers from numbers, money, durations, ratings, choices, text and photos.</span></div>
-      <div class="row"><strong>Start in seconds</strong><span>Pick ready-made templates for expenses, habits, mood, workouts, reading and more.</span></div>
-      <div class="row"><strong>See your progress</strong><span>Calendars, charts, streaks and totals for every tracker.</span></div>
-      <div class="row"><strong>Stay private</strong><span>No accounts, no ads, no internet permission. Your data never leaves your device.</span></div>
+      <div class="row"><strong>Money, all of it</strong><span>Account cards for banks, cards, wallets and cash. Transactions, budgets, subscriptions and bills, with charts for every view.</span></div>
+      <div class="row"><strong>Payment SMS, offline</strong><span>Scan the inbox or share a message in; each payment lands on the account whose last digits it names.</span></div>
+      <div class="row"><strong>Trackers you build</strong><span>Numbers, money, durations, ratings, choices, text and dates, on a schedule or as needed, with daily or weekly goals.</span></div>
+      <div class="row"><strong>Due again, on its own</strong><span>An oil change every 3,000 km counts down at your usual pace. A bike's oil, servicing and battery each get their own row.</span></div>
+      <div class="row"><strong>See your patterns</strong><span>Streaks, consistency, a year of days, weekday patterns and learned rhythms.</span></div>
+      <div class="row"><strong>Private by design</strong><span>No accounts, no ads, no internet permission. Backups are one file you keep.</span></div>
+    </div>
+
+    <h2>Developer</h2>
+    <div class="group">
+      <div class="row"><strong>Tremors</strong><span>Designs and builds Eonslate. <a href="https://github.com/qtremors">GitHub</a> · <a href="https://discord.gg/QgUjuNj9U8" rel="noopener">Discord</a></span></div>
+    </div>
+
+    <h2>Credits</h2>
+    <div class="group">
+      <div class="row"><strong>Jetpack Compose and Material 3</strong><span>The Android Open Source Project · Apache 2.0</span></div>
+      <div class="row"><strong>AndroidX, Room and DataStore</strong><span>The Android Open Source Project · Apache 2.0</span></div>
+      <div class="row"><strong>Material Symbols and Material Color Utilities</strong><span>Google · Apache 2.0</span></div>
+      <div class="row"><strong>Dagger and Hilt</strong><span>The Dagger Authors · Apache 2.0</span></div>
+      <div class="row"><strong>Kotlin, Coroutines and Serialization</strong><span>JetBrains · Apache 2.0</span></div>
+      <div class="row"><strong>AndroidSVG</strong><span>Paul LeBeau, Cave Rock Software Ltd. · Apache 2.0</span></div>
+      <div class="row"><strong>MaterialKolor</strong><span>Jordon de Hoog · MIT</span></div>
+      <div class="row"><strong>Roboto Flex</strong><span>The Roboto Flex Project Authors · SIL Open Font License 1.1</span></div>
     </div>
 
     <footer>
       Source-available under the Tremors Source License 2.0 ·
-      <a href="https://discord.gg/QgUjuNj9U8" rel="noopener">Discord</a>
+      <a href="https://github.com/qtremors/eonslate/blob/main/RELEASES.md">Releases</a>
     </footer>
   </main>
+  <script>
+    // Version, direct APK link and stats from GitHub; the page reads fine without them.
+    const repo = "qtremors/eonslate";
+    const number = (n) => new Intl.NumberFormat(undefined, { notation: n >= 10000 ? "compact" : "standard" }).format(n);
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    fetch(`https://api.github.com/repos/${repo}`).then((r) => r.ok ? r.json() : null).then((info) => {
+      if (!info) return;
+      set("stars", number(info.stargazers_count));
+      set("forks", number(info.forks_count));
+    }).catch(() => {});
+    fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`).then((r) => r.ok ? r.json() : null).then((releases) => {
+      if (!Array.isArray(releases) || releases.length === 0) return;
+      const apks = (release) => release.assets.filter((a) => a.name.endsWith(".apk"));
+      const count = (release) => apks(release).reduce((sum, a) => sum + a.download_count, 0);
+      set("downloads", number(releases.reduce((sum, r) => sum + count(r), 0)));
+      const latest = releases.find((r) => !r.draft && !r.prerelease) || releases[0];
+      set("latest-downloads", number(count(latest)));
+      set("version", `${latest.tag_name} · Android 8.0 or newer`);
+      const apk = apks(latest)[0];
+      if (apk) {
+        const link = document.getElementById("download");
+        link.href = apk.browser_download_url;
+        link.textContent = `Download ${latest.tag_name}`;
+      }
+    }).catch(() => {});
+  </script>
 </body>
 </html>
