@@ -50,12 +50,14 @@ class RoomBackupRepository @Inject constructor(
             recurring = finance.recurring().map { it.toDomain() },
             budgets = finance.budgets().map { it.toDomain() },
             categories = finance.categories().map { it.toDomain() },
+            parties = finance.parties().map { it.toDomain() },
         )
     }
 
     override suspend fun replaceAll(snapshot: BackupSnapshot) {
         database.withTransaction {
             finance.clearTransactions()
+            finance.clearParties()
             finance.clearRecurring()
             finance.clearBudgets()
             finance.clearCategories()
@@ -72,6 +74,7 @@ class RoomBackupRepository @Inject constructor(
             dao.insertValues(snapshot.values.map { it.toEntity() })
             dao.insertReminders(snapshot.reminders.map { it.toEntity() })
             finance.insertAccounts(snapshot.accounts.map { it.toEntity() })
+            finance.insertParties(snapshot.parties.map { it.toEntity() })
             finance.insertTransactions(snapshot.transactions.map { it.toEntity() })
             finance.insertRecurring(snapshot.recurring.map { it.toEntity() })
             finance.insertBudgets(snapshot.budgets.map { it.toEntity() })

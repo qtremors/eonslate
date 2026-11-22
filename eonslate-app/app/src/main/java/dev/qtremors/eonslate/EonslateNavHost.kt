@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate
 
+import androidx.navigation.toRoute
+import dev.qtremors.eonslate.feature.finance.PartyScreen
+import dev.qtremors.eonslate.feature.finance.PeopleScreen
 import androidx.compose.material.icons.rounded.SpaceDashboard
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Autorenew
@@ -225,12 +228,20 @@ fun EonslateNavHost(
                 openCategory = openCategory, onCategoryOpened = { openCategory = null },
                 openAccount = openAccount, onAccountOpened = { openAccount = null },
                 openNewAccount = openNewAccount, onNewAccountOpened = { openNewAccount = false },
+                onParty = { id -> navController.navigate(Destination.Party(id)) },
+                onPeople = { navController.navigate(Destination.People) },
                 onManageCategories = { navController.navigate(Destination.Categories) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
         }
         composable<Destination.Subscriptions> {
             FinanceScreen(FinanceSection.SUBSCRIPTIONS, onSettings = { navController.navigate(Destination.Settings) })
+        }
+        composable<Destination.People> {
+            PeopleScreen(onBack = { navController.popBackStack() }, onParty = { id -> navController.navigate(Destination.Party(id)) })
+        }
+        composable<Destination.Party> { entry ->
+            PartyScreen(entry.toRoute<Destination.Party>().partyId, onBack = { navController.popBackStack() })
         }
         composable<Destination.Notifications> {
             NotificationsScreen(

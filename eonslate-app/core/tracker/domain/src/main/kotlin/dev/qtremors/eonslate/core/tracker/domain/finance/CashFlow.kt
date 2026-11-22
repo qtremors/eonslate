@@ -69,7 +69,8 @@ data class CashFlow(val range: CashFlowRange, val step: Step, val buckets: List<
             val byCategory = mutableMapOf<String, BigInteger>()
             for (t in transactions) {
                 if (t.epochDay !in days) continue
-                val amount = BigInteger.valueOf(t.minor)
+                // Only your own part: money lent or split for others is not your spending.
+                val amount = BigInteger.valueOf(t.own)
                 if (t.kind == TransactionKind.INCOME) income += amount
                 else {
                     spending += amount

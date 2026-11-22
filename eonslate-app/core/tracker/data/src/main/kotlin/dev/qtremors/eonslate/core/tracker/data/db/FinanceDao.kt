@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.PartyKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Embedded
@@ -42,7 +44,7 @@ data class AccountEntity(
         ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["account_id"], onDelete = ForeignKey.RESTRICT),
         ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["destination_id"], onDelete = ForeignKey.RESTRICT),
     ],
-    indices = [Index("account_id"), Index("destination_id"), Index(value = ["sms_key"], unique = true)],
+    indices = [Index("account_id"), Index("destination_id"), Index(value = ["sms_key"], unique = true), Index("party_id")],
 )
 data class TransactionEntity(
     @PrimaryKey val id: String,
@@ -56,10 +58,30 @@ data class TransactionEntity(
     @ColumnInfo(name = "sms_key") val smsKey: String?,
     @ColumnInfo(defaultValue = "''") val details: String = "",
     @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long = 0,
+    @ColumnInfo(name = "party_id") val partyId: String? = null,
+    @ColumnInfo(defaultValue = "0") val pending: Boolean = false,
+    @ColumnInfo(defaultValue = "'[]'") val shares: String = "[]",
 ) {
-    fun toDomain() =
-        LedgerTransaction(id, accountId, TransactionKind.valueOf(kind), minor, epochDay, note, destinationId, category, smsKey, details, createdAt)
+    fun toDomain() = LedgerTransaction(
+        id, accountId, TransactionKind.valueOf(kind), minor, epochDay, note, destinationId, category, smsKey, details, createdAt, partyId, pending,
+        ShareColumn.decode(shares),
+    )
 }
+
+/** A person or business payments are with; [nameKey] keeps names unique whatever their case. */
+@Entity(tableName = "finance_parties", indices = [Index(value = ["name_key"], unique = true)])
+data class PartyEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    @ColumnInfo(name = "name_key") val nameKey: String,
+    @ColumnInfo(defaultValue = "'person'") val kind: String,
+    @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long,
+) {
+    fun toDomain() = Party(id, name, if (kind == "business") PartyKind.BUSINESS else PartyKind.PERSON, createdAt)
+}
+
+internal fun Party.toEntity() =
+    PartyEntity(id, name.trim(), key, if (kind == PartyKind.BUSINESS) "business" else "person", createdAt)
 
 @Entity(
     tableName = "finance_recurring",
@@ -145,7 +167,7 @@ internal fun CategoryBudget.toEntity() =
 internal fun CategoryChoice.toEntity() = CategoryEntity(id, name, key, kind.name, icon, color, deleted)
 
 internal fun LedgerTransaction.toEntity() =
-    TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey, details, createdAt)
+    TransactionEntity(id, accountId, kind.name, minor, epochDay, note, destinationId, category, smsKey, details, createdAt, partyId, pending, ShareColumn.encode(shares))
 
 data class AccountWithTransactions(
     @Embedded val account: AccountEntity,
@@ -287,6 +309,33 @@ interface FinanceDao {
     /** Drops a deleted category's marker when its name is used for a new one. */
     @Query("DELETE FROM finance_categories WHERE name_key = :key AND id != :id AND deleted = 1")
     suspend fun forgetDeleted(key: String, id: String)
+
+    @Query("SELECT * FROM finance_parties ORDER BY name COLLATE NOCASE, id")
+    suspend fun parties(): List<PartyEntity>
+
+    @Query("SELECT * FROM finance_parties WHERE id = :id")
+    suspend fun party(id: String): PartyEntity?
+
+    @Query("SELECT id FROM finance_parties WHERE name_key = :key")
+    suspend fun partyByKey(key: String): String?
+
+    @Upsert
+    suspend fun upsert(party: PartyEntity)
+
+    @Insert
+    suspend fun insertParties(parties: List<PartyEntity>)
+
+    @Query("SELECT COUNT(*) FROM finance_transactions WHERE shares LIKE '%' || :id || '%'")
+    suspend fun sharesNaming(id: String): Int
+
+    @Query("UPDATE finance_transactions SET party_id = NULL WHERE party_id = :id")
+    suspend fun forgetParty(id: String)
+
+    @Query("DELETE FROM finance_parties WHERE id = :id")
+    suspend fun deleteParty(id: String)
+
+    @Query("DELETE FROM finance_parties")
+    suspend fun clearParties()
 
     @Query("UPDATE finance_transactions SET category = :name WHERE category IN (:previous)")
     suspend fun renameTransactionCategories(previous: List<String>, name: String)

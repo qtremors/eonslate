@@ -78,6 +78,12 @@ data class Transaction(
     val details: String = "",
     /** When it was first saved, in epoch milliseconds; orders transactions on the same day. */
     @SerialName("created_at") val createdAt: Long = 0,
+    /** The person or business paid, or paid by; null when not said. */
+    @SerialName("party_id") val partyId: String? = null,
+    /** Not cleared yet, such as a card hold or a cheque. It still counts in balances. */
+    val pending: Boolean = false,
+    /** What people owe you from this, or you owe them; see [Share]. */
+    val shares: List<Share> = emptyList(),
 ) {
     fun isValid(accounts: Map<String, Account>): Boolean {
         val account = accounts[accountId] ?: return false
@@ -85,6 +91,7 @@ data class Transaction(
             createdAt < 0 || epochDay !in DATES ||
             category.length > CATEGORY_LIMIT || (smsKey != null && !SMS_KEY.matches(smsKey))
         ) return false
+        if (!sharesValid()) return false
         return if (kind == TransactionKind.TRANSFER) {
             destinationId != accountId && accounts[destinationId]?.currency == account.currency
         } else destinationId == null
@@ -105,10 +112,15 @@ data class Ledger(
     val recurring: List<RecurringPayment> = emptyList(),
     val budgets: List<CategoryBudget> = emptyList(),
     val categories: List<CategoryChoice> = emptyList(),
+    val parties: List<Party> = emptyList(),
 ) {
+    /** Each party by id, for names on rows. */
+    val partiesById: Map<String, Party> get() = parties.associateBy { it.id }
+
     fun filteredTransactions(filter: TransactionFilter): List<Transaction> {
         val term = filter.query.trim()
         val names = accounts.associate { it.id to it.name }
+        val partyNames = parties.associate { it.id to it.name }
         val newest = compareByDescending<Transaction> { it.epochDay }.thenByDescending { it.createdAt }.thenBy { it.id }
         val order = when (filter.sort) {
             TransactionSort.NEWEST -> newest
@@ -125,7 +137,10 @@ data class Ledger(
                 (term.isEmpty() || transaction.note.contains(term, ignoreCase = true) ||
                     transaction.details.contains(term, ignoreCase = true) ||
                     transaction.category.contains(term, ignoreCase = true) ||
-                    names[transaction.accountId]?.contains(term, ignoreCase = true) == true) &&
+                    names[transaction.accountId]?.contains(term, ignoreCase = true) == true ||
+                    transaction.partyId?.let(partyNames::get)?.contains(term, ignoreCase = true) == true) &&
+                (filter.partyId == null || transaction.partyId == filter.partyId) &&
+                (!filter.pendingOnly || transaction.pending) &&
                 (filter.accountId == null || transaction.accountId == filter.accountId || transaction.destinationId == filter.accountId)
         }.sortedWith(order).toList()
     }
@@ -164,7 +179,7 @@ data class Ledger(
         for (transaction in transactions) {
             if (transaction.kind == TransactionKind.EXPENSE && transaction.epochDay in days) {
                 spent[transaction.accountId] =
-                    spent.getOrDefault(transaction.accountId, BigInteger.ZERO) + BigInteger.valueOf(transaction.minor)
+                    spent.getOrDefault(transaction.accountId, BigInteger.ZERO) + BigInteger.valueOf(transaction.own)
             }
         }
         return spent
@@ -180,7 +195,7 @@ data class Ledger(
                 it.kind == TransactionKind.EXPENSE && it.accountId in counted &&
                     it.category.equals(budget.category, ignoreCase = true) && it.epochDay in period
             }
-            .fold(BigInteger.ZERO) { sum, entry -> sum + BigInteger.valueOf(entry.minor) }
+            .fold(BigInteger.ZERO) { sum, entry -> sum + BigInteger.valueOf(entry.own) }
     }
 }
 
@@ -195,6 +210,10 @@ data class TransactionFilter(
     val sort: TransactionSort = TransactionSort.NEWEST,
     /** Only what moved money in or out of this account. */
     val accountId: String? = null,
+    /** Only payments with this person or business. */
+    val partyId: String? = null,
+    /** Only transactions not cleared yet. */
+    val pendingOnly: Boolean = false,
 )
 
 interface FinanceRepository {
@@ -202,7 +221,17 @@ interface FinanceRepository {
     suspend fun saveAccount(account: Account): Boolean
     suspend fun deleteAccount(id: String): Boolean
     suspend fun saveTransaction(transaction: Transaction): Boolean
-    suspend fun appendTransactions(transactions: List<Transaction>): Boolean
+    /** Adds [transactions] in one go, saving [parties] they name first. */
+    suspend fun appendTransactions(transactions: List<Transaction>, parties: List<Party> = emptyList()): Boolean
+
+    /** Saves a person or business; false when another already has the name. */
+    suspend fun saveParty(party: Party): Boolean
+
+    /**
+     * Removes a party; its transactions keep their amounts and lose the name. False, and nothing
+     * removed, while any transaction shares money with them.
+     */
+    suspend fun deleteParty(id: String): Boolean
     suspend fun deleteTransaction(id: String)
     /** Deletes all of [ids] in one database transaction, or none of them. */
     suspend fun deleteTransactions(ids: Collection<String>)

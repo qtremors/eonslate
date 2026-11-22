@@ -28,12 +28,15 @@ data class PaymentMessage(
  * The transaction for a found payment: on the account whose name ends with the card or account
  * digits, else the first account in its currency, or null when none uses it.
  */
-fun PaymentMessage.asTransaction(id: String, accounts: List<Account>, today: Long): Transaction? {
+fun PaymentMessage.asTransaction(id: String, accounts: List<Account>, today: Long, parties: PartyBook? = null): Transaction? {
     val account = accounts.forPayment(currency, accountEnding) ?: return null
-    val note = listOfNotNull(merchant, reference?.let { "Ref $it" }).joinToString(" · ").take(Transaction.NOTE_LIMIT)
+    // With a party book the payee becomes the party, and the note keeps only the reference.
+    val partyId = parties?.idFor(merchant)
+    val note = listOfNotNull(merchant.takeIf { partyId == null }, reference?.let { "Ref $it" }).joinToString(" · ").take(Transaction.NOTE_LIMIT)
     return Transaction(
         id, account.id, kind, minor, epochDay ?: today, note, null, category.orEmpty().take(Transaction.CATEGORY_LIMIT), key,
         details = source().take(Transaction.DETAILS_LIMIT),
+        partyId = partyId,
     )
 }
 

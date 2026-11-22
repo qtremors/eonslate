@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
+import dev.qtremors.eonslate.core.tracker.domain.finance.PartyBook
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,6 +75,7 @@ internal class FinanceCsvViewModel @Inject constructor(
     private val _state = MutableStateFlow(FinanceCsvState())
     val state = _state.asStateFlow()
     private var pending: List<Transaction>? = null
+    private var pendingParties: List<Party> = emptyList()
     private var exportSnapshot: Ledger? = null
     private var exportWriter: (Ledger, Writer) -> Unit = FinanceCsv::write
 
@@ -101,7 +104,8 @@ internal class FinanceCsvViewModel @Inject constructor(
         val fallback = ledger.accounts.firstOrNull { it.id == fallbackId } ?: throw CsvException(CsvProblem.ENTRY)
         val entries = withContext(Dispatchers.IO) {
             val text = checkNotNull(resolver.openInputStream(uri)).use(CsvFiles::read)
-            FinanceCsv.read(text, ledger.accounts, fallback, ids)
+            val book = PartyBook(ledger.parties, ids, System.currentTimeMillis())
+            FinanceCsv.read(text, ledger.accounts, fallback, book, ids).also { pendingParties = book.created.toList() }
         }
         pending = entries
         _state.value = FinanceCsvState(pendingCount = entries.size)
@@ -111,7 +115,7 @@ internal class FinanceCsvViewModel @Inject constructor(
         val entries = pending ?: return
         work {
             pending = null
-            if (!repository.appendTransactions(entries)) throw CsvException(CsvProblem.ENTRY)
+            if (!repository.appendTransactions(entries, pendingParties)) throw CsvException(CsvProblem.ENTRY)
             _state.value = FinanceCsvState(notice = FinanceCsvNotice.Imported(entries.size))
         }
     }

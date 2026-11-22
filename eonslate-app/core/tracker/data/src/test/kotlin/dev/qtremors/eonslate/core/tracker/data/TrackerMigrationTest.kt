@@ -42,6 +42,43 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version16TransactionsShareWithNobody() = runTest {
+        ExportedSchema.create(context, name, 16).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")
+            it.execSQL(
+                "INSERT INTO finance_transactions (id, account_id, kind, minor, epoch_day, note, category, details, created_at, pending) " +
+                    "VALUES ('t', 'bank', 'EXPENSE', 500, 20000, 'Lunch', '', '', 1, 0)"
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertTrue(RoomFinanceRepository(db).observeLedger().first().transactions.single().shares.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun version15TransactionsNameNoPartyAndAreCleared() = runTest {
+        ExportedSchema.create(context, name, 15).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")
+            it.execSQL(
+                "INSERT INTO finance_transactions (id, account_id, kind, minor, epoch_day, note, category, details, created_at) " +
+                    "VALUES ('t', 'bank', 'EXPENSE', 500, 20000, 'Lunch', '', '', 1)"
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val ledger = RoomFinanceRepository(db).observeLedger().first()
+            assertEquals(null, ledger.transactions.single().partyId)
+            assertEquals(false, ledger.transactions.single().pending)
+            assertTrue(ledger.parties.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version14AccountsAreBanksWithoutDigits() = runTest {
         ExportedSchema.create(context, name, 14).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor) VALUES ('hdfc', 'HDFC 4821', 'INR', 0)")

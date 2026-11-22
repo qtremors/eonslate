@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import androidx.room.withTransaction
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
 import dev.qtremors.eonslate.core.tracker.data.db.toEntity
@@ -38,7 +39,25 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
             budgets = rows.flatMap { group -> group.budgets.map { it.toDomain() } }
                 .sortedWith(compareBy<CategoryBudget> { it.title.lowercase(Locale.ROOT) }.thenBy { it.id }),
             categories = dao.categories().map { it.toDomain() },
+            parties = dao.parties().map { it.toDomain() },
         )
+    }
+
+    override suspend fun saveParty(party: Party): Boolean = database.withTransaction {
+        if (!party.isValid()) return@withTransaction false
+        val holder = dao.partyByKey(party.key)
+        if (holder != null && holder != party.id) return@withTransaction false
+        val created = dao.party(party.id)?.createdAt ?: party.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
+        dao.upsert(party.copy(createdAt = created).toEntity())
+        true
+    }
+
+    override suspend fun deleteParty(id: String): Boolean = database.withTransaction {
+        // Someone who still has money lent, borrowed or split with them stays, or those would lose their side.
+        if (dao.sharesNaming(id) > 0) return@withTransaction false
+        dao.forgetParty(id)
+        dao.deleteParty(id)
+        true
     }
 
     override suspend fun saveAccount(account: Account): Boolean = database.withTransaction {
@@ -54,6 +73,8 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         val accounts = listOfNotNull(dao.account(transaction.accountId), transaction.destinationId?.let { dao.account(it) })
             .associate { it.id to it.toDomain() }
         if (!transaction.isValid(accounts)) return@withTransaction false
+        if (transaction.partyId?.let { dao.party(it) == null } == true) return@withTransaction false
+        if (transaction.shares.any { dao.party(it.partyId) == null }) return@withTransaction false
         val alreadyImported = transaction.smsKey?.let { dao.importedSms(it) }
         if (alreadyImported != null && alreadyImported != transaction.id) return@withTransaction false
         // An edit keeps its first save time, so it stays where it was within its day.
@@ -68,9 +89,16 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         ids.distinct().chunked(500).forEach { dao.deleteTransactions(it) }
     }
 
-    override suspend fun appendTransactions(transactions: List<Transaction>): Boolean = database.withTransaction {
+    override suspend fun appendTransactions(transactions: List<Transaction>, parties: List<Party>): Boolean = database.withTransaction {
         val accounts = dao.accounts().associate { it.id to it.toDomain() }
-        if (transactions.any { !it.isValid(accounts) }) return@withTransaction false
+        if (transactions.any { !it.isValid(accounts) } || parties.any { !it.isValid() }) return@withTransaction false
+        val known = dao.parties().mapTo(HashSet()) { it.id }
+        // New names only: a name another party already holds would break the unique key.
+        val fresh = parties.filter { it.id !in known }
+        if (fresh.any { dao.partyByKey(it.key) != null }) return@withTransaction false
+        if (fresh.isNotEmpty()) dao.insertParties(fresh.map { it.toEntity() })
+        val named = known + fresh.map { it.id }
+        if (transactions.any { t -> (t.partyId != null && t.partyId !in named) || t.shares.any { it.partyId !in named } }) return@withTransaction false
         dao.insertTransactions(stamped(transactions).map { it.toEntity() })
         true
     }

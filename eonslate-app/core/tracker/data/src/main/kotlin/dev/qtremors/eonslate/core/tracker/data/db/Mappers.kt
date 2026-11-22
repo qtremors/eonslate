@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Share
 import dev.qtremors.eonslate.core.tracker.domain.model.Interval
 import dev.qtremors.eonslate.core.tracker.domain.backup.storedAsLong
 import dev.qtremors.eonslate.core.tracker.domain.model.Schedule
@@ -95,6 +96,16 @@ internal object IntervalColumn {
     fun encode(intervals: List<Interval>): String = json.encodeToString(list, intervals)
 
     fun decode(text: String): List<Interval> = runCatching { json.decodeFromString(list, text) }.getOrDefault(emptyList())
+}
+
+/** A transaction's shares with people, kept as JSON beside it. */
+internal object ShareColumn {
+    private val list = ListSerializer(Share.serializer())
+    private val json = Json { ignoreUnknownKeys = true }
+
+    fun encode(shares: List<Share>): String = json.encodeToString(list, shares)
+
+    fun decode(text: String): List<Share> = runCatching { json.decodeFromString(list, text) }.getOrDefault(emptyList())
 }
 
 internal object TagColumn {

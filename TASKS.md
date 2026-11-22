@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.2.0
+> **Version:** 2.2.1
 > **Last Updated:** 2026-11-22
 
 ## Roadmap
@@ -50,6 +50,14 @@ Each step is planned as one release commit.
 | 38 | 2.2.0 | Onboarding: name, currency, first account, starters; odometer pace between logs | Done |
 | 39 | 2.2.0 | Parts set up in place in the editor; usual amount counts only on chosen weekdays | Done |
 | 40 | 2.2.0 | Release: theme-aware splash and mark, SMS in every build, docs and website | Done |
+| 41 | 2.2.1 | People and businesses on transactions; pending or cleared | Done |
+| 42 | 2.2.1 | A person's chat: lend, borrow, split and settle | Done |
+| 43 | 2.2.2 | A clean slate: no preconfigured trackers or templates; build your own | Planned |
+| 44 | 2.2.2 | Balance floors per account and overall, with a warning before going under | Planned |
+| 45 | 2.2.2 | Piggy banks set aside inside an account | Planned |
+| 46 | 2.2.3 | Fixed deposits that grow on the card and are recorded at maturity | Planned |
+| 47 | 2.2.3 | Receipt photos on transactions | Planned |
+| 48 | 2.2.3 | Landing page and a favicon that shows on dark tabs | Planned |
 
 ## v2.0.0 parity
 
@@ -271,3 +279,15 @@ Checked on the moto: the Bike's oil at 30 km a day on workdays reads about 1,150
 - [x] Top bar mark tinted by theme with its transparency
 - [x] SMS inbox scanning in every build
 - [x] RELEASES.md, README and website
+
+### 2.2.1 People and pending
+- [x] Parties (person or business) with unique names; database version 16
+- [x] Paid to / Received from in the editor with recent picks; SMS and CSV fill it in
+- [x] Pending flag, row label and filter
+
+### 2.2.1 People
+Checked on the moto: lent Rahul 500, his chat showed "Owes you", Settle up cleared it.
+- [x] Shares on transactions (database version 17); own part counts as spending
+- [x] People strip, People list, a chat per person or business
+- [x] Lent, borrowed, paid back, got back, equal splits; settle up
+- [x] Editor extras behind More

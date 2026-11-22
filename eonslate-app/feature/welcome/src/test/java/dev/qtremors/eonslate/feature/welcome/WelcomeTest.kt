@@ -224,7 +224,12 @@ class WelcomeTest {
         override suspend fun saveAccount(account: dev.qtremors.eonslate.core.tracker.domain.finance.Account) = account.isValid().also { if (it) accounts += account }
         override suspend fun deleteAccount(id: String) = false
         override suspend fun saveTransaction(transaction: dev.qtremors.eonslate.core.tracker.domain.finance.Transaction) = false
-        override suspend fun appendTransactions(transactions: List<dev.qtremors.eonslate.core.tracker.domain.finance.Transaction>) = false
+        override suspend fun appendTransactions(
+            transactions: List<dev.qtremors.eonslate.core.tracker.domain.finance.Transaction>,
+            parties: List<dev.qtremors.eonslate.core.tracker.domain.finance.Party>,
+        ) = false
+        override suspend fun saveParty(party: dev.qtremors.eonslate.core.tracker.domain.finance.Party) = false
+        override suspend fun deleteParty(id: String) = false
         override suspend fun deleteTransaction(id: String) = Unit
         override suspend fun deleteTransactions(ids: Collection<String>) = Unit
         override suspend fun addRecurring(payment: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment, throughDay: Long, throughMinute: Int) = false

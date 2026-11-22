@@ -82,7 +82,8 @@ data class MoneySummary(
             val balances = ledger.balances()
             val month = YearMonth.from(today)
             fun inMonth(t: Transaction, m: YearMonth) = LocalDate.ofEpochDay(t.epochDay).let { YearMonth.from(it) == m }
-            fun sum(list: Sequence<Transaction>) = list.fold(BigInteger.ZERO) { acc, t -> acc + BigInteger.valueOf(t.minor) }
+            // Your own part of each: what you lent or split for others is not your spending.
+            fun sum(list: Sequence<Transaction>) = list.fold(BigInteger.ZERO) { acc, t -> acc + BigInteger.valueOf(t.own) }
             val thisMonth = mine.asSequence().filter { inMonth(it, month) }
             return MoneySummary(
                 currency = code,

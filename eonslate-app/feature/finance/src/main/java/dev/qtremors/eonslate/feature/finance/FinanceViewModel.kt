@@ -1,5 +1,10 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.splitEqually
+import dev.qtremors.eonslate.core.tracker.domain.finance.Share
+import dev.qtremors.eonslate.core.tracker.domain.finance.own
+import dev.qtremors.eonslate.core.tracker.domain.finance.PartyKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentDuplicates
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -113,8 +118,46 @@ class FinanceViewModel @Inject constructor(
 
     fun save(account: Account, onDone: () -> Unit) = write(onDone) { finance.saveAccount(account) }
     /** Saves [transaction]; a reviewed payment stops waiting only once it is really saved. */
-    fun save(transaction: Transaction, onDone: () -> Unit) = write(onDone) {
-        finance.saveTransaction(transaction).also { saved -> if (saved) transaction.smsKey?.let(detection::recorded) }
+    fun save(transaction: Transaction, onDone: () -> Unit) = save(transaction, null, null, onDone)
+
+    /**
+     * Saves [transaction] with [partyName] as who it was with: an existing person or business by
+     * name, or a new one made for it. Blank leaves it unnamed; null keeps the one it has.
+     */
+    fun save(transaction: Transaction, partyName: String?, share: ShareDraft?, onDone: () -> Unit) = write(onDone) {
+        val partyId = (if (partyName == null) transaction.partyId else partyFor(partyName) ?: return@write false)?.takeIf { it.isNotEmpty() }
+        val shares = if (share == null) transaction.shares else sharesFor(share, partyId, transaction.minor) ?: return@write false
+        // Money that is all someone else's is not yours to file under a category.
+        val all = transaction.copy(partyId = partyId, shares = shares)
+        finance.saveTransaction(if (shares.isNotEmpty() && all.own == 0L) all.copy(category = "") else all)
+            .also { saved -> if (saved) transaction.smsKey?.let(detection::recorded) }
+    }
+
+    /** The shares [draft] asks for, with the payee [partyId]; null when they cannot be made. */
+    private suspend fun sharesFor(draft: ShareDraft, partyId: String?, minor: Long): List<Share>? = when (draft.mode) {
+        ShareMode.MINE -> emptyList()
+        ShareMode.LENT -> partyId?.let { listOf(Share(it, minor)) }
+        ShareMode.PAID_BACK -> partyId?.let { listOf(Share(it, minor, settles = true)) }
+        ShareMode.BORROWED -> partyId?.let { listOf(Share(it, -minor)) }
+        ShareMode.GOT_BACK -> partyId?.let { listOf(Share(it, -minor, settles = true)) }
+        ShareMode.SPLIT -> {
+            val ids = draft.splitWith.map { partyFor(it) ?: return null }.filter { it.isNotEmpty() }
+            splitEqually(minor, ids, draft.includeMe).takeIf { it.isNotEmpty() }
+        }
+    }
+
+    fun saveParty(party: Party, onDone: () -> Unit) = write(onDone) { finance.saveParty(party) }
+
+    fun deleteParty(id: String, onDone: () -> Unit) = write(onDone) { finance.deleteParty(id) }
+
+    /** The id for [name], made when new; "" for no name, null when it could not be saved. */
+    private suspend fun partyFor(name: String): String? {
+        val clean = name.trim()
+        if (clean.isEmpty()) return ""
+        val key = Party.keyOf(clean)
+        finance.observeLedger().first().parties.firstOrNull { it.key == key }?.let { return it.id }
+        val party = Party(ids.newId(), clean, PartyKind.guess(clean), clock.nowMillis())
+        return party.id.takeIf { finance.saveParty(party) }
     }
     fun delete(account: Account, onDone: () -> Unit) = write(onDone) { finance.deleteAccount(account.id) }
     /** Deletes several transactions in one go, as selection mode asks. */

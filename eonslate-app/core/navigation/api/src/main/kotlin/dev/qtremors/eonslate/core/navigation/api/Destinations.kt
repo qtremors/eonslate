@@ -43,6 +43,14 @@ sealed interface Destination {
     @Serializable
     data object Welcome : Destination
 
+    /** Everyone payments are with, who owes whom first. */
+    @Serializable
+    data object People : Destination
+
+    /** One person or business's payments, as a chat. */
+    @Serializable
+    data class Party(val partyId: String) : Destination
+
     /** Payments found in SMS, payments to confirm, budgets over, and things due. */
     @Serializable
     data object Notifications : Destination

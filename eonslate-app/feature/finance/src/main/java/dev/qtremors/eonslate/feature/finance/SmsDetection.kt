@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.PartyBook
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.qtremors.eonslate.core.settings.SettingsRepository
@@ -124,10 +125,13 @@ class SmsDetection @Inject constructor(
 
     private suspend fun add(messages: List<PaymentMessage>, ledger: Ledger): BatchResult {
         val day = today()
-        val drafts = messages.map { it to it.asTransaction(ids.newId(), ledger.accounts, day) }
+        // Each payee becomes a person or business, found by name or made once for the batch.
+        val book = PartyBook(ledger.parties, ids, clock.nowMillis())
+        val drafts = messages.map { it to it.asTransaction(ids.newId(), ledger.accounts, day, book) }
         val noAccount = drafts.count { it.second == null }
         val transactions = drafts.mapNotNull { it.second }
-        if (transactions.isEmpty() || finance.appendTransactions(transactions)) return BatchResult(transactions.size, noAccount)
+        if (transactions.isEmpty() || finance.appendTransactions(transactions, book.created)) return BatchResult(transactions.size, noAccount)
+        book.created.forEach { finance.saveParty(it) }
         // One bad entry fails the batch; save the rest alone so a duplicate costs only itself.
         var added = 0
         for (transaction in transactions) if (finance.saveTransaction(transaction)) added++

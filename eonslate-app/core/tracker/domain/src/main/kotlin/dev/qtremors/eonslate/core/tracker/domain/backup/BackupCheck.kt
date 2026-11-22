@@ -44,6 +44,12 @@ object BackupCheck {
         val accounts = snapshot.accounts.associateBy { it.id }
         snapshot.accounts.filterNot { it.isValid() }.forEach { add("invalid account ${it.id}") }
         snapshot.transactions.filterNot { it.isValid(accounts) }.forEach { add("invalid transaction ${it.id}") }
+        duplicates(snapshot.parties.map { it.id }).forEach { add("party $it appears twice") }
+        duplicates(snapshot.parties.map { it.key }).forEach { add("two parties are named $it") }
+        snapshot.parties.filterNot { it.isValid() }.forEach { add("invalid party ${it.id}") }
+        val parties = snapshot.parties.mapTo(HashSet()) { it.id }
+        snapshot.transactions.filter { it.partyId != null && it.partyId !in parties }.forEach { add("transaction ${it.id} names a missing party") }
+        snapshot.transactions.filter { t -> t.shares.any { it.partyId !in parties } }.forEach { add("transaction ${it.id} shares with a missing party") }
         snapshot.recurring.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid recurring payment ${it.id}") }
         snapshot.budgets.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid budget ${it.id}") }
         snapshot.categories.filterNot { it.isValid() }.forEach { add("invalid category ${it.id}") }

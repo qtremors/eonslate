@@ -1,10 +1,24 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.2.0
+> **Version:** 2.2.1
 > **Last Updated:** 2026-11-22
 
 ---
+
+## [2.2.1] - 2026-11-22
+
+- **People and businesses**: every income and expense can say who it was with. Type a name or tap one you paid recently; a new name becomes a person or business on save.
+- Rows lead with who it was with, then the note; search finds them by name.
+- Payment SMS and CSV imports fill in the payee, matched by name or added once.
+- **Pending**: mark a transaction not cleared yet, like a card hold or a cheque. It still counts in balances, says Pending on its row, and Transactions can show only those.
+- CSV exports carry the party and pending columns; older files still import.
+- **People**: a row of the people and businesses you deal with tops Transactions; See all lists everyone, who owes whom first.
+- **Chats**: each person or business opens as a chat of every payment between you, yours on the right, with where you stand on top.
+- **Lend, borrow, split, settle**: mark a payment as lent, borrowed, paid back or got back, or split it equally with people, with or without you. Each person's chat adds it up, and Settle up records the payment that clears it.
+- Lent and split money leaves your account but no longer counts as your spending in totals, charts and budgets.
+- The transaction editor stays short: notes, people and pending sit behind one More row that opens on its own when something there is set.
+- Database version 17.
 
 ## [2.2.0] - 2026-11-22
 

@@ -1,5 +1,10 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.own
+import dev.qtremors.eonslate.core.ui.components.ConnectedGroup
+import dev.qtremors.eonslate.core.ui.components.ToggleRow
+import androidx.compose.material.icons.rounded.HourglassTop
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import dev.qtremors.eonslate.core.tracker.domain.finance.forPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
 import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
@@ -172,6 +177,9 @@ fun FinanceScreen(
     onAccountOpened: () -> Unit = {},
     openNewAccount: Boolean = false,
     onNewAccountOpened: () -> Unit = {},
+    /** Opens one person or business's chat, and everyone. */
+    onParty: ((String) -> Unit)? = null,
+    onPeople: () -> Unit = {},
 ) {
     var newKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -195,6 +203,7 @@ fun FinanceScreen(
     var customTo by rememberSaveable { mutableStateOf<Long?>(null) }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
     var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingOnly by rememberSaveable { mutableStateOf(false) }
     var sort by rememberSaveable { mutableStateOf(TransactionSort.NEWEST) }
     val startDay = when (period) {
         TransactionPeriod.ALL -> Transaction.DATES.first
@@ -211,7 +220,7 @@ fun FinanceScreen(
     }
     // A deleted account no longer filters anything.
     val accountShown = accountFilter?.takeIf { id -> ledger?.accounts?.any { it.id == id } != false }
-    val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort, accountShown)
+    val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort, accountShown, pendingOnly = pendingOnly)
     var planKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     var jumpToTop by remember { mutableStateOf(false) }
     val plans = remember(ledger, query, planKind) { ledger?.plans(query, planKind).orEmpty() }
@@ -419,6 +428,9 @@ fun FinanceScreen(
                 onSort = { sort = it },
                 onCategory = { category = it },
                 onAccount = { accountFilter = it },
+                onPending = { pendingOnly = it },
+                onParty = onParty,
+                onPeople = onPeople,
                 open = open,
                 onDeleteMany = viewModel::deleteTransactions,
                 onDeleteOne = deleteOne,
@@ -478,15 +490,18 @@ fun FinanceScreen(
                     busy = busy,
                     failed = failed,
                     onDismiss = { if (!busy) finishReview() },
-                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details ->
+                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details, party, pending, share ->
                         viewModel.save(
                             Transaction(
                                 transaction?.id ?: viewModel.newId(), account, kind, amount, day, note,
-                                destination, category, smsKey, details, transaction?.createdAt ?: 0,
+                                destination, category, smsKey, details, transaction?.createdAt ?: 0, pending = pending,
                             ),
+                            party,
+                            share,
                             finishReview,
                         )
                     },
+                    parties = remember(data) { data.partiesByUse() },
                     onDelete = transaction?.let { { viewModel.delete(it, done) } },
                 )
             }
@@ -583,6 +598,9 @@ private fun LedgerList(
     onCategory: (String?) -> Unit,
     open: (Editor, String?) -> Unit,
     onAccount: (String?) -> Unit = {},
+    onPending: (Boolean) -> Unit = {},
+    onParty: ((String) -> Unit)? = null,
+    onPeople: () -> Unit = {},
     onDeleteMany: (Set<String>, () -> Unit) -> Unit = { _, _ -> },
     onDeleteOne: (Transaction) -> Unit = {},
     plans: List<RecurringPayment> = emptyList(),
@@ -622,6 +640,8 @@ private fun LedgerList(
     val numberLocale = LocalValueDisplay.current.numberLocale
     val balances = remember(ledger) { ledger.balances() }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
+    val parties = remember(ledger.parties) { ledger.partiesById }
+    val pendingLabel = stringResource(R.string.finance_pending)
     val budgetHealth = remember(ledger, today) { ledger.budgetHealth(today) }
     val slots = remember(ledger) { chartSlots(ledger) }
     val listState = rememberLazyListState()
@@ -645,6 +665,7 @@ private fun LedgerList(
         // One account is the whole balance; the list matters only once there are several. With one
         // account picked, its transactions lead and the overall accounts and budgets step aside.
         val overall = filter.accountId == null
+        if (overall && ledger.parties.isNotEmpty() && onParty != null) item(key = "people") { PeopleStrip(ledger, onParty, onPeople) }
         if (overall && ledger.accounts.size > 1) item { SectionHeader(stringResource(R.string.finance_accounts)) }
         if (overall && ledger.accounts.size > 1) itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
             val balance = ValueFormat.money(balances.getValue(account.id), account.currency, numberLocale)
@@ -689,7 +710,11 @@ private fun LedgerList(
             }
         }
         if (ledger.transactions.isNotEmpty()) {
-            item(key = "periods") { PeriodChips(period, custom, filter.kind, sort, onSort, onPeriod, onCustom, onKind, ledger.accounts, filter.accountId, onAccount) }
+            item(key = "periods") { PeriodChips(
+                period, custom, filter.kind, sort, onSort, onPeriod, onCustom, onKind, ledger.accounts, filter.accountId, onAccount,
+                pendingOnly = filter.pendingOnly, onPending = onPending.takeIf { filter.pendingOnly || ledger.transactions.any { it.pending } },
+            )
+        }
             // Every category that suits the kind shown: used ones first, then the rest set up.
             val choices = (filter.kind?.let(::listOf) ?: listOf(TransactionKind.EXPENSE, TransactionKind.INCOME))
                 .flatMap { Categories.suggestions(ledger, it) }
@@ -740,7 +765,7 @@ private fun LedgerList(
                         Weekdays.totals(
                             transactions.filter { it.kind == TransactionKind.EXPENSE }
                                 .groupBy { java.time.LocalDate.ofEpochDay(it.epochDay) }
-                                .mapValues { (_, list) -> list.sumOf { t -> t.minor.toDouble() } },
+                                .mapValues { (_, list) -> list.sumOf { t -> t.own.toDouble() } },
                             firstDay,
                         )
                     }
@@ -773,7 +798,7 @@ private fun LedgerList(
                                 .filter { category == null || it.category.equals(category, ignoreCase = true) }
                                 .filter { account == null || it.accountId == account }
                                 .groupBy { java.time.LocalDate.ofEpochDay(it.epochDay) }
-                                .mapValues { (_, list) -> list.sumOf { t -> t.minor.toDouble() } },
+                                .mapValues { (_, list) -> list.sumOf { t -> t.own.toDouble() } },
                         )
                     }
                     if (levels.isNotEmpty()) ChartCard(stringResource(R.string.finance_spending_by_day)) {
@@ -807,9 +832,12 @@ private fun LedgerList(
                 val target = transaction.destinationId?.let(accounts::getValue)
                 val accountNames = if (target == null) source.label
                 else stringResource(R.string.finance_transfer_accounts, source.label, target.label)
-                // The note names it best, then the category, then the kind.
-                val title = transaction.note.ifBlank { transaction.category.ifBlank { transaction.kind.label() } }
+                // Who it was with names it best, then the note, the category, then the kind.
+                val party = transaction.partyId?.let(parties::get)?.name
+                val title = party ?: transaction.note.ifBlank { transaction.category.ifBlank { transaction.kind.label() } }
                 val details = listOfNotNull(
+                    pendingLabel.takeIf { transaction.pending },
+                    transaction.note.takeIf { party != null && it.isNotBlank() },
                     transaction.category.takeIf { it.isNotBlank() && it != title },
                     accountNames.takeIf { target != null || ledger.accounts.size > 1 },
                     // Out of date order, each row says its own day.
@@ -956,6 +984,9 @@ private fun PeriodChips(
     accounts: List<Account> = emptyList(),
     accountId: String? = null,
     onAccount: (String?) -> Unit = {},
+    pendingOnly: Boolean = false,
+    /** Null hides the chip, as when nothing is pending. */
+    onPending: ((Boolean) -> Unit)? = null,
 ) {
     var sorting by remember { mutableStateOf(false) }
     var choosingAccount by remember { mutableStateOf(false) }
@@ -1005,6 +1036,14 @@ private fun PeriodChips(
                 ),
             )
         }
+        if (onPending != null) FilterChip(
+            selected = pendingOnly,
+            onClick = { onPending(!pendingOnly) },
+            label = { Text(stringResource(R.string.finance_pending)) },
+            leadingIcon = { Icon(Icons.Rounded.HourglassTop, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            shape = MaterialTheme.shapes.medium,
+            colors = selectedColors,
+        )
         // With several accounts, one can be picked; its card on Home opens here with it picked.
         if (accounts.size > 1) Box {
             val chosen = accounts.firstOrNull { it.id == accountId }
@@ -1116,7 +1155,7 @@ private fun CategoryChips(categories: List<String>, selected: String?, onPick: (
 }
 
 @Composable
-private fun dayLabel(epochDay: Long, today: LocalDate): String {
+internal fun dayLabel(epochDay: Long, today: LocalDate): String {
     val date = LocalDate.ofEpochDay(epochDay)
     return when (date) {
         today -> stringResource(R.string.finance_period_today)
@@ -1198,7 +1237,7 @@ internal fun intervalLabel(interval: PaymentInterval, every: Int): String =
     )
 
 /** Accounts most used first, so a new entry starts in the account you use, not the first by id. */
-private fun usualAccounts(ledger: Ledger): List<Account> {
+internal fun usualAccounts(ledger: Ledger): List<Account> {
     val uses = ledger.transactions.groupingBy { it.accountId }.eachCount()
     return ledger.accounts.sortedByDescending { uses[it.id] ?: 0 }
 }
@@ -1276,7 +1315,7 @@ private fun AccountEditor(
 }
 
 @Composable
-private fun TransactionEditor(
+internal fun TransactionEditor(
     transaction: Transaction?,
     accounts: List<Account>,
     today: LocalDate,
@@ -1285,8 +1324,14 @@ private fun TransactionEditor(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?, String) -> Unit,
+    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?, String, String, Boolean, ShareDraft) -> Unit,
     onDelete: (() -> Unit)?,
+    /** People and businesses to pick from, the most recently paid first. */
+    parties: List<Party> = emptyList(),
+    /** For a new payment from someone's chat: them, how it is shared, and an amount to settle up. */
+    initialParty: String = "",
+    initialShare: ShareDraft? = null,
+    initialMinor: Long? = null,
 ) {
     val suggest = LocalCategorySuggestions.current
     var kind by rememberSaveable { mutableStateOf(transaction?.kind ?: prefill?.kind ?: initialKind ?: TransactionKind.EXPENSE) }
@@ -1299,7 +1344,7 @@ private fun TransactionEditor(
     val targets = accounts.filter { it.id != account.id && it.currency == account.currency }
     val destination = targets.firstOrNull { it.id == destinationId } ?: targets.firstOrNull()
     var amount by rememberSaveable {
-        val initial = transaction?.minor ?: prefill?.takeIf { it.currency == account.currency }?.minor
+        val initial = transaction?.minor ?: initialMinor ?: prefill?.takeIf { it.currency == account.currency }?.minor
         mutableStateOf(initial?.let { moneyInput(it, account.currency) }.orEmpty())
     }
     var date by rememberSaveable {
@@ -1308,7 +1353,13 @@ private fun TransactionEditor(
     }
     val reference = prefill?.reference?.let { stringResource(R.string.finance_sms_reference, it) }
     val smsKey by rememberSaveable { mutableStateOf(transaction?.smsKey ?: prefill?.key) }
-    var note by rememberSaveable { mutableStateOf(transaction?.note ?: listOfNotNull(prefill?.merchant, reference).joinToString(" · ")) }
+    // A found payment's payee becomes who it was with, so the note keeps only the reference.
+    var party by rememberSaveable {
+        mutableStateOf(transaction?.partyId?.let { id -> parties.firstOrNull { it.id == id }?.name } ?: prefill?.merchant ?: initialParty)
+    }
+    var share by remember { mutableStateOf(initialShare ?: transaction.shareDraft(parties.associateBy { it.id })) }
+    var pending by rememberSaveable { mutableStateOf(transaction?.pending ?: false) }
+    var note by rememberSaveable { mutableStateOf(transaction?.note ?: listOfNotNull(reference).joinToString(" · ")) }
     // A reviewed payment keeps where it came from in its notes.
     var details by rememberSaveable { mutableStateOf(transaction?.details ?: prefill?.source().orEmpty()) }
     // A new transaction starts in its kind's most used category, and follows the kind until changed.
@@ -1327,7 +1378,10 @@ private fun TransactionEditor(
     val transfer = kind == TransactionKind.TRANSFER
     val title = stringResource(if (transaction == null) R.string.finance_new_transaction else R.string.finance_edit_transaction)
 
-    val entered = listOf<Any?>(kind, accountId, destinationId, amount, date, note, details, category)
+    val entered = listOf<Any?>(kind, accountId, destinationId, amount, date, note, details, category, party, pending, share)
+    // A share that does not suit the kind goes back to all yours.
+    val shown = if (share.mode.fits(kind)) share else ShareDraft()
+    val shareReady = !(shown.needsParty && party.isBlank()) && !(shown.mode == ShareMode.SPLIT && shown.splitWith.isEmpty())
     val opened = remember { entered }
     EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         if (prefill != null) {
@@ -1366,23 +1420,49 @@ private fun TransactionEditor(
             keyboardType = KeyboardType.Decimal, suffix = account.currency, maxLength = 24, enabled = !busy,
             modifier = rememberFocusOnOpen(transaction == null && prefill == null),
         )
+        if (!transfer) PartyField(party, { party = it }, kind, parties, !busy)
         DateField(date, { date = it }, stringResource(R.string.finance_date), busy)
         FormField(note, { note = it }, stringResource(R.string.finance_description), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
         if (!transfer) {
             CategoryPicker(category, { category = it }, kind, busy)
         }
-        FormField(
-            details, { details = it }, stringResource(R.string.finance_notes),
-            singleLine = false, minLines = 2, maxLength = Transaction.DETAILS_LIMIT, enabled = !busy,
-        )
+        // Notes, people and pending wait behind More, so a plain payment stays short. They open on
+        // their own when one is already set.
+        var more by rememberSaveable { mutableStateOf(details.isNotBlank() || pending || shown.mode != ShareMode.MINE) }
+        if (!more) {
+            TextButton(shapes = ButtonDefaults.shapes(), onClick = { more = true }, enabled = !busy) {
+                Icon(Icons.Rounded.ExpandMore, contentDescription = null)
+                Text(stringResource(if (transfer) R.string.finance_more_notes else R.string.finance_more), modifier = Modifier.padding(start = 8.dp))
+            }
+        } else {
+            FormField(
+                details, { details = it }, stringResource(R.string.finance_notes),
+                singleLine = false, minLines = 2, maxLength = Transaction.DETAILS_LIMIT, enabled = !busy,
+            )
+            if (!transfer) ShareEditor(shown, { share = it }, kind, party, parties, !busy)
+            ConnectedGroup {
+                ToggleRow(
+                    title = stringResource(R.string.finance_pending),
+                    supporting = stringResource(R.string.finance_pending_hint),
+                    checked = pending,
+                    onCheckedChange = { if (!busy) pending = it },
+                    icon = Icons.Rounded.HourglassTop,
+                )
+            }
+        }
         SaveRow(
             // Income and expenses need a category, so every one is counted somewhere.
-            canSave = !busy && parsed != null && day != null && (if (transfer) destination != null else category.isNotBlank()),
+            // Income and expenses need a category, unless the money is all someone else's.
+            canSave = !busy && parsed != null && day != null && (
+                if (transfer) destination != null
+                else (category.isNotBlank() || shown.mode !in setOf(ShareMode.MINE, ShareMode.SPLIT)) && shareReady
+                ),
             onSave = {
                 if (parsed != null && day != null) {
                     onSave(
                         account.id, kind, parsed, day, note.trim(), destination?.id?.takeIf { transfer },
                         if (transfer) "" else category.trim(), smsKey, details.trim(),
+                        if (transfer) "" else party.trim(), pending, if (transfer) ShareDraft() else shown,
                     )
                 }
             },
