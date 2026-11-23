@@ -72,7 +72,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
-import dev.qtremors.eonslate.core.tracker.ui.Templates
 import dev.qtremors.eonslate.core.tracker.ui.TrackerSlate
 import dev.qtremors.eonslate.core.ui.components.BadgePalette
 import dev.qtremors.eonslate.core.ui.components.IconBadge
@@ -81,8 +80,6 @@ import dev.qtremors.eonslate.core.ui.components.rememberAppHaptics
 import dev.qtremors.eonslate.core.ui.theme.SlateCardShape
 import dev.qtremors.eonslate.core.ui.theme.SlateTileShape
 
-/** Templates offered on the second page: the ones most people start with. */
-internal val STARTERS = listOf("habit", "mood", "water", "expenses", "sleep", "workout", "reading", "journal")
 
 /**
  * The first run: what Eonslate is, your name, your money, and a few trackers to start with.
@@ -100,11 +97,7 @@ fun WelcomeScreen(onDone: () -> Unit, onRestore: () -> Unit = onDone, viewModel:
     val defaultAccount = stringResource(R.string.welcome_account_default)
     val finish: () -> Unit = {
         haptics.confirm()
-        viewModel.finish(defaultAccount) { currency ->
-            state.picked.mapNotNull(Templates::byId).map { spec ->
-                Templates.instantiate(spec, context::getString, UuidIdGenerator, currency, now = 0)
-            }
-        }
+        viewModel.finish(defaultAccount)
     }
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxSize()) {
@@ -117,22 +110,8 @@ fun WelcomeScreen(onDone: () -> Unit, onRestore: () -> Unit = onDone, viewModel:
                 ) { YouPage(state.name, viewModel::setName) }
                 WelcomePage.MONEY -> Step(
                     page, onBack = viewModel::back, onSkip = viewModel::skip,
-                    nextLabel = stringResource(R.string.welcome_continue), onNext = viewModel::next, nextEnabled = state.moneyReady,
+                    nextLabel = stringResource(R.string.welcome_start), onNext = finish, nextEnabled = state.moneyReady && !state.saving,
                 ) { MoneyPage(state, viewModel) }
-                WelcomePage.TRACKERS -> Step(
-                    page, onBack = viewModel::back, onSkip = viewModel::skip,
-                    nextLabel = if (state.picked.isEmpty()) stringResource(R.string.welcome_start_empty)
-                    else pluralStringResource(R.plurals.welcome_start_with, state.picked.size, state.picked.size),
-                    onNext = finish, nextEnabled = !state.saving, scrolls = false,
-                ) {
-                    StartersGrid(
-                        picked = state.picked,
-                        onToggle = { id ->
-                            haptics.toggle(id !in state.picked)
-                            viewModel.toggle(id)
-                        },
-                    )
-                }
             }
         }
     }
@@ -333,56 +312,6 @@ private fun Point(icon: ImageVector, title: String, text: String, colorIndex: In
             Column(Modifier.padding(start = 16.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-/** A few common trackers to start with; picked ones carry a check. */
-@Composable
-private fun StartersGrid(picked: List<String>, onToggle: (String) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 160.dp),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
-            Column(Modifier.padding(top = 8.dp, bottom = 8.dp)) {
-                Text(stringResource(R.string.welcome_starters_title), style = MaterialTheme.typography.headlineLarge, color = colors.onSurface)
-                Text(stringResource(R.string.welcome_starters_subtitle), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-            }
-        }
-        items(STARTERS.mapNotNull(Templates::byId), key = { it.id }) { spec ->
-            val isPicked = spec.id in picked
-            Box(
-                Modifier
-                    .then(if (isPicked) Modifier.border(3.dp, colors.primary, SlateCardShape) else Modifier)
-                    .semantics {
-                        selected = isPicked
-                        role = Role.Checkbox
-                    }
-            ) {
-                TrackerSlate(
-                    name = stringResource(spec.name),
-                    iconName = spec.iconName,
-                    colorIndex = spec.colorIndex,
-                    key = spec.id,
-                    supporting = stringResource(spec.description),
-                    onClick = { onToggle(spec.id) },
-                    action = {
-                        if (isPicked) {
-                            Box(
-                                Modifier.size(32.dp).clip(SlateTileShape).background(colors.primary),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.onPrimary)
-                            }
-                        }
-                    },
-                )
             }
         }
     }

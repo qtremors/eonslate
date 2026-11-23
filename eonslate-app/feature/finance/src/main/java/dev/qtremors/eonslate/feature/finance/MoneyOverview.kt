@@ -94,6 +94,8 @@ fun MoneyOverview(
     /** Opens Transactions showing only this account. */
     onAccount: (String) -> Unit = { onTransactions() },
     onAddAccount: () -> Unit = {},
+    /** Opens a piggy bank on Transactions. */
+    onPiggy: (String) -> Unit = { onTransactions() },
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val overview by viewModel.overview.collectAsStateWithLifecycle()
@@ -113,7 +115,10 @@ fun MoneyOverview(
             summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory,
             slots = overview?.slots.orEmpty(), currencies = overview?.currencies.orEmpty(), onCurrency = viewModel::showCurrency,
             cards = {
-                overview?.let { AccountCarousel(it.accounts, it.balances, onAccount, onAddAccount) }
+                overview?.let { o ->
+                    AccountCarousel(o.accounts, o.balances, onAccount, onAddAccount, setAside = o.setAside)
+                    if (o.piggies.isNotEmpty()) PiggySection(o.piggies, o.accounts.associateBy { it.id }, onOpen = onPiggy, onNew = { onTransactions() })
+                }
             },
         )
     }

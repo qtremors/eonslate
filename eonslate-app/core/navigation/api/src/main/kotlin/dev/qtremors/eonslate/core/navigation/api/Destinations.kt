@@ -35,10 +35,6 @@ sealed interface Destination {
     @Serializable
     data class TrackerEditor(val trackerId: String? = null, val templateId: String? = null) : Destination
 
-    /** A blank tracker and every template, where a new tracker starts. */
-    @Serializable
-    data object Templates : Destination
-
     /** The first pages, shown once. */
     @Serializable
     data object Welcome : Destination

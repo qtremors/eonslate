@@ -103,6 +103,7 @@ class DataStoreSettingsRepository @Inject constructor(
             prefs[WEEK_START] = next.weekStart.name
             // An empty value means "follow the device", so a cleared choice is not kept as a code.
             prefs[CURRENCY] = next.currency.orEmpty()
+            prefs[OVERALL_FLOOR] = next.overallFloor?.toString().orEmpty()
         }
     }
 
@@ -177,6 +178,7 @@ class DataStoreSettingsRepository @Inject constructor(
     private fun readTracking(prefs: Preferences): Tracking = Tracking(
         weekStart = enumOrDefault(prefs[WEEK_START], WeekStart.LOCALE),
         currency = prefs[CURRENCY]?.takeIf { it.isNotEmpty() },
+        overallFloor = prefs[OVERALL_FLOOR]?.toLongOrNull(),
     )
 
     private fun read(prefs: Preferences): Appearance {
@@ -204,6 +206,7 @@ class DataStoreSettingsRepository @Inject constructor(
         private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
         private val WEEK_START = stringPreferencesKey("week_start")
         private val CURRENCY = stringPreferencesKey("currency")
+        private val OVERALL_FLOOR = stringPreferencesKey("overall_floor")
         private val DISPLAY_NAME = stringPreferencesKey("display_name")
         private val NUMBER_LOCALE = stringPreferencesKey("number_locale")
         private val DATE_DISPLAY = stringPreferencesKey("date_display")
@@ -215,7 +218,7 @@ class DataStoreSettingsRepository @Inject constructor(
 
         /** What a backup carries; the welcome flag stays with the device. */
         private val BOOLEANS = listOf(PURE_BLACK, HAPTICS, REDUCE_MOTION, BLOCK_SCREENSHOTS, SMS_DETECT, SMS_AUTO)
-        private val STRINGS = listOf(THEME, ACCENT, PRESET, WEEK_START, CURRENCY, DISPLAY_NAME, NUMBER_LOCALE, DATE_DISPLAY, HOME_TAG)
+        private val STRINGS = listOf(THEME, ACCENT, PRESET, WEEK_START, CURRENCY, OVERALL_FLOOR, DISPLAY_NAME, NUMBER_LOCALE, DATE_DISPLAY, HOME_TAG)
         private const val MAX_TEXT = 500
         private val FINGERPRINT = Regex("[0-9a-f]{64}")
     }

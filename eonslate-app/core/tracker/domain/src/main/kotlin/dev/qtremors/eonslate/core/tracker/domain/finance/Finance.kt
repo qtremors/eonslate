@@ -18,6 +18,11 @@ data class Account(
     val kind: AccountKind = AccountKind.BANK,
     /** The last four digits of the card or account number, which payment SMS name. */
     val digits: String? = null,
+    /**
+     * The least to keep in it, in minor units; a payment that takes it lower is warned about.
+     * Below zero suits a credit card's limit.
+     */
+    @SerialName("floor_minor") val floorMinor: Long? = null,
 ) {
     fun isValid(): Boolean = id.isNotBlank() && name.isNotBlank() &&
         name.length <= NAME_LIMIT && MoneyAmount.isKnownCurrency(currency) &&
@@ -113,6 +118,8 @@ data class Ledger(
     val budgets: List<CategoryBudget> = emptyList(),
     val categories: List<CategoryChoice> = emptyList(),
     val parties: List<Party> = emptyList(),
+    @SerialName("piggy_banks") val piggyBanks: List<PiggyBank> = emptyList(),
+    @SerialName("piggy_moves") val piggyMoves: List<PiggyMove> = emptyList(),
 ) {
     /** Each party by id, for names on rows. */
     val partiesById: Map<String, Party> get() = parties.associateBy { it.id }
@@ -226,6 +233,17 @@ interface FinanceRepository {
 
     /** Saves a person or business; false when another already has the name. */
     suspend fun saveParty(party: Party): Boolean
+
+    /** Saves a piggy bank; false when it does not fit its account. */
+    suspend fun savePiggy(piggy: PiggyBank): Boolean
+
+    /** Removes a piggy bank and what was put in it; the money stays in the account. */
+    suspend fun deletePiggy(id: String)
+
+    /** Puts money in or takes it out; false when that would leave less than nothing in it. */
+    suspend fun movePiggy(move: PiggyMove): Boolean
+
+    suspend fun deletePiggyMove(id: String)
 
     /**
      * Removes a party; its transactions keep their amounts and lose the name. False, and nothing

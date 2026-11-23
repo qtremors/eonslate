@@ -62,24 +62,6 @@ class WelcomeTest {
     private fun tracker(id: String) = Tracker(id = id, name = id, fields = listOf(FieldDefinition("$id-f", id, "F", FieldConfig.YesNo)), createdAt = 0)
 
     @Test
-    fun startersArePlacedAfterExistingTrackersAndWelcomeIsSeen() = runTest {
-        repo.next = 3
-        val vm = vm()
-        vm.finish { listOf(tracker("a"), tracker("b")) }
-        assertEquals(listOf(3, 4), repo.saved.map { it.position })
-        assertEquals(listOf(1_000L, 1_001L), repo.saved.map { it.createdAt })
-        assertTrue(settings.seen.value)
-        assertTrue(vm.state.value.done)
-    }
-
-    @Test
-    fun startersUseTheChosenCurrency() = runTest {
-        var seen = ""
-        vm().finish { currency -> seen = currency; emptyList() }
-        assertEquals("JPY", seen)
-    }
-
-    @Test
     fun skippingSavesNothingButStillCounts() = runTest {
         vm().skip()
         assertTrue(repo.saved.isEmpty())
@@ -97,7 +79,7 @@ class WelcomeTest {
         vm.setOpening("1500.50")
         vm.setDigits("12a34")
         assertTrue(vm.state.value.moneyReady)
-        vm.finish("Main account") { emptyList() }
+        vm.finish("Main account")
         val account = finance.accounts.single()
         assertEquals("HDFC Millennia", account.name)
         assertEquals("INR", account.currency)
@@ -112,7 +94,7 @@ class WelcomeTest {
         vm.setOpening("12,5,0")
         assertTrue(!vm.state.value.moneyReady)
         vm.setOpening("")
-        vm.finish("Main account") { emptyList() }
+        vm.finish("Main account")
         assertEquals("Main account", finance.accounts.single().name)
         assertEquals(0L, finance.accounts.single().openingMinor)
     }
@@ -133,13 +115,11 @@ class WelcomeTest {
         val handle = SavedStateHandle()
         val first = vm(handle)
         first.showPage(WelcomePage.MONEY)
-        first.toggle("water")
-        first.toggle("mood")
-        first.toggle("water")
         first.setDigits("4821")
+        first.setName("Asha")
         val restored = vm(handle).state.value
         assertEquals(WelcomePage.MONEY, restored.page)
-        assertEquals(listOf("mood"), restored.picked)
+        assertEquals("Asha", restored.name)
         assertEquals("4821", restored.digits)
     }
 
@@ -152,16 +132,12 @@ class WelcomeTest {
         compose.onNodeWithText("What should we call you?").assertIsDisplayed()
         compose.onNodeWithText("Continue").performClick()
         compose.onNodeWithText("Your money").assertIsDisplayed()
-        compose.onNodeWithText("Continue").performClick()
-        compose.onNodeWithText("Pick a few to start").assertIsDisplayed()
-        compose.onNodeWithText("Start with nothing").assertIsDisplayed()
-        compose.onNodeWithText("Mood").performClick()
-        compose.onNodeWithText("Start with 1 tracker").performClick()
+        compose.onNodeWithText("Start").performClick()
         compose.waitForIdle()
-        val saved = repo.saved.single()
-        assertEquals("mood", saved.templateId)
-        assertEquals("Mood", saved.name)
-        assertEquals(ValidationResult.Valid, TrackerValidator.validate(saved))
+        // Nothing is made for people: no trackers, only the account they set up.
+        assertTrue(repo.saved.isEmpty())
+        assertEquals(1, finance.accounts.size)
+        assertTrue(settings.seen.value)
     }
 
     @Test
@@ -185,7 +161,7 @@ class WelcomeTest {
         vm.back()
         assertEquals(WelcomePage.INTRO, vm.state.value.page)
         repeat(5) { vm.next() }
-        assertEquals(WelcomePage.TRACKERS, vm.state.value.page)
+        assertEquals(WelcomePage.MONEY, vm.state.value.page)
     }
 
     private class Repo : TrackerRepository {
@@ -230,6 +206,10 @@ class WelcomeTest {
         ) = false
         override suspend fun saveParty(party: dev.qtremors.eonslate.core.tracker.domain.finance.Party) = false
         override suspend fun deleteParty(id: String) = false
+        override suspend fun savePiggy(piggy: dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank) = false
+        override suspend fun deletePiggy(id: String) = Unit
+        override suspend fun movePiggy(move: dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove) = false
+        override suspend fun deletePiggyMove(id: String) = Unit
         override suspend fun deleteTransaction(id: String) = Unit
         override suspend fun deleteTransactions(ids: Collection<String>) = Unit
         override suspend fun addRecurring(payment: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment, throughDay: Long, throughMinute: Int) = false

@@ -1,5 +1,10 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
+import androidx.compose.material.icons.rounded.VerticalAlignBottom
+import dev.qtremors.eonslate.core.tracker.domain.finance.OverallFloor
+import dev.qtremors.eonslate.core.tracker.domain.finance.Floors
+import dev.qtremors.eonslate.core.tracker.domain.finance.Breach
 import dev.qtremors.eonslate.core.tracker.domain.finance.own
 import dev.qtremors.eonslate.core.ui.components.ConnectedGroup
 import dev.qtremors.eonslate.core.ui.components.ToggleRow
@@ -177,6 +182,9 @@ fun FinanceScreen(
     onAccountOpened: () -> Unit = {},
     openNewAccount: Boolean = false,
     onNewAccountOpened: () -> Unit = {},
+    /** Opens a piggy bank, from Home. */
+    openPiggy: String? = null,
+    onPiggyOpened: () -> Unit = {},
     /** Opens one person or business's chat, and everyone. */
     onParty: ((String) -> Unit)? = null,
     onPeople: () -> Unit = {},
@@ -188,6 +196,7 @@ fun FinanceScreen(
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(CsvFiles.MIME), csv::finishExport)
     val snackbar = remember { SnackbarHostState() }
     val currency by viewModel.currency.collectAsStateWithLifecycle(initialValue = Tracking.deviceCurrency())
+    val overallFloor by viewModel.overallFloor.collectAsStateWithLifecycle(initialValue = null)
     val firstDay by viewModel.firstDay.collectAsStateWithLifecycle(initialValue = Tracking().firstDayOfWeek())
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val failed by viewModel.failed.collectAsStateWithLifecycle()
@@ -204,6 +213,7 @@ fun FinanceScreen(
     var category by rememberSaveable { mutableStateOf<String?>(null) }
     var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingOnly by rememberSaveable { mutableStateOf(false) }
+    var piggyAdding by rememberSaveable { mutableStateOf(true) }
     var sort by rememberSaveable { mutableStateOf(TransactionSort.NEWEST) }
     val startDay = when (period) {
         TransactionPeriod.ALL -> Transaction.DATES.first
@@ -302,6 +312,12 @@ fun FinanceScreen(
             onAccountOpened()
         }
     }
+    LaunchedEffect(openPiggy) {
+        if (openPiggy != null) {
+            open(Editor.PIGGY_VIEW, openPiggy)
+            onPiggyOpened()
+        }
+    }
     LaunchedEffect(openNewAccount) {
         if (openNewAccount) {
             open(Editor.ACCOUNT, null)
@@ -363,6 +379,8 @@ fun FinanceScreen(
                 },
                 onManageCategories?.let { MenuAction(stringResource(R.string.finance_manage_categories), financeIcon("Tag"), onClick = it) },
                 MenuAction(stringResource(R.string.finance_new_account), Icons.Rounded.AccountBalance) { open(Editor.ACCOUNT, null) },
+                MenuAction(stringResource(R.string.floor_overall_title), Icons.Rounded.VerticalAlignBottom) { open(Editor.FLOOR, null) },
+                MenuAction(stringResource(R.string.piggy_new), Icons.Rounded.Savings) { open(Editor.PIGGY, null) },
             )
             FinanceCsvMenu(
                 ledger, csv, exportShown, more,
@@ -395,6 +413,8 @@ fun FinanceScreen(
                             Editor.BUDGET -> R.string.finance_new_budget
                             Editor.DUE -> R.string.finance_record_due
                             Editor.INBOX -> R.string.finance_scan_inbox
+                            Editor.FLOOR -> R.string.floor_overall_title
+                            Editor.PIGGY, Editor.PIGGY_VIEW, Editor.PIGGY_MOVE -> R.string.piggy_new
                         }
                     ),
                     icon = Icons.Rounded.Add,
@@ -431,6 +451,8 @@ fun FinanceScreen(
                 onPending = { pendingOnly = it },
                 onParty = onParty,
                 onPeople = onPeople,
+                onPiggy = { open(Editor.PIGGY_VIEW, it) },
+                onNewPiggy = { open(Editor.PIGGY, null) },
                 open = open,
                 onDeleteMany = viewModel::deleteTransactions,
                 onDeleteOne = deleteOne,
@@ -463,7 +485,8 @@ fun FinanceScreen(
             val account = data.accounts.firstOrNull { it.id == recordId }
             val canDelete = account != null && data.transactions.none {
                 it.accountId == account.id || it.destinationId == account.id
-            } && data.recurring.none { it.accountId == account.id } && data.budgets.none { it.accountId == account.id }
+            } && data.recurring.none { it.accountId == account.id } && data.budgets.none { it.accountId == account.id } &&
+                data.piggyBanks.none { it.accountId == account.id }
             if (recordId == null || account != null) key(recordId) {
                 AccountEditor(
                     account = account,
@@ -471,8 +494,8 @@ fun FinanceScreen(
                     busy = busy,
                     failed = failed,
                     onDismiss = dismiss,
-                    onSave = { name, code, opening, budget, kind, digits ->
-                        viewModel.save(Account(account?.id ?: viewModel.newId(), name, code, opening, budget, kind, digits), done)
+                    onSave = { name, code, opening, budget, kind, digits, floor ->
+                        viewModel.save(Account(account?.id ?: viewModel.newId(), name, code, opening, budget, kind, digits, floor), done)
                     },
                     onDelete = if (account != null && canDelete) ({ viewModel.delete(account, done) }) else null,
                 )
@@ -502,6 +525,7 @@ fun FinanceScreen(
                         )
                     },
                     parties = remember(data) { data.partiesByUse() },
+                    floorCheck = { candidate -> Floors.breaches(data, candidate, transaction, overallFloor) },
                     onDelete = transaction?.let { { viewModel.delete(it, done) } },
                 )
             }
@@ -559,6 +583,39 @@ fun FinanceScreen(
             message = ""
             open(Editor.TRANSACTION, null)
         }
+        Editor.PIGGY -> {
+            val piggy = data.piggyBanks.firstOrNull { it.id == recordId }
+            if (data.accounts.isNotEmpty() && (recordId == null || piggy != null)) key(recordId) {
+                PiggyEditor(
+                    piggy, usualAccounts(data), busy, failed, viewModel.today(), dismiss,
+                    onSave = { viewModel.savePiggy(it, done) },
+                    onDelete = piggy?.let { { viewModel.deletePiggy(it.id, done) } },
+                    newId = viewModel::newId,
+                )
+            }
+        }
+        Editor.PIGGY_VIEW -> PiggyBanks.status(data).firstOrNull { it.piggy.id == recordId }?.let { status ->
+            PiggySheet(
+                status, data.accounts.firstOrNull { it.id == status.piggy.accountId }, dismiss,
+                onMove = { adding ->
+                    piggyAdding = adding
+                    open(Editor.PIGGY_MOVE, status.piggy.id)
+                },
+                onEdit = { open(Editor.PIGGY, status.piggy.id) },
+                onDeleteMove = viewModel::deletePiggyMove,
+            )
+        }
+        Editor.PIGGY_MOVE -> PiggyBanks.status(data).firstOrNull { it.piggy.id == recordId }?.let { status ->
+            val account = data.accounts.firstOrNull { it.id == status.piggy.accountId } ?: return@let
+            val free = (data.balances()[account.id] ?: java.math.BigInteger.ZERO) - (PiggyBanks.setAside(data)[account.id] ?: java.math.BigInteger.ZERO)
+            PiggyMoveSheet(
+                status, account.currency, piggyAdding, free, busy, failed, viewModel.today(), dismiss,
+            ) { minor, day -> viewModel.movePiggy(status.piggy.id, minor, day) { open(Editor.PIGGY_VIEW, status.piggy.id) } }
+        }
+        Editor.FLOOR -> OverallFloorSheet(overallFloor, currency, onDismiss = dismiss) { minor ->
+            viewModel.setOverallFloor(minor)
+            dismiss()
+        }
         Editor.INBOX -> PaymentInboxSheet(data, viewModel, dismiss) {
             reviewingInbox = true
             prefill = it
@@ -570,7 +627,7 @@ fun FinanceScreen(
     }
 }
 
-private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SUBSCRIPTION_DETAILS, SMS, BUDGET, DUE, INBOX }
+private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SUBSCRIPTION_DETAILS, SMS, BUDGET, DUE, INBOX, FLOOR, PIGGY, PIGGY_VIEW, PIGGY_MOVE }
 
 private enum class FinancePage { ACTIVITY, PLANS }
 
@@ -601,6 +658,8 @@ private fun LedgerList(
     onPending: (Boolean) -> Unit = {},
     onParty: ((String) -> Unit)? = null,
     onPeople: () -> Unit = {},
+    onPiggy: ((String) -> Unit)? = null,
+    onNewPiggy: () -> Unit = {},
     onDeleteMany: (Set<String>, () -> Unit) -> Unit = { _, _ -> },
     onDeleteOne: (Transaction) -> Unit = {},
     plans: List<RecurringPayment> = emptyList(),
@@ -639,6 +698,7 @@ private fun LedgerList(
     }
     val numberLocale = LocalValueDisplay.current.numberLocale
     val balances = remember(ledger) { ledger.balances() }
+    val setAside = remember(ledger) { PiggyBanks.setAside(ledger) }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
     val parties = remember(ledger.parties) { ledger.partiesById }
     val pendingLabel = stringResource(R.string.finance_pending)
@@ -668,7 +728,10 @@ private fun LedgerList(
         if (overall && ledger.parties.isNotEmpty() && onParty != null) item(key = "people") { PeopleStrip(ledger, onParty, onPeople) }
         if (overall && ledger.accounts.size > 1) item { SectionHeader(stringResource(R.string.finance_accounts)) }
         if (overall && ledger.accounts.size > 1) itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
-            val balance = ValueFormat.money(balances.getValue(account.id), account.currency, numberLocale)
+            val aside = setAside[account.id]?.takeIf { it.signum() > 0 }
+            val balance = ValueFormat.money(balances.getValue(account.id), account.currency, numberLocale) + (aside?.let {
+                " · " + stringResource(R.string.piggy_aside_line, ValueFormat.money(it, account.currency, numberLocale))
+            } ?: "")
             ConnectedItem(index, ledger.accounts.size) {
                 ConnectedRow(
                     title = account.label,
@@ -677,6 +740,10 @@ private fun LedgerList(
                     onClick = { open(Editor.ACCOUNT, account.id) },
                 )
             }
+        }
+        val piggies = PiggyBanks.status(ledger)
+        if (overall && piggies.isNotEmpty() && onPiggy != null) item(key = "piggies") {
+            PiggySection(piggies, accounts, onOpen = onPiggy, onNew = onNewPiggy)
         }
         // Budgets lead the page, as meters for this month; there is no heading when there are none.
         if (overall && budgetHealth.isNotEmpty()) {
@@ -1260,12 +1327,13 @@ private fun AccountEditor(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, String, Long, Long?, AccountKind, String?) -> Unit,
+    onSave: (String, String, Long, Long?, AccountKind, String?, Long?) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
     var name by rememberSaveable { mutableStateOf(account?.name.orEmpty()) }
     var kind by rememberSaveable { mutableStateOf(account?.kind ?: AccountKind.BANK) }
     var digits by rememberSaveable { mutableStateOf(account?.digits.orEmpty()) }
+    var floor by rememberSaveable { mutableStateOf(account?.floorMinor?.let { moneyInput(it, account.currency) }.orEmpty()) }
     // Banks and cards have numbers payment messages name; wallets and cash do not.
     val numbered = kind == AccountKind.BANK || kind == AccountKind.CARD
     val lastDigits = digits.trim().takeIf { numbered && it.isNotEmpty() }
@@ -1280,7 +1348,9 @@ private fun AccountEditor(
     val balance = if (opening.isBlank()) 0L else parseMoney(opening, currency)
     val monthly = parseMoney(budget, currency)?.takeIf { it > 0 }
     val title = stringResource(if (account == null) R.string.finance_new_account else R.string.finance_edit_account)
-    val entered = listOf<Any?>(name, code, opening, budget, kind, digits)
+    val floorMinor = if (floor.isBlank()) null else parseMoney(floor, currency)
+    val floorValid = floor.isBlank() || floorMinor != null
+    val entered = listOf<Any?>(name, code, opening, budget, kind, digits, floor)
     val opened = remember { entered }
     EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         ConnectedChoices(AccountKind.entries, kind, { it.label() }, { kind = it })
@@ -1303,9 +1373,15 @@ private fun AccountEditor(
             budget, { budget = it }, stringResource(R.string.finance_monthly_limit),
             maxLength = 24, keyboardType = KeyboardType.Decimal, enabled = !busy, suffix = currency.takeIf { known },
         )
+        FormField(
+            floor, { floor = it }, stringResource(R.string.floor_keep),
+            supporting = stringResource(R.string.floor_keep_hint),
+            error = if (floorValid) null else stringResource(R.string.floor_invalid),
+            maxLength = 24, keyboardType = KeyboardType.Ascii, enabled = !busy, suffix = currency.takeIf { known },
+        )
         SaveRow(
-            canSave = !busy && name.isNotBlank() && known && balance != null && (budget.isBlank() || monthly != null) && digitsValid,
-            onSave = { balance?.let { onSave(name.trim(), currency, it, monthly, kind, lastDigits) } },
+            canSave = !busy && name.isNotBlank() && known && balance != null && (budget.isBlank() || monthly != null) && digitsValid && floorValid,
+            onSave = { balance?.let { onSave(name.trim(), currency, it, monthly, kind, lastDigits, floorMinor) } },
             delete = onDelete?.let {
                 Deletion(stringResource(R.string.finance_delete_account, account!!.name), R.string.finance_delete_account_message, it)
             },
@@ -1332,6 +1408,8 @@ internal fun TransactionEditor(
     initialParty: String = "",
     initialShare: ShareDraft? = null,
     initialMinor: Long? = null,
+    /** The floors a payment would take a balance under. */
+    floorCheck: (Transaction) -> List<Breach> = { emptyList() },
 ) {
     val suggest = LocalCategorySuggestions.current
     var kind by rememberSaveable { mutableStateOf(transaction?.kind ?: prefill?.kind ?: initialKind ?: TransactionKind.EXPENSE) }
@@ -1450,13 +1528,33 @@ internal fun TransactionEditor(
                 )
             }
         }
-        SaveRow(
-            // Income and expenses need a category, so every one is counted somewhere.
-            // Income and expenses need a category, unless the money is all someone else's.
-            canSave = !busy && parsed != null && day != null && (
-                if (transfer) destination != null
-                else (category.isNotBlank() || shown.mode !in setOf(ShareMode.MINE, ShareMode.SPLIT)) && shareReady
+        // Before going under a floor: say which and by how much, and let Save go ahead anyway.
+        val breaches = if (parsed != null && day != null) {
+            floorCheck(
+                Transaction(
+                    transaction?.id ?: "", account.id, kind, parsed, day,
+                    destinationId = destination?.id?.takeIf { transfer },
                 ),
+            )
+        } else emptyList()
+        breaches.firstOrNull()?.let { breach ->
+            val locale = LocalValueDisplay.current.numberLocale
+            Text(
+                breach.account?.let { owner -> stringResource(
+                    R.string.floor_warn_account, owner.label,
+                    ValueFormat.money(breach.under, breach.currency, locale), ValueFormat.money(breach.floor, breach.currency, locale),
+                ) } ?: stringResource(
+                    R.string.floor_warn_overall,
+                    ValueFormat.money(breach.under, breach.currency, locale), ValueFormat.money(breach.floor, breach.currency, locale),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        SaveRow(
+            label = if (breaches.isEmpty()) null else stringResource(R.string.floor_save_anyway),
+            // A category is up to you; without one it counts as uncategorized.
+            canSave = !busy && parsed != null && day != null && (if (transfer) destination != null else shareReady),
             onSave = {
                 if (parsed != null && day != null) {
                     onSave(
@@ -1586,7 +1684,7 @@ internal fun AccountChoice(label: String, selected: Account, accounts: List<Acco
 internal data class Deletion(val title: String, val message: Int, val confirm: () -> Unit)
 
 @Composable
-internal fun SaveRow(canSave: Boolean, onSave: () -> Unit, delete: Deletion?, busy: Boolean) {
+internal fun SaveRow(canSave: Boolean, onSave: () -> Unit, delete: Deletion?, busy: Boolean, label: String? = null) {
     var confirm by rememberSaveable { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.End)) {
         if (delete != null) {
@@ -1594,7 +1692,7 @@ internal fun SaveRow(canSave: Boolean, onSave: () -> Unit, delete: Deletion?, bu
                 Text(stringResource(R.string.finance_delete), color = MaterialTheme.colorScheme.error)
             }
         }
-        Button(shapes = ButtonDefaults.shapes(), onClick = onSave, enabled = canSave) { Text(stringResource(R.string.finance_save)) }
+        Button(shapes = ButtonDefaults.shapes(), onClick = onSave, enabled = canSave) { Text(label ?: stringResource(R.string.finance_save)) }
     }
     if (confirm && delete != null) {
         ConfirmDialog(
@@ -1650,5 +1748,22 @@ internal fun EmptyWithAction(message: String, action: String, onAction: () -> Un
             Icon(Icons.Rounded.Add, contentDescription = null)
             Text(action, modifier = Modifier.padding(start = 8.dp))
         }
+    }
+}
+
+/** The least to keep across every account in the app's currency; empty clears it. */
+@Composable
+private fun OverallFloorSheet(current: OverallFloor?, currency: String, onDismiss: () -> Unit, onSave: (Long?) -> Unit) {
+    var amount by rememberSaveable { mutableStateOf(current?.let { moneyInput(it.minor, it.currency) }.orEmpty()) }
+    val minor = if (amount.isBlank()) null else parseMoney(amount, currency)
+    val valid = amount.isBlank() || minor != null
+    EditorSheet(stringResource(R.string.floor_overall_title), busy = false, failed = false, onDismiss = onDismiss) {
+        Text(stringResource(R.string.floor_overall_hint, currency), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FormField(
+            amount, { amount = it }, stringResource(R.string.floor_keep),
+            error = if (valid) null else stringResource(R.string.floor_invalid),
+            maxLength = 24, keyboardType = KeyboardType.Decimal, suffix = currency,
+        )
+        SaveRow(canSave = valid, onSave = { onSave(minor) }, delete = null, busy = false)
     }
 }

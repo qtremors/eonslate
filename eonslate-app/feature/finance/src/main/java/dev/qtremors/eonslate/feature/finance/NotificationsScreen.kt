@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,10 +74,28 @@ fun NotificationsScreen(
         }
         val due = list.filterIsInstance<Alert.PaymentDue>()
         val over = list.filterIsInstance<Alert.OverBudget>()
+        val floors = list.filterIsInstance<Alert.BelowFloor>()
         val intervals = list.filterIsInstance<Alert.IntervalDue>()
         val soon = list.filterIsInstance<Alert.PaymentSoon>()
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (found || result != null) item(key = "sms") { FoundPaymentsBanner(viewModel.detection, onReviewSms, Modifier.padding(top = 8.dp)) }
+            if (floors.isNotEmpty()) item(key = "floors") {
+                Section(stringResource(R.string.alerts_section_floors)) {
+                    floors.forEach { alert ->
+                        val breach = alert.breach
+                        ConnectedRow(
+                            title = breach.account?.label ?: stringResource(R.string.floor_overall),
+                            supporting = stringResource(
+                                R.string.floor_under,
+                                ValueFormat.money(breach.under, breach.currency, locale),
+                                ValueFormat.money(breach.floor, breach.currency, locale),
+                            ),
+                            leading = { IconBadge(Icons.Rounded.VerticalAlignBottom, breach.account?.id ?: "overall") },
+                            onClick = onTransactions,
+                        )
+                    }
+                }
+            }
             if (due.isNotEmpty()) item(key = "due") {
                 Section(stringResource(R.string.alerts_section_due)) {
                     due.forEach { alert ->

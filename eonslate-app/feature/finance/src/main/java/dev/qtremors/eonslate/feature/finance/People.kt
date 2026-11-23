@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Floors
 import dev.qtremors.eonslate.core.tracker.domain.finance.Categories
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
@@ -200,6 +201,7 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val failed by viewModel.failed.collectAsStateWithLifecycle()
+    val floor by viewModel.overallFloor.collectAsStateWithLifecycle(initialValue = null)
     val data = ledger
     val party = data?.parties?.firstOrNull { it.id == partyId }
     LaunchedEffect(data, party) { if (data != null && party == null) onBack() }
@@ -277,6 +279,7 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
                     },
                     onDelete = { viewModel.delete(t) { editing = null } },
                     parties = parties,
+                    floorCheck = { candidate -> Floors.breaches(data, candidate, t, floor) },
                 )
             }
         }
@@ -292,6 +295,7 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
                 },
                 onDelete = null,
                 parties = parties,
+                floorCheck = { candidate -> Floors.breaches(data, candidate, null, floor) },
                 initialParty = party.name,
                 initialShare = new.share,
                 initialMinor = new.minor,

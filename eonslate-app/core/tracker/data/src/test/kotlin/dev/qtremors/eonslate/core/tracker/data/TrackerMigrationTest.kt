@@ -42,6 +42,38 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version18AccountsHaveNoPiggyBanks() = runTest {
+        ExportedSchema.create(context, name, 18).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertTrue(finance.observeLedger().first().piggyBanks.isEmpty())
+            val piggy = dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank("p", "bank", "Phone", 10_000_000)
+            assertTrue(finance.savePiggy(piggy))
+            assertTrue(finance.movePiggy(dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove("m", "p", 500_000, 20_000)))
+            assertEquals(false, finance.movePiggy(dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove("n", "p", -600_000, 20_000)))
+            assertEquals(1, finance.observeLedger().first().piggyMoves.size)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun version17AccountsKeepNoFloor() = runTest {
+        ExportedSchema.create(context, name, 17).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(null, RoomFinanceRepository(db).observeLedger().first().accounts.single().floorMinor)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version16TransactionsShareWithNobody() = runTest {
         ExportedSchema.create(context, name, 16).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")

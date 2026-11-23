@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
 import dev.qtremors.eonslate.core.tracker.domain.finance.PartyKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import androidx.room.ColumnInfo
@@ -34,8 +36,9 @@ data class AccountEntity(
     @ColumnInfo(name = "monthly_budget_minor") val monthlyBudgetMinor: Long?,
     @ColumnInfo(defaultValue = "bank") val kind: String = AccountKind.BANK.storageKey,
     val digits: String? = null,
+    @ColumnInfo(name = "floor_minor") val floorMinor: Long? = null,
 ) {
-    fun toDomain() = Account(id, name, currency, openingMinor, monthlyBudgetMinor, AccountKind.fromKey(kind), digits)
+    fun toDomain() = Account(id, name, currency, openingMinor, monthlyBudgetMinor, AccountKind.fromKey(kind), digits, floorMinor)
 }
 
 @Entity(
@@ -67,6 +70,42 @@ data class TransactionEntity(
         ShareColumn.decode(shares),
     )
 }
+
+/** Money set aside inside an account for a goal. */
+@Entity(
+    tableName = "finance_piggies",
+    foreignKeys = [ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["account_id"], onDelete = ForeignKey.RESTRICT)],
+    indices = [Index("account_id")],
+)
+data class PiggyEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "account_id") val accountId: String,
+    val name: String,
+    @ColumnInfo(name = "target_minor") val targetMinor: Long,
+    @ColumnInfo(name = "target_epoch_day") val targetEpochDay: Long?,
+    @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long,
+) {
+    fun toDomain() = PiggyBank(id, accountId, name, targetMinor, targetEpochDay, createdAt)
+}
+
+/** Money put into a piggy bank, or taken out when negative. */
+@Entity(
+    tableName = "finance_piggy_moves",
+    foreignKeys = [ForeignKey(entity = PiggyEntity::class, parentColumns = ["id"], childColumns = ["piggy_id"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("piggy_id")],
+)
+data class PiggyMoveEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "piggy_id") val piggyId: String,
+    val minor: Long,
+    @ColumnInfo(name = "epoch_day") val epochDay: Long,
+    @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long,
+) {
+    fun toDomain() = PiggyMove(id, piggyId, minor, epochDay, createdAt)
+}
+
+internal fun PiggyBank.toEntity() = PiggyEntity(id, accountId, name.trim(), targetMinor, targetEpochDay, createdAt)
+internal fun PiggyMove.toEntity() = PiggyMoveEntity(id, piggyId, minor, epochDay, createdAt)
 
 /** A person or business payments are with; [nameKey] keeps names unique whatever their case. */
 @Entity(tableName = "finance_parties", indices = [Index(value = ["name_key"], unique = true)])
@@ -153,7 +192,7 @@ data class CategoryEntity(
     fun toDomain() = CategoryChoice(name, CategoryKind.valueOf(kind), id, icon, color, deleted)
 }
 
-internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor, kind.storageKey, digits)
+internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor, kind.storageKey, digits, floorMinor)
 
 internal fun RecurringPayment.toEntity() =
     RecurringEntity(
@@ -309,6 +348,36 @@ interface FinanceDao {
     /** Drops a deleted category's marker when its name is used for a new one. */
     @Query("DELETE FROM finance_categories WHERE name_key = :key AND id != :id AND deleted = 1")
     suspend fun forgetDeleted(key: String, id: String)
+
+    @Query("SELECT * FROM finance_piggies ORDER BY created_at, id")
+    suspend fun piggies(): List<PiggyEntity>
+
+    @Query("SELECT * FROM finance_piggy_moves ORDER BY epoch_day, created_at, id")
+    suspend fun piggyMoves(): List<PiggyMoveEntity>
+
+    @Upsert
+    suspend fun upsert(piggy: PiggyEntity)
+
+    @Upsert
+    suspend fun upsert(move: PiggyMoveEntity)
+
+    @Insert
+    suspend fun insertPiggies(piggies: List<PiggyEntity>)
+
+    @Insert
+    suspend fun insertPiggyMoves(moves: List<PiggyMoveEntity>)
+
+    @Query("DELETE FROM finance_piggies WHERE id = :id")
+    suspend fun deletePiggy(id: String)
+
+    @Query("DELETE FROM finance_piggy_moves WHERE id = :id")
+    suspend fun deletePiggyMove(id: String)
+
+    @Query("DELETE FROM finance_piggy_moves")
+    suspend fun clearPiggyMoves()
+
+    @Query("DELETE FROM finance_piggies")
+    suspend fun clearPiggies()
 
     @Query("SELECT * FROM finance_parties ORDER BY name COLLATE NOCASE, id")
     suspend fun parties(): List<PartyEntity>

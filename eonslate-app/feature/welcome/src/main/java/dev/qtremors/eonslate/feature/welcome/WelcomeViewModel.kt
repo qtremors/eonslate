@@ -24,12 +24,10 @@ import java.util.Locale
 import javax.inject.Inject
 
 /** The first run's pages, in order. */
-enum class WelcomePage { INTRO, YOU, MONEY, TRACKERS }
+enum class WelcomePage { INTRO, YOU, MONEY }
 
 data class WelcomeState(
     val page: WelcomePage = WelcomePage.INTRO,
-    /** Template ids picked to start with, in the order they were picked. */
-    val picked: List<String> = emptyList(),
     val name: String = "",
     /** The currency money starts in; the device's until changed. */
     val currency: String = "",
@@ -62,7 +60,6 @@ class WelcomeViewModel @Inject constructor(
     private val _state = MutableStateFlow(
         WelcomeState(
             page = WelcomePage.entries.getOrNull(savedState[KEY_PAGE] ?: 0) ?: WelcomePage.INTRO,
-            picked = savedState.get<ArrayList<String>>(KEY_PICKED).orEmpty(),
             name = savedState[KEY_NAME] ?: "",
             currency = savedState[KEY_CURRENCY] ?: "",
             accountName = savedState[KEY_ACCOUNT] ?: "",
@@ -85,7 +82,6 @@ class WelcomeViewModel @Inject constructor(
         _state.update(change)
         val s = _state.value
         savedState[KEY_PAGE] = s.page.ordinal
-        savedState[KEY_PICKED] = ArrayList(s.picked)
         savedState[KEY_NAME] = s.name
         savedState[KEY_CURRENCY] = s.currency
         savedState[KEY_ACCOUNT] = s.accountName
@@ -99,10 +95,6 @@ class WelcomeViewModel @Inject constructor(
     fun next() = change { s -> s.copy(page = WelcomePage.entries.getOrElse(s.page.ordinal + 1) { s.page }) }
 
     fun back() = change { s -> s.copy(page = WelcomePage.entries.getOrElse(s.page.ordinal - 1) { s.page }) }
-
-    fun toggle(templateId: String) = change { s ->
-        s.copy(picked = if (templateId in s.picked) s.picked - templateId else s.picked + templateId)
-    }
 
     fun setName(name: String) = change { it.copy(name = name.take(DisplayPreferences.NAME_LIMIT)) }
 
@@ -118,13 +110,13 @@ class WelcomeViewModel @Inject constructor(
 
     /**
      * Saves what was set up: the name, the currency, the first account (named [defaultAccount]
-     * when left blank, and only when there is none yet), then the starters [build] makes for the
-     * chosen currency after every existing tracker. Marks the welcome as seen.
+     * when left blank, and only when there is none yet). Marks the welcome as seen. Trackers are
+     * left for people to build themselves.
      */
-    fun finish(defaultAccount: String = "", build: (currency: String) -> List<Tracker>) = save(setUp = true, defaultAccount, build)
+    fun finish(defaultAccount: String = "") = save(setUp = true, defaultAccount)
 
-    /** Leaves without setting anything up; the app's own defaults stand. */
-    fun skip() = save(setUp = false, "") { emptyList() }
+    /** Leaves without setting anything up. */
+    fun skip() = save(setUp = false, "")
 
     /** Leaves to restore a backup, which brings its own name, money and trackers. */
     fun restore() {
@@ -132,7 +124,7 @@ class WelcomeViewModel @Inject constructor(
         skip()
     }
 
-    private fun save(setUp: Boolean, defaultAccount: String, build: (String) -> List<Tracker>) {
+    private fun save(setUp: Boolean, defaultAccount: String) {
         if (_state.value.saving) return
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
@@ -156,12 +148,6 @@ class WelcomeViewModel @Inject constructor(
                     )
                 }
             }
-            val starters = build(code)
-            val first = trackers.nextPosition()
-            val now = clock.nowMillis()
-            starters.forEachIndexed { index, tracker ->
-                trackers.saveTracker(tracker.copy(position = first + index, createdAt = now + index, updatedAt = now + index))
-            }
             settings.setWelcomeSeen(true)
             _state.update { it.copy(saving = false, done = true) }
         }
@@ -169,7 +155,6 @@ class WelcomeViewModel @Inject constructor(
 
     private companion object {
         const val KEY_PAGE = "welcome.page"
-        const val KEY_PICKED = "welcome.picked"
         const val KEY_NAME = "welcome.name"
         const val KEY_CURRENCY = "welcome.currency"
         const val KEY_ACCOUNT = "welcome.account"

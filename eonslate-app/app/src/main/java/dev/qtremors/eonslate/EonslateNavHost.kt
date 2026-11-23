@@ -67,7 +67,6 @@ import dev.qtremors.eonslate.feature.settings.PrivacyScreen
 import dev.qtremors.eonslate.feature.settings.SettingsScreen
 import dev.qtremors.eonslate.feature.settings.DisplaySettingsScreen
 import dev.qtremors.eonslate.feature.trackerdetail.TrackerDetailScreen
-import dev.qtremors.eonslate.feature.trackereditor.TemplateGalleryScreen
 import dev.qtremors.eonslate.feature.trackereditor.TrackerEditorScreen
 import dev.qtremors.eonslate.feature.welcome.WelcomeScreen
 
@@ -111,6 +110,7 @@ fun EonslateNavHost(
     var openProfile by remember { mutableStateOf(false) }
     var openAccount by remember { mutableStateOf<String?>(null) }
     var openNewAccount by remember { mutableStateOf(false) }
+    var openPiggy by remember { mutableStateOf<String?>(null) }
     val accountActions: @Composable RowScope.() -> Unit = {
         NotificationBell(alertCount) { navController.navigate(Destination.Notifications) { launchSingleTop = true } }
         ProfileAvatar(homeName, onClick = { openProfile = true })
@@ -189,6 +189,10 @@ fun EonslateNavHost(
                     openNewAccount = true
                     navController.navigateToTab(Destination.Transactions)
                 },
+                onPiggy = { id ->
+                    openPiggy = id
+                    navController.navigateToTab(Destination.Transactions)
+                },
                 onTransactions = { navController.navigateToTab(Destination.Transactions) },
                 onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
                 onTrackers = { navController.navigateToTab(Destination.Trackers) },
@@ -211,7 +215,7 @@ fun EonslateNavHost(
         }
         composable<Destination.Trackers> {
             HomeScreen(
-                onNewTracker = { navController.navigate(Destination.Templates) },
+                onNewTracker = { navController.navigate(Destination.TrackerEditor()) },
                 onOpenTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onLogPart = { id, option -> navController.navigate(Destination.LogEntry(id, optionId = option)) },
@@ -228,6 +232,7 @@ fun EonslateNavHost(
                 openCategory = openCategory, onCategoryOpened = { openCategory = null },
                 openAccount = openAccount, onAccountOpened = { openAccount = null },
                 openNewAccount = openNewAccount, onNewAccountOpened = { openNewAccount = false },
+                openPiggy = openPiggy, onPiggyOpened = { openPiggy = null },
                 onParty = { id -> navController.navigate(Destination.Party(id)) },
                 onPeople = { navController.navigate(Destination.People) },
                 onManageCategories = { navController.navigate(Destination.Categories) },
@@ -307,17 +312,6 @@ fun EonslateNavHost(
         composable<Destination.LogEntry> {
             LogEntryScreen(onDone = { navController.popBackStack() })
         }
-        composable<Destination.Templates> {
-            TemplateGalleryScreen(
-                onPick = { templateId ->
-                    // The gallery steps aside, so leaving the builder returns to where it began.
-                    navController.navigate(Destination.TrackerEditor(templateId = templateId)) {
-                        popUpTo<Destination.Templates> { inclusive = true }
-                    }
-                },
-                onBack = { navController.popBackStack() },
-            )
-        }
         composable<Destination.TrackerEditor> {
             TrackerEditorScreen(
                 onDone = { navController.popBackStack() },
@@ -372,7 +366,7 @@ private fun NavDestination.tabIndex(): Int = when {
     hasRoute<Destination.Transactions>() -> 1
     hasRoute<Destination.Subscriptions>() -> 2
     hasRoute<Destination.Trackers>() || hasRoute<Destination.TrackerDetail>() || hasRoute<Destination.TrackerEditor>() ||
-        hasRoute<Destination.Templates>() || hasRoute<Destination.Archived>() || hasRoute<Destination.LogEntry>() ||
+        hasRoute<Destination.Archived>() || hasRoute<Destination.LogEntry>() ||
         hasRoute<Destination.Reminders>() -> 3
     else -> 0
 }

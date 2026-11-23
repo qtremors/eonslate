@@ -51,6 +51,8 @@ class RoomBackupRepository @Inject constructor(
             budgets = finance.budgets().map { it.toDomain() },
             categories = finance.categories().map { it.toDomain() },
             parties = finance.parties().map { it.toDomain() },
+            piggyBanks = finance.piggies().map { it.toDomain() },
+            piggyMoves = finance.piggyMoves().map { it.toDomain() },
         )
     }
 
@@ -58,6 +60,8 @@ class RoomBackupRepository @Inject constructor(
         database.withTransaction {
             finance.clearTransactions()
             finance.clearParties()
+            finance.clearPiggyMoves()
+            finance.clearPiggies()
             finance.clearRecurring()
             finance.clearBudgets()
             finance.clearCategories()
@@ -75,6 +79,8 @@ class RoomBackupRepository @Inject constructor(
             dao.insertReminders(snapshot.reminders.map { it.toEntity() })
             finance.insertAccounts(snapshot.accounts.map { it.toEntity() })
             finance.insertParties(snapshot.parties.map { it.toEntity() })
+            finance.insertPiggies(snapshot.piggyBanks.map { it.toEntity() })
+            finance.insertPiggyMoves(snapshot.piggyMoves.map { it.toEntity() })
             finance.insertTransactions(snapshot.transactions.map { it.toEntity() })
             finance.insertRecurring(snapshot.recurring.map { it.toEntity() })
             finance.insertBudgets(snapshot.budgets.map { it.toEntity() })

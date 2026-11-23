@@ -99,7 +99,7 @@ class PreferencesAndIconsBackupTest {
             assertEquals("Transport", ledger.transactions.single().category)
             assertTrue(Categories.all(ledger).none { it.key == "transport" })
             assertTrue(Categories.suggestions(ledger, TransactionKind.EXPENSE).none { it.equals("Transport", ignoreCase = true) })
-            assertEquals(Categories.defaults.size - 1, Categories.all(ledger).size)
+            assertTrue(Categories.all(ledger).isEmpty())
 
             // The same name can be added again later.
             assertTrue(finance.saveCategory(transport.copy(id = "category:new-transport"), null))
@@ -110,16 +110,15 @@ class PreferencesAndIconsBackupTest {
     }
 
     @Test
-    fun theLastCategoryCannotBeDeleted() = runTest {
+    fun aNewLedgerOffersNoCategoriesAndTheLastOneCanGo() = runTest {
         val db = inMemoryDatabase()
         try {
             val finance = RoomFinanceRepository(db)
-            var left = Categories.all(finance.observeLedger().first())
-            while (left.size > 1) {
-                assertTrue(finance.deleteCategory(left.first()))
-                left = Categories.all(finance.observeLedger().first())
-            }
-            assertFalse(finance.deleteCategory(left.single()))
+            assertTrue(Categories.all(finance.observeLedger().first()).isEmpty())
+            val coffee = dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice("Coffee", dev.qtremors.eonslate.core.tracker.domain.finance.CategoryKind.EXPENSE)
+            assertTrue(finance.saveCategory(coffee, null))
+            assertTrue(finance.deleteCategory(Categories.all(finance.observeLedger().first()).single()))
+            assertTrue(Categories.all(finance.observeLedger().first()).isEmpty())
         } finally {
             db.close()
         }

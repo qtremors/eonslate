@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.2.1
-> **Last Updated:** 2026-11-22
+> **Version:** 2.2.2
+> **Last Updated:** 2026-11-23
 
 ## Roadmap
 
@@ -52,9 +52,9 @@ Each step is planned as one release commit.
 | 40 | 2.2.0 | Release: theme-aware splash and mark, SMS in every build, docs and website | Done |
 | 41 | 2.2.1 | People and businesses on transactions; pending or cleared | Done |
 | 42 | 2.2.1 | A person's chat: lend, borrow, split and settle | Done |
-| 43 | 2.2.2 | A clean slate: no preconfigured trackers or templates; build your own | Planned |
-| 44 | 2.2.2 | Balance floors per account and overall, with a warning before going under | Planned |
-| 45 | 2.2.2 | Piggy banks set aside inside an account | Planned |
+| 43 | 2.2.2 | A clean slate: no preconfigured trackers or templates; build your own | Done |
+| 44 | 2.2.2 | Balance floors per account and overall, with a warning before going under | Done |
+| 45 | 2.2.2 | Piggy banks set aside inside an account | Done |
 | 46 | 2.2.3 | Fixed deposits that grow on the card and are recorded at maturity | Planned |
 | 47 | 2.2.3 | Receipt photos on transactions | Planned |
 | 48 | 2.2.3 | Landing page and a favicon that shows on dark tabs | Planned |
@@ -291,3 +291,18 @@ Checked on the moto: lent Rahul 500, his chat showed "Owes you", Settle up clear
 - [x] People strip, People list, a chat per person or business
 - [x] Lent, borrowed, paid back, got back, equal splits; settle up
 - [x] Editor extras behind More
+
+### 2.2.2 A clean slate
+- [x] New tracker opens blank; template gallery removed
+- [x] Onboarding without starter trackers
+- [x] No default categories; category optional on payments; last category deletable
+
+### 2.2.2 Balance floors
+Checked on the moto: a 10,000 expense against a 1,50,000 floor warned 2,276 under and offered Save anyway.
+- [x] Account floor (database version 18) and an overall floor in settings
+- [x] Editor warning and Save anyway; Notifications and cards show breaches
+
+### 2.2.2 Piggy banks
+Checked on the moto: a 1,00,000 goal in HDFC, 45,000 added, 45% with 55,000 to go.
+- [x] Piggy banks and their moves (database version 19), in backups
+- [x] Add and take out; free and set-aside amounts on accounts

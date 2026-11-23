@@ -1,5 +1,9 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
+import dev.qtremors.eonslate.core.tracker.domain.finance.OverallFloor
 import dev.qtremors.eonslate.core.tracker.domain.finance.splitEqually
 import dev.qtremors.eonslate.core.tracker.domain.finance.Share
 import dev.qtremors.eonslate.core.tracker.domain.finance.own
@@ -58,7 +62,10 @@ class FinanceViewModel @Inject constructor(
 
     /** Home's money card: worked out off the main thread from the ledger and the shown currency. */
     val overview: StateFlow<Overview?> = combine(ledger.filterNotNull(), currency) { data, code ->
-        Overview(MoneySummary.of(data, today(), data.shownCurrency(code)), chartSlots(data), data.currencies(), data.accounts.isEmpty(), data.accounts, data.balances())
+        Overview(
+            MoneySummary.of(data, today(), data.shownCurrency(code)), chartSlots(data), data.currencies(), data.accounts.isEmpty(), data.accounts, data.balances(),
+            PiggyBanks.setAside(data), PiggyBanks.status(data),
+        )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     data class Overview(
@@ -68,6 +75,8 @@ class FinanceViewModel @Inject constructor(
         val noAccounts: Boolean,
         val accounts: List<dev.qtremors.eonslate.core.tracker.domain.finance.Account> = emptyList(),
         val balances: Map<String, java.math.BigInteger> = emptyMap(),
+        val setAside: Map<String, java.math.BigInteger> = emptyMap(),
+        val piggies: List<dev.qtremors.eonslate.core.tracker.domain.finance.PiggyStatus> = emptyList(),
     )
 
     /** Shows totals and charts in [code] on every tab; it is the app's currency setting. */
@@ -75,6 +84,13 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch { settings.updateTracking { it.copy(currency = code) } }
     }
     val firstDay = settings.tracking.map { it.firstDayOfWeek() }
+
+    /** The least to keep across every account in the app's currency, when set. */
+    val overallFloor = settings.tracking.map { t -> t.overallFloor?.let { OverallFloor(t.currencyCode(), it) } }
+
+    fun setOverallFloor(minor: Long?) {
+        viewModelScope.launch { settings.updateTracking { it.copy(overallFloor = minor) } }
+    }
 
     private val _busy = MutableStateFlow(false)
     val busy = _busy.asStateFlow()
@@ -147,6 +163,21 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun saveParty(party: Party, onDone: () -> Unit) = write(onDone) { finance.saveParty(party) }
+
+    fun savePiggy(piggy: PiggyBank, onDone: () -> Unit) = write(onDone) { finance.savePiggy(piggy) }
+
+    fun deletePiggy(id: String, onDone: () -> Unit) = write(onDone) {
+        finance.deletePiggy(id)
+        true
+    }
+
+    fun movePiggy(piggyId: String, minor: Long, day: Long, onDone: () -> Unit) = write(onDone) {
+        finance.movePiggy(PiggyMove(ids.newId(), piggyId, minor, day))
+    }
+
+    fun deletePiggyMove(move: PiggyMove) {
+        viewModelScope.launch { finance.deletePiggyMove(move.id) }
+    }
 
     fun deleteParty(id: String, onDone: () -> Unit) = write(onDone) { finance.deleteParty(id) }
 

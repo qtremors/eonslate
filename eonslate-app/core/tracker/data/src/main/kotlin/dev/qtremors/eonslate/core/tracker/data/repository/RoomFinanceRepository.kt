@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
+import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
 import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import androidx.room.withTransaction
 import dev.qtremors.eonslate.core.tracker.data.db.TrackerDatabase
@@ -24,7 +27,8 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
     private val dao = database.financeDao()
 
     override fun observeLedger() = database.invalidationTracker.createFlow(
-        "finance_accounts", "finance_transactions", "finance_recurring", "finance_budgets", "finance_categories",
+        "finance_accounts", "finance_transactions", "finance_recurring", "finance_budgets", "finance_categories", "finance_parties",
+        "finance_piggies", "finance_piggy_moves",
     ).map { database.withTransaction { readLedger() } }
 
     private suspend fun readLedger(): Ledger {
@@ -40,8 +44,28 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
                 .sortedWith(compareBy<CategoryBudget> { it.title.lowercase(Locale.ROOT) }.thenBy { it.id }),
             categories = dao.categories().map { it.toDomain() },
             parties = dao.parties().map { it.toDomain() },
+            piggyBanks = dao.piggies().map { it.toDomain() },
+            piggyMoves = dao.piggyMoves().map { it.toDomain() },
         )
     }
+
+    override suspend fun savePiggy(piggy: PiggyBank): Boolean = database.withTransaction {
+        val accounts = dao.accounts().mapTo(HashSet()) { it.id }
+        if (!piggy.isValid(accounts)) return@withTransaction false
+        val created = dao.piggies().firstOrNull { it.id == piggy.id }?.createdAt ?: piggy.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
+        dao.upsert(piggy.copy(createdAt = created).toEntity())
+        true
+    }
+
+    override suspend fun deletePiggy(id: String) = dao.deletePiggy(id)
+
+    override suspend fun movePiggy(move: PiggyMove): Boolean = database.withTransaction {
+        if (!PiggyBanks.canMove(readLedger(), move)) return@withTransaction false
+        dao.upsert(move.copy(createdAt = move.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()).toEntity())
+        true
+    }
+
+    override suspend fun deletePiggyMove(id: String) = dao.deletePiggyMove(id)
 
     override suspend fun saveParty(party: Party): Boolean = database.withTransaction {
         if (!party.isValid()) return@withTransaction false
@@ -180,7 +204,8 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
     override suspend fun deleteCategory(category: CategoryChoice): Boolean = database.withTransaction {
         val ledger = readLedger()
         val available = Categories.all(ledger)
-        if (available.size <= 1 || available.none { it.id == category.id && it.key == category.key }) return@withTransaction false
+        // Any category can go, the last one too: a payment without one counts as uncategorized.
+        if (available.none { it.id == category.id && it.key == category.key }) return@withTransaction false
         // The defaults become real rows first, so deleting one never brings the others back.
         if (ledger.categories.isEmpty()) dao.insertCategories(Categories.defaults.map { it.toEntity() })
         dao.forgetDeleted(category.key, category.id)

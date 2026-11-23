@@ -78,6 +78,7 @@ fun AccountCarousel(
     onAccount: (String) -> Unit,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
+    setAside: Map<String, BigInteger> = emptyMap(),
 ) {
     val state = rememberCarouselState { accounts.size + 1 }
     HorizontalUncontainedCarousel(
@@ -89,13 +90,13 @@ fun AccountCarousel(
         val shape = RoundedCornerShape(28.dp)
         val account = accounts.getOrNull(index)
         Box(Modifier.fillMaxSize().maskClip(shape)) {
-            if (account == null) AddCard(onAdd) else AccountCard(account, balances[account.id] ?: BigInteger.ZERO) { onAccount(account.id) }
+            if (account == null) AddCard(onAdd) else AccountCard(account, balances[account.id] ?: BigInteger.ZERO, setAside[account.id]) { onAccount(account.id) }
         }
     }
 }
 
 @Composable
-private fun AccountCard(account: Account, balance: BigInteger, onClick: () -> Unit) {
+private fun AccountCard(account: Account, balance: BigInteger, aside: BigInteger?, onClick: () -> Unit) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val tone = remember(account.id, dark) { BadgePalette.forKey(account.id, dark) }
     val locale = LocalValueDisplay.current.numberLocale
@@ -120,6 +121,22 @@ private fun AccountCard(account: Account, balance: BigInteger, onClick: () -> Un
         }
         Spacer(Modifier.weight(1f))
         FitText(ValueFormat.money(balance, account.currency, locale), style = MetricTextStyle, color = tone.content)
+        aside?.takeIf { it.signum() > 0 }?.let {
+            Text(
+                stringResource(R.string.piggy_free_line, ValueFormat.money(balance - it, account.currency, locale)),
+                style = MaterialTheme.typography.labelMedium,
+                color = tone.content.copy(alpha = 0.8f),
+            )
+        }
+        account.floorMinor?.let { floor ->
+            val under = BigInteger.valueOf(floor) - balance
+            Text(
+                if (under.signum() > 0) stringResource(R.string.floor_card_under, ValueFormat.money(under, account.currency, locale))
+                else stringResource(R.string.floor_card_keep, ValueFormat.money(floor, account.currency, locale)),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (under.signum() > 0) MaterialTheme.colorScheme.error else tone.content.copy(alpha = 0.8f),
+            )
+        }
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(kind, style = MaterialTheme.typography.labelLarge, color = tone.content.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
             account.digits?.let {

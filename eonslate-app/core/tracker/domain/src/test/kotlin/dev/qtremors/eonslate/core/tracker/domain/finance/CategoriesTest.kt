@@ -8,11 +8,9 @@ class CategoriesTest {
     private fun tx(id: String, kind: TransactionKind, category: String) = Transaction(id, "a", kind, 100, 0, category = category)
 
     @Test
-    fun emptyLedgerOffersTheDefaultsForTheKind() {
-        val expense = Categories.suggestions(Ledger(), TransactionKind.EXPENSE)
-        assertTrue("Food & Dining" in expense && "Other" in expense && "Salary" !in expense)
-        val income = Categories.suggestions(Ledger(), TransactionKind.INCOME)
-        assertEquals(listOf("Salary", "Other"), income)
+    fun anEmptyLedgerOffersNothingUntilPeopleMakeTheirOwn() {
+        assertEquals(emptyList<String>(), Categories.suggestions(Ledger(), TransactionKind.EXPENSE))
+        assertEquals(emptyList<String>(), Categories.suggestions(Ledger(), TransactionKind.INCOME))
         assertEquals(emptyList<String>(), Categories.suggestions(Ledger(), TransactionKind.TRANSFER))
     }
 

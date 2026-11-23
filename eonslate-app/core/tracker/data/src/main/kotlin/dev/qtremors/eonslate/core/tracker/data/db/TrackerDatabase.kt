@@ -26,6 +26,8 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
         CategoryBudgetEntity::class,
         CategoryEntity::class,
         PartyEntity::class,
+        PiggyEntity::class,
+        PiggyMoveEntity::class,
     ],
     version = TrackerDatabase.VERSION,
     exportSchema = true,
@@ -38,7 +40,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 17
+        const val VERSION = 19
         const val NAME = "eonslate.db"
 
         /**
@@ -248,9 +250,34 @@ object TrackerMigrations {
         }
     }
 
+    /** The least to keep in each account. */
+    val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_accounts ADD COLUMN floor_minor INTEGER")
+        }
+    }
+
+    /** Piggy banks: money set aside inside an account, and what goes in and out. */
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS finance_piggies (id TEXT NOT NULL, account_id TEXT NOT NULL, name TEXT NOT NULL, " +
+                    "target_minor INTEGER NOT NULL, target_epoch_day INTEGER, created_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(id), " +
+                    "FOREIGN KEY(account_id) REFERENCES finance_accounts(id) ON UPDATE NO ACTION ON DELETE RESTRICT)"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_piggies_account_id ON finance_piggies (account_id)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS finance_piggy_moves (id TEXT NOT NULL, piggy_id TEXT NOT NULL, minor INTEGER NOT NULL, " +
+                    "epoch_day INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(id), " +
+                    "FOREIGN KEY(piggy_id) REFERENCES finance_piggies(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_piggy_moves_piggy_id ON finance_piggy_moves (piggy_id)")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
+        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
     )
 }
 

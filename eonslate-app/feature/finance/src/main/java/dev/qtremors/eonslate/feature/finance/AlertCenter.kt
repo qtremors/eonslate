@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.OverallFloor
+import dev.qtremors.eonslate.core.settings.SettingsRepository
 import dev.qtremors.eonslate.core.tracker.domain.finance.FinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.insights.Alert
 import dev.qtremors.eonslate.core.tracker.domain.insights.Alerts
@@ -39,6 +41,7 @@ class AlertCenter @Inject constructor(
     entries: EntryRepository,
     detection: SmsDetection,
     private val clock: AppClock,
+    settings: SettingsRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -53,8 +56,8 @@ class AlertCenter @Inject constructor(
             else combine(list.map { tracker -> entries.observeEntries(tracker.id).map { tracker to Intervals.status(tracker, it, today()) } }) { it.toList() }
         }
 
-    val alerts: StateFlow<List<Alert>?> = combine(finance.observeLedger(), detection.pending, intervals) { ledger, pending, statuses ->
-        Alerts.of(ledger, today(), pending.size, statuses)
+    val alerts: StateFlow<List<Alert>?> = combine(finance.observeLedger(), detection.pending, intervals, settings.tracking) { ledger, pending, statuses, tracking ->
+        Alerts.of(ledger, today(), pending.size, statuses, tracking.overallFloor?.let { OverallFloor(tracking.currencyCode(), it) })
     }.stateIn(scope, SharingStarted.WhileSubscribed(STOP_MILLIS), null)
 
     /** The badge: everything that wants doing, plus an SMS batch result not yet seen. */

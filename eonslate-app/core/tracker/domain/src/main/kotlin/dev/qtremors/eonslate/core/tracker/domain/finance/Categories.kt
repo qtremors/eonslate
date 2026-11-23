@@ -36,18 +36,11 @@ data class CategoryChoice(
 }
 
 object Categories {
-    /** Offered before anything is used, so the first transaction needs no typing. */
-    val defaults: List<CategoryChoice> = listOf(
-        CategoryChoice("Food & Dining", CategoryKind.EXPENSE),
-        CategoryChoice("Transport", CategoryKind.EXPENSE),
-        CategoryChoice("Shopping", CategoryKind.EXPENSE),
-        CategoryChoice("Bills", CategoryKind.EXPENSE),
-        CategoryChoice("Health", CategoryKind.EXPENSE),
-        CategoryChoice("Entertainment", CategoryKind.EXPENSE),
-        CategoryChoice("Subscriptions", CategoryKind.EXPENSE),
-        CategoryChoice("Salary", CategoryKind.INCOME),
-        CategoryChoice("Other", CategoryKind.BOTH),
-    )
+    /**
+     * Nothing is offered before it is made or used: people build their own categories, and a
+     * payment without one counts as uncategorized.
+     */
+    val defaults: List<CategoryChoice> = emptyList()
 
     fun all(ledger: Ledger): List<CategoryChoice> {
         val catalog = ledger.categories.ifEmpty { defaults }

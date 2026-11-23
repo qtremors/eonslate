@@ -16,6 +16,8 @@ enum class WeekStart { LOCALE, MONDAY, SUNDAY, SATURDAY }
 data class Tracking(
     val weekStart: WeekStart = WeekStart.LOCALE,
     val currency: String? = null,
+    /** The least to keep across every account in [currencyCode], in minor units; null for none. */
+    val overallFloor: Long? = null,
 ) {
     /** The first day of the week for [locale], unless a day was chosen. */
     fun firstDayOfWeek(locale: Locale = Locale.getDefault()): DayOfWeek = when (weekStart) {

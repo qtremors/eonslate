@@ -1,10 +1,26 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.2.1
-> **Last Updated:** 2026-11-22
+> **Version:** 2.2.2
+> **Last Updated:** 2026-11-23
 
 ---
+
+## [2.2.2] - 2026-11-23
+
+- **A clean slate**: nothing is made for you. Build your own trackers, categories and combinations.
+- New trackers open blank, straight away; the template gallery is gone.
+- Onboarding ends once your money is set up, with no starter trackers.
+- No ready-made categories: the ones you make or use are offered, and a payment can go without one, counting as uncategorized. Any category can be deleted, the last one too.
+- **Keep at least**: give an account the least to keep in it; below zero suits a credit card's limit.
+- **Overall floor**: the least to keep across every account in your currency, set from the Transactions menu.
+- Before a payment takes a balance under a floor, the editor says which and by how much, and Save becomes Save anyway.
+- Accounts under their floor, and a total under the overall floor, show first in Notifications; a card says what it keeps, or how far under it is.
+- **Piggy banks**: set money aside inside an account for something you want, such as ₹1,00,000 for a phone, with an optional day to reach it by.
+- Add to it from the account or take it back out; it fills toward the goal and keeps every move in and out.
+- The account keeps the money: its card and row say what is set aside and what is still free to spend.
+- Piggy banks show on Home and on Transactions; New piggy bank is in the Transactions menu.
+- Database version 19.
 
 ## [2.2.1] - 2026-11-22
 

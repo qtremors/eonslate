@@ -30,11 +30,12 @@ Get the latest APK from [Releases](https://github.com/qtremors/eonslate/releases
 
 - **Money:** account cards for banks, cards, wallets and cash; transactions, transfers, budgets, subscriptions and bills, with charts for cash flow, categories, weekdays and the whole year.
 - **Payment SMS:** scan the inbox or share a message in, offline; payments land on the account whose last digits they name.
+- **People:** say who each payment was with; lend, borrow, split and settle up in a chat with each person or business.
 - **Your own trackers:** build trackers from typed fields: number, money, duration, rating, yes or no, one or several choices, text and date.
 - **Schedules and goals:** every day, some days, times a week or as needed; daily or weekly goals for numbers and durations.
 - **Intervals and parts:** due again after a time or an amount, such as an oil change every 3,000 km, counted on at your usual pace; a choice can become parts with their own status and log button.
 - **Notifications:** one bell for SMS finds, bills to confirm, budgets over, intervals due and payments coming up.
-- **Ready-made templates:** start from twenty templates such as expenses, habits, mood, workouts, reading, water and sleep, then make them your own.
+- **A clean slate:** nothing made for you. Build your own trackers, categories and combinations from the start.
 - **Quick logging:** log from Home, a widget or a Quick Settings tile; Today and Money widgets keep up as you log.
 - **Views that fit:** every tracker has a list by day, a month calendar and insights with streaks, consistency, a year heat map, weekday patterns, totals, averages, records and charts.
 - **Search and tags:** search trackers and entries, with a saved tag filter on Home.

@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.core.tracker.domain.insights
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.OverallFloor
+import dev.qtremors.eonslate.core.tracker.domain.finance.Floors
+import dev.qtremors.eonslate.core.tracker.domain.finance.Breach
 import dev.qtremors.eonslate.core.tracker.domain.finance.BudgetHealth
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
@@ -20,6 +23,9 @@ sealed interface Alert {
     /** A budget spent past its limit this period. */
     data class OverBudget(val health: BudgetHealth) : Alert
 
+    /** A balance under the least you set: an account's floor, or your overall one. */
+    data class BelowFloor(val breach: Breach) : Alert
+
     /** A tracker's interval that has come round. */
     data class IntervalDue(val tracker: Tracker, val status: IntervalStatus) : Alert
 
@@ -34,7 +40,13 @@ object Alerts {
      * budgets over, intervals due, then payments coming up. [intervals] is each tracker with
      * where its intervals stand.
      */
-    fun of(ledger: Ledger, today: LocalDate, found: Int, intervals: List<Pair<Tracker, List<IntervalStatus>>>): List<Alert> {
+    fun of(
+        ledger: Ledger,
+        today: LocalDate,
+        found: Int,
+        intervals: List<Pair<Tracker, List<IntervalStatus>>>,
+        overall: OverallFloor? = null,
+    ): List<Alert> {
         val day = today.toEpochDay()
         val currencies = ledger.accounts.associate { it.id to it.currency }
         val live = ledger.recurring.filter { !it.paused && it.nextEpochDay != null && it.accountId in currencies }
@@ -48,6 +60,7 @@ object Alerts {
         val intervalsDue = intervals.flatMap { (tracker, statuses) ->
             statuses.filter { it.due }.map { Alert.IntervalDue(tracker, it) }
         }
-        return listOfNotNull(found.takeIf { it > 0 }?.let { Alert.FoundPayments(it) }) + due + over + intervalsDue + soon
+        val floors = Floors.below(ledger, overall).map { Alert.BelowFloor(it) }
+        return listOfNotNull(found.takeIf { it > 0 }?.let { Alert.FoundPayments(it) }) + floors + due + over + intervalsDue + soon
     }
 }
