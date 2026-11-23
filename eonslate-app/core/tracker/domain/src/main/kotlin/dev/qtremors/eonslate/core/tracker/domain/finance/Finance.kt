@@ -23,10 +23,16 @@ data class Account(
      * Below zero suits a credit card's limit.
      */
     @SerialName("floor_minor") val floorMinor: Long? = null,
+    /** A fixed deposit's terms; set exactly when [kind] is [AccountKind.DEPOSIT]. */
+    val deposit: Deposit? = null,
 ) {
     fun isValid(): Boolean = id.isNotBlank() && name.isNotBlank() &&
         name.length <= NAME_LIMIT && MoneyAmount.isKnownCurrency(currency) &&
-        (monthlyBudgetMinor == null || monthlyBudgetMinor > 0) && (digits == null || DIGITS.matches(digits))
+        (monthlyBudgetMinor == null || monthlyBudgetMinor > 0) && (digits == null || DIGITS.matches(digits)) &&
+        (kind == AccountKind.DEPOSIT) == (deposit != null) && deposit?.isValid() != false
+
+    /** A fixed deposit that has been paid out. */
+    val isClosed: Boolean get() = deposit?.isOpen == false
 
     /** The name, with its last digits when it has them: "HDFC •4821". */
     val label: String get() = digits?.let { "$name •$it" } ?: name
@@ -43,10 +49,15 @@ enum class AccountKind(val storageKey: String) {
     @SerialName("bank") BANK("bank"),
     @SerialName("card") CARD("card"),
     @SerialName("wallet") WALLET("wallet"),
-    @SerialName("cash") CASH("cash");
+    @SerialName("cash") CASH("cash"),
+    /** A fixed deposit; made and closed on its own page, not in the account editor. */
+    @SerialName("deposit") DEPOSIT("deposit");
 
     companion object {
         fun fromKey(key: String?): AccountKind = entries.firstOrNull { it.storageKey == key } ?: BANK
+
+        /** What the account editor offers; deposits have their own. */
+        val EVERYDAY: List<AccountKind> = listOf(BANK, CARD, WALLET, CASH)
     }
 }
 
@@ -55,7 +66,8 @@ enum class AccountKind(val storageKey: String) {
  * last digits, else one whose name ends with them, else the first in that currency.
  */
 fun List<Account>.forPayment(currency: String, ending: String?): Account? {
-    val matching = filter { it.currency == currency }
+    // Payments do not come from fixed deposits.
+    val matching = filter { it.currency == currency && it.deposit == null }
     return ending?.let { end -> matching.firstOrNull { it.digits == end } ?: matching.firstOrNull { it.name.trim().endsWith(end) } }
         ?: matching.firstOrNull()
 }
@@ -227,6 +239,18 @@ interface FinanceRepository {
     fun observeLedger(): Flow<Ledger>
     suspend fun saveAccount(account: Account): Boolean
     suspend fun deleteAccount(id: String): Boolean
+
+    /**
+     * Saves a fixed deposit's account with [transactions] that fund or close it, all or nothing;
+     * false when the account is not a valid deposit or any transaction does not fit.
+     */
+    suspend fun saveDeposit(account: Account, transactions: List<Transaction> = emptyList()): Boolean
+
+    /**
+     * Removes a fixed deposit and every transaction in or out of it, as when it was added by
+     * mistake. False, and nothing removed, when [id] is not a deposit.
+     */
+    suspend fun deleteDeposit(id: String): Boolean
     suspend fun saveTransaction(transaction: Transaction): Boolean
     /** Adds [transactions] in one go, saving [parties] they name first. */
     suspend fun appendTransactions(transactions: List<Transaction>, parties: List<Party> = emptyList()): Boolean

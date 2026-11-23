@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.ui.components.SectionHeader
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,7 +85,6 @@ internal fun LazyListScope.planItems(
     onCurrency: (String) -> Unit,
 ) {
     val accounts = ledger.accounts.associateBy { it.id }
-    if (ledger.recurring.isNotEmpty()) item(key = "plan-kinds") { PlanKindChips(kind, onKind) }
     val active = plans.filter { !it.paused && it.accountId in accounts }
     // One currency at a time, the same one on every tab; amounts are never added across currencies.
     val currency = ledger.shownCurrency(chosenCurrency)
@@ -149,28 +149,16 @@ internal fun LazyListScope.planItems(
             actions.add,
         )
     }
-    itemsIndexed(plans, key = { _, payment -> "recurring-" + payment.id }) { index, payment ->
-        val account = accounts[payment.accountId] ?: return@itemsIndexed
-        ConnectedItem(index, plans.size) { PlanRow(payment, account, today, actions) }
-    }
-}
-
-@Composable
-private fun PlanKindChips(kind: TransactionKind?, onKind: (TransactionKind?) -> Unit) {
-    Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(null to R.string.finance_kind_all_plans, TransactionKind.EXPENSE to R.string.finance_expenses, TransactionKind.INCOME to R.string.finance_incomes)
-            .forEach { (option, label) ->
-                FilterChip(
-                    selected = option == kind,
-                    onClick = { onKind(option) },
-                    label = { Text(stringResource(label)) },
-                    shape = MaterialTheme.shapes.medium,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
-            }
+    // What goes out, then what comes in, each in its own group.
+    listOf(TransactionKind.EXPENSE, TransactionKind.INCOME).forEach { side ->
+        val group = plans.filter { it.kind == side && it.accountId in accounts }
+        if (group.isEmpty()) return@forEach
+        item(key = "plans-$side") {
+            SectionHeader(stringResource(if (side == TransactionKind.INCOME) R.string.recurring_in else R.string.recurring_out))
+        }
+        itemsIndexed(group, key = { _, payment -> "recurring-" + payment.id }) { index, payment ->
+            ConnectedItem(index, group.size) { PlanRow(payment, accounts.getValue(payment.accountId), today, actions) }
+        }
     }
 }
 

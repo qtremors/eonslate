@@ -42,6 +42,26 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version19AccountsAreNotDeposits() = runTest {
+        ExportedSchema.create(context, name, 19).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertEquals(null, finance.observeLedger().first().accounts.single().deposit)
+            val terms = dev.qtremors.eonslate.core.tracker.domain.finance.Deposit(100_000, 700, 20_000, 20_365)
+            val fd = dev.qtremors.eonslate.core.tracker.domain.finance.Account(
+                "fd", "FD", "INR", 100_000, kind = dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind.DEPOSIT, deposit = terms,
+            )
+            assertTrue(finance.saveDeposit(fd))
+            assertEquals(terms, finance.observeLedger().first().accounts.single { it.id == "fd" }.deposit)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version18AccountsHaveNoPiggyBanks() = runTest {
         ExportedSchema.create(context, name, 18).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")

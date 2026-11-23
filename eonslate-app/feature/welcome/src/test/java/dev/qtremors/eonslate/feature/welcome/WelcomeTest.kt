@@ -199,6 +199,11 @@ class WelcomeTest {
             MutableStateFlow(dev.qtremors.eonslate.core.tracker.domain.finance.Ledger(accounts = accounts.toList()))
         override suspend fun saveAccount(account: dev.qtremors.eonslate.core.tracker.domain.finance.Account) = account.isValid().also { if (it) accounts += account }
         override suspend fun deleteAccount(id: String) = false
+        override suspend fun saveDeposit(
+            account: dev.qtremors.eonslate.core.tracker.domain.finance.Account,
+            transactions: List<dev.qtremors.eonslate.core.tracker.domain.finance.Transaction>,
+        ) = false
+        override suspend fun deleteDeposit(id: String) = false
         override suspend fun saveTransaction(transaction: dev.qtremors.eonslate.core.tracker.domain.finance.Transaction) = false
         override suspend fun appendTransactions(
             transactions: List<dev.qtremors.eonslate.core.tracker.domain.finance.Transaction>,

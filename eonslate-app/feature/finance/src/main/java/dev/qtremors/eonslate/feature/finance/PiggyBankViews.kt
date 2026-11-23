@@ -63,9 +63,10 @@ internal fun piggyLine(status: PiggyStatus, account: Account?): String {
 
 /** Every piggy bank as a row with how full it is; a tap opens one, New makes another. */
 @Composable
-internal fun PiggySection(statuses: List<PiggyStatus>, accounts: Map<String, Account>, onOpen: (String) -> Unit, onNew: () -> Unit) {
+internal fun PiggySection(statuses: List<PiggyStatus>, accounts: Map<String, Account>, onOpen: (String) -> Unit, onNew: (() -> Unit)?) {
     Column {
-        SectionHeader(stringResource(R.string.piggy_title)) {
+        // On their own page the title says it; elsewhere a header names them.
+        if (onNew != null) SectionHeader(stringResource(R.string.piggy_title)) {
             TextButton(shapes = ButtonDefaults.shapes(), onClick = onNew) { Text(stringResource(R.string.piggy_new)) }
         }
         ConnectedGroup {

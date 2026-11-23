@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.EventRepeat
 import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.LockClock
 import androidx.compose.material.icons.rounded.Update
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
@@ -44,7 +45,8 @@ class NotificationsViewModel @Inject constructor(center: AlertCenter, val detect
 
 /**
  * Everything waiting, in one place: payments found in SMS, payments that need their amount,
- * budgets gone over, intervals come round, and payments in the next few days.
+ * fixed deposits matured or about to, budgets gone over, intervals come round, and payments in
+ * the next few days.
  */
 @Composable
 fun NotificationsScreen(
@@ -54,6 +56,8 @@ fun NotificationsScreen(
     onTransactions: () -> Unit,
     onTracker: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Opens an account; for a deposit, the deposit itself. */
+    onAccount: (String) -> Unit = {},
     viewModel: NotificationsViewModel = hiltViewModel(),
 ) {
     val alerts by viewModel.alerts.collectAsStateWithLifecycle()
@@ -77,6 +81,7 @@ fun NotificationsScreen(
         val floors = list.filterIsInstance<Alert.BelowFloor>()
         val intervals = list.filterIsInstance<Alert.IntervalDue>()
         val soon = list.filterIsInstance<Alert.PaymentSoon>()
+        val deposits = list.filterIsInstance<Alert.DepositMatures>()
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (found || result != null) item(key = "sms") { FoundPaymentsBanner(viewModel.detection, onReviewSms, Modifier.padding(top = 8.dp)) }
             if (floors.isNotEmpty()) item(key = "floors") {
@@ -105,6 +110,19 @@ fun NotificationsScreen(
                             else pluralStringResource(R.plurals.alerts_waiting_days, alert.daysLate.toInt(), alert.daysLate.toInt()),
                             leading = { IconBadge(Icons.Rounded.HourglassBottom, alert.payment.id) },
                             onClick = onSubscriptions,
+                        )
+                    }
+                }
+            }
+            if (deposits.isNotEmpty()) item(key = "deposits") {
+                Section(stringResource(R.string.deposit_title)) {
+                    deposits.forEach { alert ->
+                        val status = alert.status
+                        ConnectedRow(
+                            title = status.account.name,
+                            supporting = maturityText(status) + " · " + ValueFormat.money(status.atMaturity, status.account.currency, locale),
+                            leading = { IconBadge(Icons.Rounded.LockClock, status.account.id) },
+                            onClick = { onAccount(status.account.id) },
                         )
                     }
                 }

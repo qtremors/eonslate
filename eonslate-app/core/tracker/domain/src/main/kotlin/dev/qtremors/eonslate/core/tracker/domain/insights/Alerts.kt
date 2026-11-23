@@ -4,6 +4,8 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.OverallFloor
 import dev.qtremors.eonslate.core.tracker.domain.finance.Floors
 import dev.qtremors.eonslate.core.tracker.domain.finance.Breach
 import dev.qtremors.eonslate.core.tracker.domain.finance.BudgetHealth
+import dev.qtremors.eonslate.core.tracker.domain.finance.DepositStatus
+import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
 import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
@@ -29,15 +31,23 @@ sealed interface Alert {
     /** A tracker's interval that has come round. */
     data class IntervalDue(val tracker: Tracker, val status: IntervalStatus) : Alert
 
-    val counts: Boolean get() = this !is PaymentSoon
+    /**
+     * A fixed deposit that has matured and waits to be closed, or one maturing within
+     * [Alerts.DEPOSIT_DAYS] days, which is shown and not counted.
+     */
+    data class DepositMatures(val status: DepositStatus) : Alert
+
+    val counts: Boolean get() = this !is PaymentSoon && !(this is DepositMatures && !status.matured)
 }
 
 object Alerts {
     const val SOON_DAYS = 3L
+    const val DEPOSIT_DAYS = 7L
 
     /**
-     * Everything waiting on [today], most pressing first: payments found in SMS, payments due,
-     * budgets over, intervals due, then payments coming up. [intervals] is each tracker with
+     * Everything waiting on [today], most pressing first: payments found in SMS, balances under
+     * their floor, payments due, deposits matured, budgets over, intervals due, then payments
+     * and deposits coming up. [intervals] is each tracker with
      * where its intervals stand.
      */
     fun of(
@@ -61,6 +71,11 @@ object Alerts {
             statuses.filter { it.due }.map { Alert.IntervalDue(tracker, it) }
         }
         val floors = Floors.below(ledger, overall).map { Alert.BelowFloor(it) }
-        return listOfNotNull(found.takeIf { it > 0 }?.let { Alert.FoundPayments(it) }) + floors + due + over + intervalsDue + soon
+        val (matured, maturing) = Deposits.status(ledger, day)
+            .filter { it.open && it.daysLeft <= DEPOSIT_DAYS }
+            .map { Alert.DepositMatures(it) }
+            .partition { it.status.matured }
+        return listOfNotNull(found.takeIf { it > 0 }?.let { Alert.FoundPayments(it) }) +
+            floors + due + matured + over + intervalsDue + soon + maturing
     }
 }

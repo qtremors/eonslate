@@ -93,4 +93,7 @@
     <string name="settings_sms_scan">Scan past payment SMS</string>
     <string name="about_changelog">Changelog</string>
     <string name="about_package">Package</string>
+    <string name="settings_section_you">You</string>
+    <string name="settings_section_money">Money</string>
+    <string name="settings_display_hint">Your name, and how numbers and dates read</string>
 </resources>

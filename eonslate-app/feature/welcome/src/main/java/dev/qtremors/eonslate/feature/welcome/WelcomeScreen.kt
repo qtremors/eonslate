@@ -196,7 +196,7 @@ private fun MoneyPage(state: WelcomeState, viewModel: WelcomeViewModel) {
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 8.dp, start = 4.dp),
         )
-        ConnectedChoices(AccountKind.entries, state.accountKind, { kindLabel(it) }, viewModel::setAccountKind)
+        ConnectedChoices(AccountKind.EVERYDAY, state.accountKind, { kindLabel(it) }, viewModel::setAccountKind)
         FormField(
             value = state.accountName,
             onValueChange = viewModel::setAccountName,
@@ -228,7 +228,7 @@ private fun MoneyPage(state: WelcomeState, viewModel: WelcomeViewModel) {
 @Composable
 private fun kindLabel(kind: AccountKind): String = stringResource(
     when (kind) {
-        AccountKind.BANK -> R.string.welcome_kind_bank
+        AccountKind.BANK, AccountKind.DEPOSIT -> R.string.welcome_kind_bank
         AccountKind.CARD -> R.string.welcome_kind_card
         AccountKind.WALLET -> R.string.welcome_kind_wallet
         AccountKind.CASH -> R.string.welcome_kind_cash

@@ -102,11 +102,14 @@ class SettingsUiTest {
     fun wallpaperColorsNeedAndroidTwelve() {
         show(Appearance(), wallpaper = false)
         assertEquals(0, compose.onAllNodes(androidx.compose.ui.test.hasText("Wallpaper")).fetchSemanticsNodes().size)
-        // The section header says "About" too; the row is the one that can be pressed.
-        val aboutRow = androidx.compose.ui.test.hasText("About") and androidx.compose.ui.test.hasClickAction()
-        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(aboutRow)
-        compose.onNode(aboutRow).performClick()
-        assertEquals(1, about)
+    }
+
+    @Test
+    fun settingsHoldOnlySettings() {
+        // Backup and About live in the profile, so Settings never repeats them.
+        show(Appearance(), wallpaper = true)
+        assertEquals(0, compose.onAllNodes(androidx.compose.ui.test.hasText("Backup and restore")).fetchSemanticsNodes().size)
+        assertEquals(0, about)
     }
 }
 

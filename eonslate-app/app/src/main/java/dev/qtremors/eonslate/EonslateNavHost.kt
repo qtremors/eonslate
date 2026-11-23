@@ -220,6 +220,7 @@ fun EonslateNavHost(
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onLogPart = { id, option -> navController.navigate(Destination.LogEntry(id, optionId = option)) },
                 onEditTracker = { id -> navController.navigate(Destination.TrackerEditor(id)) },
+                onArchived = { navController.navigate(Destination.Archived) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
         }
@@ -235,12 +236,23 @@ fun EonslateNavHost(
                 openPiggy = openPiggy, onPiggyOpened = { openPiggy = null },
                 onParty = { id -> navController.navigate(Destination.Party(id)) },
                 onPeople = { navController.navigate(Destination.People) },
+                onSection = { navController.navigate(Destination.MoneyPage(it.name)) },
                 onManageCategories = { navController.navigate(Destination.Categories) },
                 onSettings = { navController.navigate(Destination.Settings) },
             )
         }
         composable<Destination.Subscriptions> {
             FinanceScreen(FinanceSection.SUBSCRIPTIONS, onSettings = { navController.navigate(Destination.Settings) })
+        }
+        composable<Destination.MoneyPage> { entry ->
+            val section = FinanceSection.entries.firstOrNull { it.name == entry.toRoute<Destination.MoneyPage>().section } ?: FinanceSection.ACCOUNTS
+            FinanceScreen(
+                section,
+                onBack = { navController.popBackStack() },
+                onManageCategories = { navController.navigate(Destination.Categories) },
+                onParty = { id -> navController.navigate(Destination.Party(id)) },
+                onPeople = { navController.navigate(Destination.People) },
+            )
         }
         composable<Destination.People> {
             PeopleScreen(onBack = { navController.popBackStack() }, onParty = { id -> navController.navigate(Destination.Party(id)) })
@@ -258,6 +270,10 @@ fun EonslateNavHost(
                 onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
                 onTransactions = { navController.navigateToTab(Destination.Transactions) },
                 onTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
+                onAccount = { id ->
+                    openAccount = id
+                    navController.navigateToTab(Destination.Transactions)
+                },
             )
         }
         composable<Destination.Settings> {
@@ -363,7 +379,8 @@ private fun NavDestination.isTab(): Boolean =
 
 /** Detail pages light up the tab they belong to. */
 private fun NavDestination.tabIndex(): Int = when {
-    hasRoute<Destination.Transactions>() -> 1
+    hasRoute<Destination.Transactions>() || hasRoute<Destination.MoneyPage>() || hasRoute<Destination.People>() ||
+        hasRoute<Destination.Party>() -> 1
     hasRoute<Destination.Subscriptions>() -> 2
     hasRoute<Destination.Trackers>() || hasRoute<Destination.TrackerDetail>() || hasRoute<Destination.TrackerEditor>() ||
         hasRoute<Destination.Archived>() || hasRoute<Destination.LogEntry>() ||

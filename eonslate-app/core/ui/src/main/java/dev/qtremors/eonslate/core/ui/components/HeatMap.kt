@@ -62,7 +62,7 @@ fun YearHeatMap(
     val colors = MaterialTheme.colorScheme
     val empty = colors.surfaceContainerHighest
     // One hue, light to dark: never a rainbow, readable on light, dark and pure black alike.
-    val ramp = remember(empty, color) { listOf(0.35f, 0.55f, 0.78f, 1f).map { lerp(empty, color, it) } }
+    val ramp = remember(empty, color) { listOf(0.16f, 0.36f, 0.62f, 1f).map { lerp(empty, color, it) } }
     val start = remember(today, firstDay, weeks) { today.with(TemporalAdjusters.previousOrSame(firstDay)).minusWeeks((weeks - 1).toLong()) }
     val scroll = rememberScrollState()
     LaunchedEffect(scroll.maxValue) { scroll.scrollTo(scroll.maxValue) }

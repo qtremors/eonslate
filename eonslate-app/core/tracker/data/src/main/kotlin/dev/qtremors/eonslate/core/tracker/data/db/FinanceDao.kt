@@ -26,6 +26,8 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction as LedgerTransaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Compounding
+import dev.qtremors.eonslate.core.tracker.domain.finance.Deposit
 
 @Entity(tableName = "finance_accounts")
 data class AccountEntity(
@@ -37,8 +39,22 @@ data class AccountEntity(
     @ColumnInfo(defaultValue = "bank") val kind: String = AccountKind.BANK.storageKey,
     val digits: String? = null,
     @ColumnInfo(name = "floor_minor") val floorMinor: Long? = null,
+    // A fixed deposit's terms, all set or all null.
+    @ColumnInfo(name = "deposit_principal_minor") val depositPrincipalMinor: Long? = null,
+    @ColumnInfo(name = "deposit_rate_bp") val depositRateBp: Int? = null,
+    @ColumnInfo(name = "deposit_start_epoch_day") val depositStartEpochDay: Long? = null,
+    @ColumnInfo(name = "deposit_maturity_epoch_day") val depositMaturityEpochDay: Long? = null,
+    @ColumnInfo(name = "deposit_compounding") val depositCompounding: String? = null,
+    @ColumnInfo(name = "deposit_closed_epoch_day") val depositClosedEpochDay: Long? = null,
 ) {
-    fun toDomain() = Account(id, name, currency, openingMinor, monthlyBudgetMinor, AccountKind.fromKey(kind), digits, floorMinor)
+    fun toDomain() = Account(
+        id, name, currency, openingMinor, monthlyBudgetMinor, AccountKind.fromKey(kind), digits, floorMinor,
+        deposit = if (depositPrincipalMinor == null || depositRateBp == null || depositStartEpochDay == null || depositMaturityEpochDay == null) null
+        else Deposit(
+            depositPrincipalMinor, depositRateBp, depositStartEpochDay, depositMaturityEpochDay,
+            Compounding.fromKey(depositCompounding), depositClosedEpochDay,
+        ),
+    )
 }
 
 @Entity(
@@ -192,7 +208,11 @@ data class CategoryEntity(
     fun toDomain() = CategoryChoice(name, CategoryKind.valueOf(kind), id, icon, color, deleted)
 }
 
-internal fun Account.toEntity() = AccountEntity(id, name, currency, openingMinor, monthlyBudgetMinor, kind.storageKey, digits, floorMinor)
+internal fun Account.toEntity() = AccountEntity(
+    id, name, currency, openingMinor, monthlyBudgetMinor, kind.storageKey, digits, floorMinor,
+    deposit?.principalMinor, deposit?.rateBp, deposit?.startEpochDay, deposit?.maturityEpochDay,
+    deposit?.compounding?.storageKey, deposit?.closedEpochDay,
+)
 
 internal fun RecurringPayment.toEntity() =
     RecurringEntity(
@@ -253,8 +273,12 @@ interface FinanceDao {
         AND NOT EXISTS (SELECT 1 FROM finance_transactions WHERE account_id = :id OR destination_id = :id)
         AND NOT EXISTS (SELECT 1 FROM finance_recurring WHERE account_id = :id)
         AND NOT EXISTS (SELECT 1 FROM finance_budgets WHERE account_id = :id)
+        AND NOT EXISTS (SELECT 1 FROM finance_piggies WHERE account_id = :id)
     """)
     suspend fun deleteAccount(id: String): Int
+
+    @Query("DELETE FROM finance_transactions WHERE account_id = :id OR destination_id = :id")
+    suspend fun deleteTransactionsOf(id: String)
 
     @Query("DELETE FROM finance_transactions WHERE id = :id")
     suspend fun deleteTransaction(id: String)

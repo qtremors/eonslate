@@ -115,10 +115,7 @@ fun MoneyOverview(
             summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory,
             slots = overview?.slots.orEmpty(), currencies = overview?.currencies.orEmpty(), onCurrency = viewModel::showCurrency,
             cards = {
-                overview?.let { o ->
-                    AccountCarousel(o.accounts, o.balances, onAccount, onAddAccount, setAside = o.setAside)
-                    if (o.piggies.isNotEmpty()) PiggySection(o.piggies, o.accounts.associateBy { it.id }, onOpen = onPiggy, onNew = { onTransactions() })
-                }
+                overview?.let { o -> AccountCarousel(o.accounts, o.balances, onAccount, onAddAccount, setAside = o.setAside, deposits = o.deposits) }
             },
         )
     }
@@ -169,99 +166,14 @@ fun MoneyOverviewContent(
         }
 
         cards()
-
-        if (summary.entries.isNotEmpty()) Card { CashFlowContent(summary, today, money) }
-
-        // How this month's spending splits, at a glance; a slice or row shows its amount, a row opens it.
-        if (summary.categories.isNotEmpty()) Card {
-            var picked by rememberSaveable { mutableStateOf<Int?>(null) }
-            Label(stringResource(R.string.overview_by_category_month))
-            val slices = categorySlices(summary.categories, slots, money)
-            val chosen = picked?.let(slices::getOrNull)
-            DonutChart(
-                slices = slices,
-                contentDescription = slices.joinToString { it.label + " " + it.valueText },
-                selected = picked,
-                onSelect = { picked = it },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        chosen?.label ?: stringResource(R.string.overview_total),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                    FitText(
-                        chosen?.valueText ?: money(summary.monthExpense),
-                        style = MetricTextStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-            val none = stringResource(R.string.overview_uncategorized)
-            summary.categories.take(CHART_PARTS).forEachIndexed { index, (name, value) ->
-                LegendRow(
-                    color = categoryColor(name, slots),
-                    label = name.ifBlank { none },
-                    valueText = money(value) + " · " + share(value, summary.monthExpense),
-                    emphasized = picked == index,
-                    onClick = { name.takeIf { it.isNotBlank() }?.let(onCategory) ?: onTransactions() },
-                )
-            }
-            if (summary.categories.size > CHART_PARTS) {
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = onTransactions) {
-                    Text(stringResource(R.string.finance_show_all, summary.categories.size))
-                }
-            }
-        }
-
-        // Budgets always show: their meters, or a way to set the first one.
-        val hasBudgets = summary.budgets.isNotEmpty()
-        Card(onClick = if (hasBudgets) onTransactions else onAddBudget) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Label(stringResource(R.string.overview_budgets), Modifier.weight(1f))
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = if (hasBudgets) onTransactions else onAddBudget) {
-                    Text(stringResource(if (hasBudgets) R.string.overview_manage_budgets else R.string.overview_add_budget))
-                }
-            }
-            if (!hasBudgets) {
-                Text(stringResource(R.string.overview_no_budgets), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            summary.budgets.forEach { BudgetLine(it, money) }
-        }
-
-        if (summary.dueSoon.isNotEmpty()) Card(onClick = onSubscriptions) {
-            Label(stringResource(R.string.overview_due))
-            summary.dueSoon.forEach { payment ->
-                DuePaymentLine(payment, displayDate(payment.nextEpochDay!!), money(BigInteger.valueOf(payment.minor)))
-            }
-        }
-
-        Card(onClick = onTransactions) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Label(stringResource(R.string.overview_recent), Modifier.weight(1f))
-                TextButton(shapes = ButtonDefaults.shapes(), onClick = onTransactions) { Text(stringResource(R.string.overview_all)) }
-            }
-            if (summary.recent.isEmpty()) {
-                Text(stringResource(R.string.finance_empty_activity), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            summary.recent.forEach { t ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        val title = t.note.ifBlank { t.category.ifBlank { stringResource(R.string.overview_uncategorized) } }
-                        Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
-                        // The category under the name, then the day.
-                        Text(
-                            listOfNotNull(t.category.trim().takeIf { it.isNotEmpty() && it != title }, displayDate(t.epochDay)).joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
-                        )
-                    }
-                    Amount(t.kind, money(BigInteger.valueOf(t.minor)))
-                }
-            }
-        }
     }
+}
+
+/** How money came in and went out over a range, as on Insights. */
+@Composable
+internal fun CashFlowCard(summary: MoneySummary, today: LocalDate) {
+    val locale = LocalValueDisplay.current.numberLocale
+    Card { CashFlowContent(summary, today) { ValueFormat.money(it, summary.currency, locale) } }
 }
 
 /**
@@ -443,7 +355,6 @@ private fun CashFlowContent(summary: MoneySummary, today: LocalDate, money: (Big
     }
     val bucket = picked?.let(flow.buckets::getOrNull)
     if (bucket == null) {
-        if (spent) Text(stringResource(R.string.overview_tap_bar), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else {
         Text(label(bucket), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         val uncategorized = stringResource(R.string.overview_uncategorized)

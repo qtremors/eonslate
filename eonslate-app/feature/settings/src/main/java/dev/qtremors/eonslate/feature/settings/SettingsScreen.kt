@@ -242,9 +242,17 @@ fun SettingsContent(
                 }
             }
             if (tracking != null) {
-                item(key = "tracking") {
-                    SectionHeader(stringResource(R.string.settings_section_tracking))
+                // You: your name and how numbers, dates and weeks read.
+                item(key = "you") {
+                    SectionHeader(stringResource(R.string.settings_section_you))
                     ConnectedGroup {
+                        if (onDisplay != null) NavigationRow(
+                            title = stringResource(R.string.settings_display),
+                            supporting = stringResource(R.string.settings_display_hint),
+                            icon = Icons.Rounded.Person,
+                            badgeKey = "display",
+                            onClick = onDisplay,
+                        )
                         ChoiceRow(
                             title = stringResource(R.string.settings_week_start),
                             icon = Icons.Rounded.CalendarMonth,
@@ -262,6 +270,11 @@ fun SettingsContent(
                             },
                             onSelect = actions::setWeekStart,
                         )
+                    }
+                }
+                item(key = "money") {
+                    SectionHeader(stringResource(R.string.settings_section_money))
+                    ConnectedGroup {
                         NavigationRow(
                             title = stringResource(R.string.settings_currency),
                             supporting = tracking.currency?.let { stringResource(R.string.settings_currency_chosen, it) }
@@ -277,16 +290,6 @@ fun SettingsContent(
                             onClick = onCategories,
                         )
                     }
-                }
-            }
-            if (onDisplay != null) item(key = "display") {
-                ConnectedGroup {
-                    NavigationRow(
-                        title = stringResource(R.string.settings_display),
-                        icon = Icons.Rounded.Person,
-                        badgeKey = "display",
-                        onClick = onDisplay,
-                    )
                 }
             }
             if (sms != null) item(key = "sms") {
@@ -315,28 +318,6 @@ fun SettingsContent(
                         icon = Icons.Rounded.Sms,
                         badgeKey = "sms-scan",
                         onClick = onScanSms,
-                    )
-                }
-            }
-            item(key = "data") {
-                SectionHeader(stringResource(R.string.settings_section_data))
-                ConnectedGroup {
-                    NavigationRow(
-                        title = stringResource(R.string.settings_backup),
-                        icon = Icons.Rounded.SettingsBackupRestore,
-                        badgeKey = "backup",
-                        onClick = onBackup,
-                    )
-                }
-            }
-            item(key = "about") {
-                SectionHeader(stringResource(R.string.settings_section_about))
-                ConnectedGroup {
-                    NavigationRow(
-                        title = stringResource(R.string.about_title),
-                        icon = Icons.Rounded.Info,
-                        badgeKey = "about",
-                        onClick = onAbout,
                     )
                 }
             }

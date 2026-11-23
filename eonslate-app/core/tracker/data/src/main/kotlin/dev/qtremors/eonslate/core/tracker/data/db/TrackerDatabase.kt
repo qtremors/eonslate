@@ -40,7 +40,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 19
+        const val VERSION = 20
         const val NAME = "eonslate.db"
 
         /**
@@ -275,9 +275,20 @@ object TrackerMigrations {
         }
     }
 
+    /** Fixed deposits: an account's terms, which stay null on every other account. */
+    val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            listOf(
+                "deposit_principal_minor INTEGER", "deposit_rate_bp INTEGER", "deposit_start_epoch_day INTEGER",
+                "deposit_maturity_epoch_day INTEGER", "deposit_compounding TEXT", "deposit_closed_epoch_day INTEGER",
+            ).forEach { db.execSQL("ALTER TABLE finance_accounts ADD COLUMN $it") }
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
+        MIGRATION_19_20,
     )
 }
 

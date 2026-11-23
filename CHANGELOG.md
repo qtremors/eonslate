@@ -1,10 +1,34 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.2.2
+> **Version:** 2.2.3
 > **Last Updated:** 2026-11-23
 
 ---
+
+## [2.2.3] - 2026-11-23
+
+- **People and businesses are apart**: the People row shows only people; the full list has People and Businesses as their own groups.
+- **Recurring** replaces Subscriptions: salary, rent, bills and subscriptions, grouped into Going out and Coming in.
+- **One rule for every transaction row**: who it was with, then pending, lent or borrowed, the note, the category, and the account only when it is not the one you use most.
+- Transactions opens on this month instead of all time.
+- The year heat map starts lighter, so busy and quiet days tell apart.
+- Less instruction text on charts.
+- **Home is a glance**: your balance and this month, the account cards, and today's trackers. Charts, budgets and lists moved to where they belong.
+- **Money** replaces Transactions: one row leads to Accounts, Budgets, Piggy banks, Insights, and People and businesses; below it the filters, then the list on the first screen.
+- **Accounts, Budgets, Piggy banks and Insights** are pages of their own, each with its own New button. The overall floor lives on Accounts.
+- **Insights** gathers the charts: where money went, which weekdays, a year of days, then cash flow over its own range. It filters by period and account only.
+- **One place for each thing**: the profile holds Settings, Backup and restore, and About; Settings holds only settings, in You (name, numbers, dates, week start), Money (currency, categories) and Payment SMS.
+- Archived trackers are back on the Trackers tab.
+- **Fixed deposits**: add one with its amount, yearly rate, start and maturity, and how often interest is added (monthly, every 3 or 6 months, yearly, or simple interest). One tap sets a 1, 2, 3 or 5 year term.
+- Paid from an account, the money moves into the deposit on its first day; Already there starts it with the amount, for one opened before the app.
+- **It grows on its card**: the card shows what it is worth today, what it has earned and what it pays at maturity. Part periods earn simple interest, the way banks count them, so the figures match a bank's calculator.
+- **Close** when the money comes back, or Close early: the amount starts at what the terms say for that day and the bank's figure wins. The difference is recorded as interest, or as charges when less came back, and everything moves to the account you pick.
+- Fixed deposits have their own page under Money, running ones first by maturity, closed ones below with what they paid out.
+- A matured deposit counts on the bell; one maturing within a week shows in Notifications.
+- The overall floor leaves deposits out, since that money is not there to spend; payment SMS never land in a deposit.
+- Deleting a deposit added by mistake removes its transactions too, so the money is back where it came from.
+- Database version 20.
 
 ## [2.2.2] - 2026-11-23
 

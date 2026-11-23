@@ -10,15 +10,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SettingsBackupRestore
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -101,15 +97,10 @@ fun ProfileDialog(name: String, links: ProfileLinks, onDismiss: () -> Unit) {
                         Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.profile_edit), tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
                 }
+                // Each place once: everything set up lives in Settings; backup and About sit beside it.
                 ConnectedGroup {
                     NavigationRow(stringResource(R.string.tab_settings), Icons.Rounded.Settings, "settings", go(links.settings))
-                    NavigationRow(stringResource(R.string.profile_personalization), Icons.Rounded.Palette, "personalization", go(links.personalization))
-                    NavigationRow(stringResource(R.string.profile_categories), Icons.AutoMirrored.Rounded.Label, "categories", go(links.categories))
-                    NavigationRow(stringResource(R.string.profile_archived), Icons.Rounded.Inventory2, "archived", go(links.archived))
                     NavigationRow(stringResource(R.string.profile_backup), Icons.Rounded.SettingsBackupRestore, "backup", go(links.backup))
-                }
-                ConnectedGroup {
-                    NavigationRow(stringResource(R.string.profile_privacy), Icons.Rounded.Shield, "privacy", go(links.privacy))
                     NavigationRow(stringResource(R.string.profile_about), Icons.Rounded.Info, "about", go(links.about))
                 }
             }

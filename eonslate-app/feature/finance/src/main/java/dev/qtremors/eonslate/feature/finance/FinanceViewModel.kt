@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.DepositStatus
+import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
@@ -65,6 +67,7 @@ class FinanceViewModel @Inject constructor(
         Overview(
             MoneySummary.of(data, today(), data.shownCurrency(code)), chartSlots(data), data.currencies(), data.accounts.isEmpty(), data.accounts, data.balances(),
             PiggyBanks.setAside(data), PiggyBanks.status(data),
+            Deposits.status(data, today().toEpochDay()).associateBy { it.account.id },
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -77,6 +80,8 @@ class FinanceViewModel @Inject constructor(
         val balances: Map<String, java.math.BigInteger> = emptyMap(),
         val setAside: Map<String, java.math.BigInteger> = emptyMap(),
         val piggies: List<dev.qtremors.eonslate.core.tracker.domain.finance.PiggyStatus> = emptyList(),
+        /** Each deposit by its account, for what its card says it is worth. */
+        val deposits: Map<String, DepositStatus> = emptyMap(),
     )
 
     /** Shows totals and charts in [code] on every tab; it is the app's currency setting. */
@@ -180,6 +185,22 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun deleteParty(id: String, onDone: () -> Unit) = write(onDone) { finance.deleteParty(id) }
+
+    /** Saves a deposit; a new one paid [from] an account is funded by a transfer on its first day. */
+    fun saveDeposit(account: Account, from: Account?, onDone: () -> Unit) = write(onDone) {
+        val existing = ledger.value?.accounts?.any { it.id == account.id } == true
+        if (existing) finance.saveDeposit(account)
+        else Deposits.opening(account, from, ids.newId()).let { (opened, funding) -> finance.saveDeposit(opened, funding) }
+    }
+
+    /** Closes a deposit: [received] paid [into] an account on [day], the gap recorded as interest or charges. */
+    fun closeDeposit(status: DepositStatus, received: Long, into: Account, day: Long, interestNote: String, chargesNote: String, onDone: () -> Unit) =
+        write(onDone) {
+            val (closed, moves) = Deposits.closing(status, received, into, day, ids::newId, interestNote, chargesNote) ?: return@write false
+            finance.saveDeposit(closed, moves)
+        }
+
+    fun deleteDeposit(id: String, onDone: () -> Unit) = write(onDone) { finance.deleteDeposit(id) }
 
     /** The id for [name], made when new; "" for no name, null when it could not be saved. */
     private suspend fun partyFor(name: String): String? {

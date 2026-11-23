@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.2.2
+> **Version:** 2.2.3
 > **Last Updated:** 2026-11-23
 
 ## Roadmap
@@ -55,9 +55,11 @@ Each step is planned as one release commit.
 | 43 | 2.2.2 | A clean slate: no preconfigured trackers or templates; build your own | Done |
 | 44 | 2.2.2 | Balance floors per account and overall, with a warning before going under | Done |
 | 45 | 2.2.2 | Piggy banks set aside inside an account | Done |
-| 46 | 2.2.3 | Fixed deposits that grow on the card and are recorded at maturity | Planned |
-| 47 | 2.2.3 | Receipt photos on transactions | Planned |
-| 48 | 2.2.3 | Landing page and a favicon that shows on dark tabs | Planned |
+| 46 | 2.2.3 | Audit fixes: people apart from businesses, Recurring, one row rule, month default | Done |
+| 47 | 2.2.3 | Structure: Home as a glance, Money list-first, one place per setting | Done |
+| 48 | 2.2.3 | Fixed deposits that grow on the card and are recorded at maturity | Done |
+| 49 | 2.2.4 | Receipt photos on transactions | Planned |
+| 50 | 2.2.5 | Landing page and a favicon that shows on dark tabs | Planned |
 
 ## v2.0.0 parity
 
@@ -306,3 +308,25 @@ Checked on the moto: a 10,000 expense against a 1,50,000 floor warned 2,276 unde
 Checked on the moto: a 1,00,000 goal in HDFC, 45,000 added, 45% with 55,000 to go.
 - [x] Piggy banks and their moves (database version 19), in backups
 - [x] Add and take out; free and set-aside amounts on accounts
+
+### 2.2.3 Audit fixes: names and rows
+From walking every screen on the moto with full data.
+- [x] People strip shows people; the list groups people and businesses
+- [x] Subscriptions renamed Recurring, grouped Going out and Coming in
+- [x] One row rule; the usual account goes unsaid
+- [x] Transactions opens on this month; lighter heat map; less instruction text
+
+### 2.2.3 Structure
+Checked on the moto with full data: Home fits one screen, Money shows the list on the first screen.
+- [x] Home: balance, cards, today
+- [x] Money: links row, filters, list; Accounts, Budgets, Piggy banks and Insights as pages
+- [x] Profile and Settings without duplicates; Archived on Trackers
+
+### 2.2.3 Fixed deposits
+Checked on the moto: ₹1,00,000 at 7% quarterly for a year grows to ₹1,07,185.90, as bank calculators give.
+- [x] A deposit is an account with its terms; database version 20
+- [x] Paid from an account by a transfer, or already there as its opening balance
+- [x] Worth today, earned and maturity value on its card, page and sheet
+- [x] Close or close early: interest or charges recorded, then paid into an account
+- [x] Matured and maturing deposits in Notifications; overall floor leaves deposits out
+- [x] Delete removes its transactions; backups keep the terms

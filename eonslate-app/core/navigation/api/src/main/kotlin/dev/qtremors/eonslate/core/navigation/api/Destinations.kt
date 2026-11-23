@@ -39,6 +39,10 @@ sealed interface Destination {
     @Serializable
     data object Welcome : Destination
 
+    /** A money page under the Money tab: accounts, budgets, piggy banks or insights, by name. */
+    @Serializable
+    data class MoneyPage(val section: String) : Destination
+
     /** Everyone payments are with, who owes whom first. */
     @Serializable
     data object People : Destination

@@ -15,7 +15,10 @@ data class Breach(val account: Account?, val currency: String, val balance: BigI
 }
 
 object Floors {
-    /** Every account below its floor now, and the overall floor when the total is below it. */
+    /**
+     * Every account below its floor now, and the overall floor when the total is below it. The
+     * total leaves out fixed deposits: putting money into one lowers what is left to spend.
+     */
     fun below(ledger: Ledger, overall: OverallFloor?): List<Breach> {
         val balances = ledger.balances()
         val accounts = ledger.accounts.mapNotNull { account ->
@@ -24,8 +27,10 @@ object Floors {
             Breach(account, account.currency, balance, BigInteger.valueOf(floor)).takeIf { balance < it.floor }
         }
         val total = overall?.let { floor ->
-            val sum = ledger.accounts.filter { it.currency == floor.currency }.fold(BigInteger.ZERO) { acc, a -> acc + (balances[a.id] ?: BigInteger.ZERO) }
-            Breach(null, floor.currency, sum, BigInteger.valueOf(floor.minor)).takeIf { ledger.accounts.any { it.currency == floor.currency } && sum < it.floor }
+            // Money locked in a fixed deposit is not there to spend, so it does not hold the floor up.
+            val sum = ledger.accounts.filter { it.currency == floor.currency && it.deposit == null }.fold(BigInteger.ZERO) { acc, a -> acc + (balances[a.id] ?: BigInteger.ZERO) }
+            Breach(null, floor.currency, sum, BigInteger.valueOf(floor.minor))
+                .takeIf { ledger.accounts.any { it.currency == floor.currency && it.deposit == null } && sum < it.floor }
         }
         return accounts + listOfNotNull(total)
     }
@@ -59,7 +64,7 @@ object Floors {
             Breach(account, account.currency, after, BigInteger.valueOf(floor)).takeIf { delta.signum() < 0 && after < it.floor }
         }
         val total = overall?.let { floor ->
-            val ids = ledger.accounts.filter { it.currency == floor.currency }.map { it.id }
+            val ids = ledger.accounts.filter { it.currency == floor.currency && it.deposit == null }.map { it.id }
             val delta = ids.fold(BigInteger.ZERO) { acc, id -> acc + (change[id] ?: BigInteger.ZERO) }
             val after = ids.fold(BigInteger.ZERO) { acc, id -> acc + (balances[id] ?: BigInteger.ZERO) } + delta
             Breach(null, floor.currency, after, BigInteger.valueOf(floor.minor)).takeIf { delta.signum() < 0 && after < it.floor }

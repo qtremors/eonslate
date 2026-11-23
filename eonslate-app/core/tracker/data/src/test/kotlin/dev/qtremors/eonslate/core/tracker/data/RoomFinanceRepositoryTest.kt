@@ -5,6 +5,10 @@ import dev.qtremors.eonslate.core.tracker.data.repository.RoomBackupRepository
 import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Compounding
+import dev.qtremors.eonslate.core.tracker.domain.finance.Deposit
+import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
 import dev.qtremors.eonslate.core.tracker.domain.finance.Categories
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryKind
@@ -262,6 +266,64 @@ class RoomFinanceRepositoryTest {
             assertEquals(BigInteger.ZERO, ledger.spendingFor(budget, march))
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    fun aDepositIsFundedClosedAndRemovedWithItsTransactions() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            assertTrue(finance.saveAccount(bank))
+            val terms = Deposit(5_000, 700, 20_000, 20_365, Compounding.YEARLY)
+            val (fd, funding) = Deposits.opening(Account("fd", "FD", "INR", kind = AccountKind.DEPOSIT, deposit = terms), bank, "fund")
+            assertTrue(finance.saveDeposit(fd, funding))
+            // Funding twice with the same transfer, or turning the deposit into a bank, is refused.
+            assertFalse(finance.saveDeposit(fd, funding))
+            assertFalse(finance.saveAccount(fd.copy(kind = AccountKind.BANK, deposit = null)))
+            assertFalse(finance.saveAccount(bank.copy(id = "other", kind = AccountKind.DEPOSIT, deposit = terms)))
+            var ledger = finance.observeLedger().first()
+            assertEquals(terms, ledger.accounts.single { it.id == "fd" }.deposit)
+            assertEquals(BigInteger.valueOf(5_000), ledger.balances()["fd"])
+            assertEquals(BigInteger.valueOf(5_000), ledger.balances()["bank"])
+
+            val status = Deposits.status(ledger, terms.maturityEpochDay).single()
+            var next = 0
+            val (closed, payout) = Deposits.closing(status, 5_350, bank, terms.maturityEpochDay, { "close-${next++}" }, "Interest", "Charges")!!
+            assertTrue(finance.saveDeposit(closed, payout))
+            ledger = finance.observeLedger().first()
+            assertTrue(ledger.accounts.single { it.id == "fd" }.isClosed)
+            assertEquals(BigInteger.ZERO, ledger.balances()["fd"])
+            assertEquals(BigInteger.valueOf(10_350), ledger.balances()["bank"])
+
+            // A deposit added by mistake goes with every transaction in or out of it.
+            assertFalse(finance.deleteDeposit(bank.id))
+            assertTrue(finance.deleteDeposit("fd"))
+            ledger = finance.observeLedger().first()
+            assertEquals(listOf(bank), ledger.accounts)
+            assertTrue(ledger.transactions.isEmpty())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun aDepositAndItsTermsSurviveABackup() = runTest {
+        val source = inMemoryDatabase()
+        val target = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(source)
+            finance.saveAccount(bank)
+            val terms = Deposit(5_000, 725, 20_000, 20_730, Compounding.MONTHLY, closedEpochDay = 20_700)
+            assertTrue(finance.saveDeposit(Account("fd", "FD", "INR", 5_000, kind = AccountKind.DEPOSIT, deposit = terms)))
+            val clock = FakeClock()
+            val backups = BackupManager(RoomBackupRepository(source, clock), folder.newFolder(), Dispatchers.Unconfined)
+            val restore = BackupManager(RoomBackupRepository(target, clock), folder.newFolder(), Dispatchers.Unconfined)
+            restore.restore(restore.open(backups.create(null, "2.4.8"), null), "2.4.8")
+            assertEquals(terms, RoomFinanceRepository(target).observeLedger().first().accounts.single { it.id == "fd" }.deposit)
+        } finally {
+            target.close()
+            source.close()
         }
     }
 

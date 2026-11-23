@@ -130,7 +130,8 @@ internal fun ShareKind.label(): String = stringResource(
 /** The people you deal with most, as a row atop Transactions; a tap opens their chat. */
 @Composable
 internal fun PeopleStrip(ledger: Ledger, onParty: (String) -> Unit, onAll: () -> Unit) {
-    val people = remember(ledger) { ledger.people().take(STRIP_SIZE) }
+    // Only people: shops and services are not who you lend to or split with.
+    val people = remember(ledger) { ledger.people().filter { it.party.kind == PartyKind.PERSON }.take(STRIP_SIZE) }
     if (people.isEmpty()) return
     Column {
         SectionHeader(stringResource(R.string.people_title)) {
@@ -159,7 +160,7 @@ fun PeopleScreen(onBack: () -> Unit, onParty: (String) -> Unit, viewModel: Finan
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     EonslateScaffold(
-        title = stringResource(R.string.people_title),
+        title = stringResource(R.string.people_and_businesses),
         onBack = onBack,
         filter = FilterTop(query, { query = it }, stringResource(R.string.people_search)),
     ) { padding ->
@@ -172,10 +173,15 @@ fun PeopleScreen(onBack: () -> Unit, onParty: (String) -> Unit, viewModel: Finan
             return@EonslateScaffold
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            items(people.size, key = { people[it].party.id }) { index ->
-                val line = people[index]
+            // People first, then businesses, each in its own group.
+            people.groupBy { it.party.kind }.toSortedMap().forEach { (kind, group) ->
+            item(key = "head-$kind") {
+                SectionHeader(stringResource(if (kind == PartyKind.BUSINESS) R.string.people_businesses else R.string.people_title))
+            }
+            items(group.size, key = { group[it].party.id }) { index ->
+                val line = group[index]
                 val (owed, color) = owedText(line.owed)
-                ConnectedItem(index, people.size) {
+                ConnectedItem(index, group.size) {
                     ConnectedRow(
                         title = line.party.name,
                         supporting = listOfNotNull(
@@ -187,6 +193,7 @@ fun PeopleScreen(onBack: () -> Unit, onParty: (String) -> Unit, viewModel: Finan
                         onClick = { onParty(line.party.id) },
                     )
                 }
+            }
             }
         }
     }

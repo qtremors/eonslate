@@ -1,5 +1,11 @@
 package dev.qtremors.eonslate.feature.finance
 
+import androidx.compose.material.icons.rounded.LockClock
+import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
+import dev.qtremors.eonslate.core.tracker.domain.finance.MoneySummary
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.DonutLarge
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
 import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import dev.qtremors.eonslate.core.tracker.domain.finance.OverallFloor
@@ -155,7 +161,11 @@ import java.time.format.FormatStyle
 import java.util.Locale
 
 /** The two money tabs: everything logged (with budgets on top), and subscriptions. */
-enum class FinanceSection { TRANSACTIONS, SUBSCRIPTIONS }
+/**
+ * The money pages: the transaction list and recurring payments are tabs; accounts, budgets,
+ * piggy banks and insights are pages of their own, opened from the list's top row.
+ */
+enum class FinanceSection { TRANSACTIONS, SUBSCRIPTIONS, ACCOUNTS, BUDGETS, PIGGY_BANKS, DEPOSITS, INSIGHTS }
 
 @Composable
 fun FinanceScreen(
@@ -188,6 +198,8 @@ fun FinanceScreen(
     /** Opens one person or business's chat, and everyone. */
     onParty: ((String) -> Unit)? = null,
     onPeople: () -> Unit = {},
+    /** Opens one of the money pages. */
+    onSection: (FinanceSection) -> Unit = {},
 ) {
     var newKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     val ledger by viewModel.ledger.collectAsStateWithLifecycle()
@@ -206,7 +218,7 @@ fun FinanceScreen(
     val page = if (section == FinanceSection.SUBSCRIPTIONS) FinancePage.PLANS else FinancePage.ACTIVITY
     var query by rememberSaveable { mutableStateOf("") }
     val today = viewModel.today()
-    var period by rememberSaveable { mutableStateOf(TransactionPeriod.ALL) }
+    var period by rememberSaveable { mutableStateOf(TransactionPeriod.MONTH) }
     var kindFilter by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
     var customFrom by rememberSaveable { mutableStateOf<Long?>(null) }
     var customTo by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -302,8 +314,13 @@ fun FinanceScreen(
             onCategoryOpened()
         }
     }
-    LaunchedEffect(openAccount) {
-        if (openAccount != null) {
+    LaunchedEffect(openAccount, ledger == null) {
+        val data = ledger ?: return@LaunchedEffect
+        // A deposit's card opens the deposit, not a list of its few transactions.
+        if (openAccount != null && data.accounts.firstOrNull { it.id == openAccount }?.deposit != null) {
+            open(Editor.DEPOSIT_VIEW, openAccount)
+            onAccountOpened()
+        } else if (openAccount != null) {
             accountFilter = openAccount
             category = null
             kindFilter = null
@@ -347,10 +364,10 @@ fun FinanceScreen(
 
     FinanceCsvFeedback(csv, snackbar)
     EonslateScaffold(
-        title = stringResource(if (section == FinanceSection.SUBSCRIPTIONS) R.string.finance_subscriptions else R.string.finance_activity),
+        title = stringResource(section.title()),
         onBack = onBack,
         snackbarHost = { SnackbarHost(snackbar) },
-        filter = if ((page == FinancePage.ACTIVITY && ledger?.transactions?.isNotEmpty() == true) ||
+        filter = if ((section == FinanceSection.TRANSACTIONS && ledger?.transactions?.isNotEmpty() == true) ||
             (page == FinancePage.PLANS && ledger?.recurring?.isNotEmpty() == true)
         ) {
             FilterTop(
@@ -368,27 +385,24 @@ fun FinanceScreen(
         } else null,
         actions = {
             // Rarer actions live in one menu; a second account is opt-in from here.
-            val more = listOfNotNull(
-                MenuAction(stringResource(R.string.finance_import_sms), Icons.Rounded.Sms) { open(Editor.SMS, null) },
-                if (page == FinancePage.ACTIVITY) MenuAction(stringResource(R.string.finance_new_budget), Icons.Rounded.Savings) { open(Editor.BUDGET, null) } else null,
-                ledger?.takeIf { page == FinancePage.ACTIVITY && it.budgetHealth(today).isNotEmpty() }?.let { data ->
-                    MenuAction(stringResource(R.string.finance_export_budgets), Icons.Rounded.FileDownload) {
+            // Each page's rarer actions, and only its own.
+            when (section) {
+                FinanceSection.TRANSACTIONS, FinanceSection.SUBSCRIPTIONS -> FinanceCsvMenu(
+                    ledger, csv, exportShown,
+                    listOf(MenuAction(stringResource(R.string.finance_import_sms), Icons.Rounded.Sms) { open(Editor.SMS, null) }),
+                    exportLabel = stringResource(if (page == FinancePage.ACTIVITY) R.string.finance_csv_export else R.string.finance_export_subscriptions),
+                )
+                FinanceSection.BUDGETS -> ledger?.takeIf { it.budgetHealth(today).isNotEmpty() }?.let { data ->
+                    IconButton(shapes = IconButtonDefaults.shapes(), onClick = {
                         csv.prepareExport(data) { ledger, out -> BudgetCsv.write(ledger, today, out) }
                         export.launch("eonslate-budgets.csv")
-                    }
-                },
-                onManageCategories?.let { MenuAction(stringResource(R.string.finance_manage_categories), financeIcon("Tag"), onClick = it) },
-                MenuAction(stringResource(R.string.finance_new_account), Icons.Rounded.AccountBalance) { open(Editor.ACCOUNT, null) },
-                MenuAction(stringResource(R.string.floor_overall_title), Icons.Rounded.VerticalAlignBottom) { open(Editor.FLOOR, null) },
-                MenuAction(stringResource(R.string.piggy_new), Icons.Rounded.Savings) { open(Editor.PIGGY, null) },
-            )
-            FinanceCsvMenu(
-                ledger, csv, exportShown, more,
-                exportLabel = stringResource(if (page == FinancePage.ACTIVITY) R.string.finance_csv_export else R.string.finance_export_subscriptions),
-            )
-            // The bell and profile when the app provides them; otherwise this tab's own settings button.
-            val account = LocalAccountActions.current
-            if (account != null) account() else onSettings?.let {
+                    }) { Icon(Icons.Rounded.FileDownload, stringResource(R.string.finance_export_budgets)) }
+                }
+                else -> Unit
+            }
+            // The bell and profile on the two tabs; the pages under them have Back instead.
+            val account = LocalAccountActions.current.takeIf { onBack == null }
+            if (account != null) account() else if (onBack == null) onSettings?.let {
                 IconButton(shapes = IconButtonDefaults.shapes(), onClick = it) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.finance_settings))
                 }
@@ -399,9 +413,16 @@ fun FinanceScreen(
                 val empty = data.accounts.isEmpty()
                 val action = when {
                     empty -> Editor.ACCOUNT
-                    page == FinancePage.PLANS -> Editor.RECURRING
-                    else -> Editor.TRANSACTION
-                }
+                    else -> when (section) {
+                        FinanceSection.TRANSACTIONS -> Editor.TRANSACTION
+                        FinanceSection.SUBSCRIPTIONS -> Editor.RECURRING
+                        FinanceSection.ACCOUNTS -> Editor.ACCOUNT
+                        FinanceSection.BUDGETS -> Editor.BUDGET
+                        FinanceSection.PIGGY_BANKS -> Editor.PIGGY
+                        FinanceSection.DEPOSITS -> Editor.DEPOSIT
+                        FinanceSection.INSIGHTS -> null
+                    }
+                } ?: return@let
                 MainActionButton(
                     text = stringResource(
                         when (action) {
@@ -415,6 +436,7 @@ fun FinanceScreen(
                             Editor.INBOX -> R.string.finance_scan_inbox
                             Editor.FLOOR -> R.string.floor_overall_title
                             Editor.PIGGY, Editor.PIGGY_VIEW, Editor.PIGGY_MOVE -> R.string.piggy_new
+                            Editor.DEPOSIT, Editor.DEPOSIT_VIEW, Editor.DEPOSIT_CLOSE -> R.string.deposit_new
                         }
                     ),
                     icon = Icons.Rounded.Add,
@@ -430,7 +452,8 @@ fun FinanceScreen(
                 LoadingState(Modifier.fillMaxSize().padding(padding))
             }
             else -> LedgerList(
-                data, padding, page, today, query, shown, filter, period,
+                data, padding, page, today, query, shown, filter, period, section = section, onSection = onSection,
+                overallFloor = overallFloor, onOverallFloor = { open(Editor.FLOOR, null) },
                 custom = customFrom?.let { from -> customTo?.let { to -> from..to } },
                 onPeriod = { period = it },
                 onCustom = { from, to ->
@@ -535,7 +558,7 @@ fun FinanceScreen(
             if (data.accounts.isNotEmpty() && (recordId == null || existing != null)) key(recordId) {
                 val original = remember { existing }
                 RecurringEditor(
-                    original, usualAccounts(data), viewModel.today(), busy, failed, dismiss,
+                    original, spendingAccounts(data), viewModel.today(), busy, failed, dismiss,
                     onSave = { viewModel.schedule(original, it.copy(id = original?.id ?: viewModel.newId()), done) },
                     onDelete = existing?.let { { viewModel.delete(it, done) } },
                     onRecord = existing?.takeIf { !it.paused && it.nextEpochDay != null }?.let {
@@ -559,7 +582,7 @@ fun FinanceScreen(
             val budget = data.budgets.firstOrNull { it.id == recordId }
             if (data.accounts.isNotEmpty() && (recordId == null || budget != null)) key(recordId) {
                 CategoryBudgetEditor(
-                    budget, usualAccounts(data), viewModel.today(), busy, failed, dismiss,
+                    budget, spendingAccounts(data), viewModel.today(), busy, failed, dismiss,
                     onSave = { viewModel.save(it.copy(id = budget?.id ?: viewModel.newId()), done) },
                     onDelete = budget?.let { { viewModel.delete(it, done) } },
                 )
@@ -587,7 +610,7 @@ fun FinanceScreen(
             val piggy = data.piggyBanks.firstOrNull { it.id == recordId }
             if (data.accounts.isNotEmpty() && (recordId == null || piggy != null)) key(recordId) {
                 PiggyEditor(
-                    piggy, usualAccounts(data), busy, failed, viewModel.today(), dismiss,
+                    piggy, spendingAccounts(data), busy, failed, viewModel.today(), dismiss,
                     onSave = { viewModel.savePiggy(it, done) },
                     onDelete = piggy?.let { { viewModel.deletePiggy(it.id, done) } },
                     newId = viewModel::newId,
@@ -612,6 +635,29 @@ fun FinanceScreen(
                 status, account.currency, piggyAdding, free, busy, failed, viewModel.today(), dismiss,
             ) { minor, day -> viewModel.movePiggy(status.piggy.id, minor, day) { open(Editor.PIGGY_VIEW, status.piggy.id) } }
         }
+        Editor.DEPOSIT -> {
+            val account = data.accounts.firstOrNull { it.id == recordId && it.deposit != null }
+            if (recordId == null || account != null) key(recordId) {
+                DepositEditor(
+                    account, spendingAccounts(data), currency, busy, failed, viewModel.today(), dismiss,
+                    onSave = { deposit, from -> viewModel.saveDeposit(deposit, from) { open(Editor.DEPOSIT_VIEW, deposit.id) } },
+                    onDelete = account?.let { { viewModel.deleteDeposit(it.id, done) } },
+                    newId = viewModel::newId,
+                )
+            }
+        }
+        Editor.DEPOSIT_VIEW -> Deposits.status(data, viewModel.today().toEpochDay()).firstOrNull { it.account.id == recordId }?.let { status ->
+            DepositSheet(
+                status, dismiss,
+                onClose = { open(Editor.DEPOSIT_CLOSE, status.account.id) },
+                onEdit = { open(Editor.DEPOSIT, status.account.id) },
+            )
+        }
+        Editor.DEPOSIT_CLOSE -> Deposits.status(data, viewModel.today().toEpochDay()).firstOrNull { it.account.id == recordId && it.open }?.let { status ->
+            DepositCloseSheet(status, spendingAccounts(data), viewModel.today(), busy, failed, dismiss) { received, into, day, interest, charges ->
+                viewModel.closeDeposit(status, received, into, day, interest, charges) { open(Editor.DEPOSIT_VIEW, status.account.id) }
+            }
+        }
         Editor.FLOOR -> OverallFloorSheet(overallFloor, currency, onDismiss = dismiss) { minor ->
             viewModel.setOverallFloor(minor)
             dismiss()
@@ -627,7 +673,10 @@ fun FinanceScreen(
     }
 }
 
-private enum class Editor { ACCOUNT, TRANSACTION, RECURRING, SUBSCRIPTION_DETAILS, SMS, BUDGET, DUE, INBOX, FLOOR, PIGGY, PIGGY_VIEW, PIGGY_MOVE }
+private enum class Editor {
+    ACCOUNT, TRANSACTION, RECURRING, SUBSCRIPTION_DETAILS, SMS, BUDGET, DUE, INBOX, FLOOR, PIGGY, PIGGY_VIEW, PIGGY_MOVE,
+    DEPOSIT, DEPOSIT_VIEW, DEPOSIT_CLOSE,
+}
 
 private enum class FinancePage { ACTIVITY, PLANS }
 
@@ -647,6 +696,10 @@ private fun LedgerList(
     shown: List<Transaction>,
     filter: TransactionFilter,
     period: TransactionPeriod,
+    section: FinanceSection = FinanceSection.TRANSACTIONS,
+    onSection: (FinanceSection) -> Unit = {},
+    overallFloor: OverallFloor? = null,
+    onOverallFloor: () -> Unit = {},
     custom: LongRange?,
     onPeriod: (TransactionPeriod) -> Unit,
     onCustom: (Long, Long) -> Unit,
@@ -701,7 +754,8 @@ private fun LedgerList(
     val setAside = remember(ledger) { PiggyBanks.setAside(ledger) }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
     val parties = remember(ledger.parties) { ledger.partiesById }
-    val pendingLabel = stringResource(R.string.finance_pending)
+    // The account most payments use goes unsaid on rows; only the others are named.
+    val usual = remember(ledger) { usualAccounts(ledger).firstOrNull()?.id.takeIf { ledger.accounts.size > 1 } }
     val budgetHealth = remember(ledger, today) { ledger.budgetHealth(today) }
     val slots = remember(ledger) { chartSlots(ledger) }
     val listState = rememberLazyListState()
@@ -722,17 +776,33 @@ private fun LedgerList(
             planItems(ledger, plans, planKind, onPlanKind, today, planActions, chosenCurrency, onCurrency)
             return@LazyColumn
         }
-        // One account is the whole balance; the list matters only once there are several. With one
-        // account picked, its transactions lead and the overall accounts and budgets step aside.
-        val overall = filter.accountId == null
-        if (overall && ledger.parties.isNotEmpty() && onParty != null) item(key = "people") { PeopleStrip(ledger, onParty, onPeople) }
-        if (overall && ledger.accounts.size > 1) item { SectionHeader(stringResource(R.string.finance_accounts)) }
-        if (overall && ledger.accounts.size > 1) itemsIndexed(ledger.accounts, key = { _, account -> "account-" + account.id }) { index, account ->
+        val list = section == FinanceSection.TRANSACTIONS
+        val insights = section == FinanceSection.INSIGHTS
+        // The list's top row: one tap to each money page, and to people and businesses.
+        if (list) item(key = "links") {
+            MoneyLinks(onSection, onPeople.takeIf { ledger.parties.isNotEmpty() })
+        }
+        if (section == FinanceSection.ACCOUNTS) {
+            item(key = "overall-floor") {
+                ConnectedGroup {
+                    ConnectedRow(
+                        title = stringResource(R.string.floor_overall_title),
+                        supporting = overallFloor?.let { ValueFormat.money(it.minor, it.currency, numberLocale) } ?: stringResource(R.string.floor_none),
+                        leading = { IconBadge(Icons.Rounded.VerticalAlignBottom, "overall-floor") },
+                        onClick = onOverallFloor,
+                    )
+                }
+            }
+            item { SectionHeader(stringResource(R.string.finance_accounts)) }
+        }
+        // Deposits have their own page.
+        val everyday = ledger.accounts.filter { it.deposit == null }
+        if (section == FinanceSection.ACCOUNTS) itemsIndexed(everyday, key = { _, account -> "account-" + account.id }) { index, account ->
             val aside = setAside[account.id]?.takeIf { it.signum() > 0 }
             val balance = ValueFormat.money(balances.getValue(account.id), account.currency, numberLocale) + (aside?.let {
                 " · " + stringResource(R.string.piggy_aside_line, ValueFormat.money(it, account.currency, numberLocale))
             } ?: "")
-            ConnectedItem(index, ledger.accounts.size) {
+            ConnectedItem(index, everyday.size) {
                 ConnectedRow(
                     title = account.label,
                     supporting = balance,
@@ -741,13 +811,21 @@ private fun LedgerList(
                 )
             }
         }
-        val piggies = PiggyBanks.status(ledger)
-        if (overall && piggies.isNotEmpty() && onPiggy != null) item(key = "piggies") {
-            PiggySection(piggies, accounts, onOpen = onPiggy, onNew = onNewPiggy)
+        if (section == FinanceSection.DEPOSITS) item(key = "deposits") {
+            val deposits = remember(ledger, today) { Deposits.status(ledger, today.toEpochDay()) }
+            if (deposits.isEmpty()) EmptyWithAction(stringResource(R.string.deposit_empty), stringResource(R.string.deposit_new)) { open(Editor.DEPOSIT, null) }
+            else DepositSection(deposits) { open(Editor.DEPOSIT_VIEW, it) }
         }
-        // Budgets lead the page, as meters for this month; there is no heading when there are none.
-        if (overall && budgetHealth.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.finance_budgets)) }
+        val piggies = PiggyBanks.status(ledger)
+        if (section == FinanceSection.PIGGY_BANKS) item(key = "piggies") {
+            if (piggies.isEmpty()) EmptyWithAction(stringResource(R.string.piggy_empty), stringResource(R.string.piggy_new), onNewPiggy)
+            else if (onPiggy != null) PiggySection(piggies, accounts, onOpen = onPiggy, onNew = null)
+        }
+        if (section == FinanceSection.BUDGETS && budgetHealth.isEmpty()) item(key = "no-budgets") {
+            EmptyWithAction(stringResource(R.string.finance_no_budgets), stringResource(R.string.finance_new_budget)) { open(Editor.BUDGET, null) }
+        }
+        // Budgets as meters for this period.
+        if (section == FinanceSection.BUDGETS && budgetHealth.isNotEmpty()) {
             val openBudget = { health: BudgetHealth ->
                 health.budget?.let { open(Editor.BUDGET, it.id) } ?: health.account?.let { open(Editor.ACCOUNT, it.id) }
             }
@@ -761,7 +839,7 @@ private fun LedgerList(
                 BudgetCard(health, onClick = { openBudget(health) })
             }
         }
-        if (detection != null) item(key = "found-payments") { FoundPaymentsBanner(detection, onReviewPayments, Modifier.padding(vertical = 4.dp)) }
+        if (list && detection != null) item(key = "found-payments") { FoundPaymentsBanner(detection, onReviewPayments, Modifier.padding(vertical = 4.dp)) }
         if (selected.isNotEmpty()) item(key = "selection") {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = SlateCardShape, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -776,9 +854,10 @@ private fun LedgerList(
                 }
             }
         }
-        if (ledger.transactions.isNotEmpty()) {
+        if ((list || insights) && ledger.transactions.isNotEmpty()) {
             item(key = "periods") { PeriodChips(
                 period, custom, filter.kind, sort, onSort, onPeriod, onCustom, onKind, ledger.accounts, filter.accountId, onAccount,
+                listOnly = list,
                 pendingOnly = filter.pendingOnly, onPending = onPending.takeIf { filter.pendingOnly || ledger.transactions.any { it.pending } },
             )
         }
@@ -787,10 +866,10 @@ private fun LedgerList(
                 .flatMap { Categories.suggestions(ledger, it) }
                 .let { names -> if (category != null && names.none { it.equals(category, ignoreCase = true) }) listOf(category) + names else names }
                 .distinctBy { it.lowercase() }
-            if (choices.isNotEmpty()) item(key = "categories") {
+            if (list && choices.isNotEmpty()) item(key = "categories") {
                 CategoryChips(choices, category) { picked -> onCategory(if (picked.equals(category, ignoreCase = true)) null else picked) }
             }
-            item(key = "count") {
+            if (list) item(key = "count") {
                 Text(
                     pluralStringResource(R.plurals.finance_matching, shown.size, shown.size),
                     style = MaterialTheme.typography.labelLarge,
@@ -802,7 +881,8 @@ private fun LedgerList(
             val currency = ledger.shownCurrency(chosenCurrency)
             val transactions = shown.filter { accounts.getValue(it.accountId).currency == currency }
             run {
-                item(key = "totals") {
+                // The list totals what it shows; Insights has its own ranges below.
+                if (list) item(key = "totals") {
                     val locale = numberLocale
                     val income = transactions.total(TransactionKind.INCOME)
                     val expenses = transactions.total(TransactionKind.EXPENSE)
@@ -818,7 +898,7 @@ private fun LedgerList(
                     .groupBy { it.category.trim().ifBlank { "" } }
                     .map { (name, list) -> name to list.total(TransactionKind.EXPENSE) }
                     .sortedByDescending { it.second }
-                if (byCategory.isNotEmpty()) item(key = "breakdown") {
+                if (insights && byCategory.isNotEmpty()) item(key = "breakdown") {
                     ChartCard(stringResource(R.string.overview_by_category)) {
                         CategoryBreakdown(
                             byCategory, slots, { ValueFormat.money(it, currency, numberLocale) }, category,
@@ -827,7 +907,7 @@ private fun LedgerList(
                     }
                 }
                 // Which weekdays the shown spending falls on, for the range, currency and category shown.
-                item(key = "spending-weekday") {
+                if (insights) item(key = "spending-weekday") {
                     val totals = remember(transactions, firstDay) {
                         Weekdays.totals(
                             transactions.filter { it.kind == TransactionKind.EXPENSE }
@@ -855,7 +935,7 @@ private fun LedgerList(
                     }
                 }
                 // A year of spending by day, in the shown currency, category and account; a tap shows that day.
-                item(key = "spending-heat") {
+                if (insights) item(key = "spending-heat") {
                     val since = today.minusYears(1).toEpochDay()
                     val account = filter.accountId
                     val levels = remember(ledger.transactions, currency, category, account, today) {
@@ -880,8 +960,13 @@ private fun LedgerList(
                         )
                     }
                 }
+                // How money moved month by month, over a range of its own.
+                if (insights) item(key = "cash-flow") {
+                    MoneySummary.of(ledger, today, currency)?.takeIf { it.entries.isNotEmpty() }?.let { CashFlowCard(it, today) }
+                }
             }
         }
+        if (!list) return@LazyColumn
         if (shown.isEmpty()) item(key = "empty") {
             EmptyWithAction(
                 stringResource(if (ledger.transactions.isEmpty()) R.string.finance_empty_activity else R.string.finance_no_matches),
@@ -896,21 +981,8 @@ private fun LedgerList(
             if (epochDay != Long.MIN_VALUE) item(key = "day-$epochDay") { SectionHeader(dayLabel(epochDay, today)) }
             itemsIndexed(day, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
                 val source = accounts.getValue(transaction.accountId)
-                val target = transaction.destinationId?.let(accounts::getValue)
-                val accountNames = if (target == null) source.label
-                else stringResource(R.string.finance_transfer_accounts, source.label, target.label)
-                // Who it was with names it best, then the note, the category, then the kind.
-                val party = transaction.partyId?.let(parties::get)?.name
-                val title = party ?: transaction.note.ifBlank { transaction.category.ifBlank { transaction.kind.label() } }
-                val details = listOfNotNull(
-                    pendingLabel.takeIf { transaction.pending },
-                    transaction.note.takeIf { party != null && it.isNotBlank() },
-                    transaction.category.takeIf { it.isNotBlank() && it != title },
-                    accountNames.takeIf { target != null || ledger.accounts.size > 1 },
-                    // Out of date order, each row says its own day.
-                    if (byDate) null else dayLabel(transaction.epochDay, today),
-                    transaction.details.lineSequence().firstOrNull { it.isNotBlank() }?.trim(),
-                ).joinToString(" · ").ifBlank { null }
+                // Out of date order, each row says its own day.
+                val (title, details) = rowText(transaction, parties, accounts, usual, if (byDate) null else dayLabel(transaction.epochDay, today))
                 val picked = transaction.id in selected
                 val toggle = { selected = if (picked) selected - transaction.id else selected + transaction.id }
                 ConnectedItem(index, day.size) {
@@ -1054,6 +1126,8 @@ private fun PeriodChips(
     pendingOnly: Boolean = false,
     /** Null hides the chip, as when nothing is pending. */
     onPending: ((Boolean) -> Unit)? = null,
+    /** The list's own chips: how it sorts, which kind, and pending. Charts need only the period and account. */
+    listOnly: Boolean = true,
 ) {
     var sorting by remember { mutableStateOf(false) }
     var choosingAccount by remember { mutableStateOf(false) }
@@ -1070,7 +1144,7 @@ private fun PeriodChips(
         onCustom(from, to)
     }
     Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box {
+        if (listOnly) Box {
             FilterChip(
                 selected = false,
                 onClick = { sorting = true },
@@ -1084,7 +1158,7 @@ private fun PeriodChips(
                 groups = listOf(TransactionSort.entries.map { option -> MenuAction(option.label(), selected = option == sort) { onSort(option) } }),
             )
         }
-        Box {
+        if (listOnly) Box {
             FilterChip(
                 selected = kind != null,
                 onClick = { kinds = true },
@@ -1103,7 +1177,7 @@ private fun PeriodChips(
                 ),
             )
         }
-        if (onPending != null) FilterChip(
+        if (listOnly && onPending != null) FilterChip(
             selected = pendingOnly,
             onClick = { onPending(!pendingOnly) },
             label = { Text(stringResource(R.string.finance_pending)) },
@@ -1306,8 +1380,12 @@ internal fun intervalLabel(interval: PaymentInterval, every: Int): String =
 /** Accounts most used first, so a new entry starts in the account you use, not the first by id. */
 internal fun usualAccounts(ledger: Ledger): List<Account> {
     val uses = ledger.transactions.groupingBy { it.accountId }.eachCount()
-    return ledger.accounts.sortedByDescending { uses[it.id] ?: 0 }
+    // Deposits come last, closed ones after them, so they are never picked first for a payment.
+    return ledger.accounts.sortedWith(compareBy<Account> { it.deposit != null }.thenBy { it.isClosed }.thenByDescending { uses[it.id] ?: 0 })
 }
+
+/** Accounts money is spent from: no deposits, for schedules, budgets and piggy banks. */
+internal fun spendingAccounts(ledger: Ledger): List<Account> = usualAccounts(ledger).filter { it.deposit == null }
 
 @Composable
 internal fun dueLabel(days: Long): String = when {
@@ -1353,7 +1431,7 @@ private fun AccountEditor(
     val entered = listOf<Any?>(name, code, opening, budget, kind, digits, floor)
     val opened = remember { entered }
     EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
-        ConnectedChoices(AccountKind.entries, kind, { it.label() }, { kind = it })
+        ConnectedChoices(AccountKind.EVERYDAY, kind, { it.label() }, { kind = it })
         FormField(name, { name = it }, stringResource(R.string.finance_name), maxLength = Account.NAME_LIMIT, enabled = !busy)
         if (numbered) FormField(
             digits, { next -> digits = next.filter(Char::isDigit) }, stringResource(R.string.finance_digits),
@@ -1765,5 +1843,42 @@ private fun OverallFloorSheet(current: OverallFloor?, currency: String, onDismis
             maxLength = 24, keyboardType = KeyboardType.Decimal, suffix = currency,
         )
         SaveRow(canSave = valid, onSave = { onSave(minor) }, delete = null, busy = false)
+    }
+}
+
+private fun FinanceSection.title(): Int = when (this) {
+    FinanceSection.TRANSACTIONS -> R.string.finance_activity
+    FinanceSection.SUBSCRIPTIONS -> R.string.finance_subscriptions
+    FinanceSection.ACCOUNTS -> R.string.finance_accounts
+    FinanceSection.BUDGETS -> R.string.finance_budgets
+    FinanceSection.PIGGY_BANKS -> R.string.piggy_title
+    FinanceSection.DEPOSITS -> R.string.deposit_title
+    FinanceSection.INSIGHTS -> R.string.money_insights
+}
+
+/** One row of ways into the money pages, above the list. */
+@Composable
+private fun MoneyLinks(onSection: (FinanceSection) -> Unit, onPeople: (() -> Unit)?) {
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val links = listOf(
+            FinanceSection.ACCOUNTS to Icons.Rounded.AccountBalance,
+            FinanceSection.BUDGETS to Icons.Rounded.DonutLarge,
+            FinanceSection.PIGGY_BANKS to Icons.Rounded.Savings,
+            FinanceSection.DEPOSITS to Icons.Rounded.LockClock,
+            FinanceSection.INSIGHTS to Icons.Rounded.Insights,
+        )
+        links.forEach { (target, icon) ->
+            FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { onSection(target) }) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(stringResource(target.title()), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        if (onPeople != null) FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = onPeople) {
+            Icon(Icons.Rounded.Groups, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(stringResource(R.string.people_and_businesses), modifier = Modifier.padding(start = 8.dp))
+        }
     }
 }

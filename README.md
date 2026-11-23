@@ -28,7 +28,7 @@ Get the latest APK from [Releases](https://github.com/qtremors/eonslate/releases
 
 ## Features
 
-- **Money:** account cards for banks, cards, wallets and cash; transactions, transfers, budgets, subscriptions and bills, with charts for cash flow, categories, weekdays and the whole year.
+- **Money:** account cards for banks, cards, wallets and cash; transactions and transfers; budgets, piggy banks, fixed deposits and recurring payments; insights on cash flow, categories, weekdays and the whole year.
 - **Payment SMS:** scan the inbox or share a message in, offline; payments land on the account whose last digits they name.
 - **People:** say who each payment was with; lend, borrow, split and settle up in a chat with each person or business.
 - **Your own trackers:** build trackers from typed fields: number, money, duration, rating, yes or no, one or several choices, text and date.

@@ -41,6 +41,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.DepositStatus
+import dev.qtremors.eonslate.core.tracker.ui.displayDate
+import androidx.compose.material.icons.rounded.LockClock
 import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
 import dev.qtremors.eonslate.core.ui.components.BadgePalette
 import dev.qtremors.eonslate.core.ui.components.FitText
@@ -54,6 +57,7 @@ internal fun AccountKind.icon(): ImageVector = when (this) {
     AccountKind.CARD -> Icons.Rounded.CreditCard
     AccountKind.WALLET -> Icons.Rounded.AccountBalanceWallet
     AccountKind.CASH -> Icons.Rounded.Payments
+    AccountKind.DEPOSIT -> Icons.Rounded.LockClock
 }
 
 @Composable
@@ -63,12 +67,14 @@ internal fun AccountKind.label(): String = stringResource(
         AccountKind.CARD -> R.string.account_kind_card
         AccountKind.WALLET -> R.string.account_kind_wallet
         AccountKind.CASH -> R.string.account_kind_cash
+        AccountKind.DEPOSIT -> R.string.account_kind_deposit
     },
 )
 
 /**
  * Every account as a card, swiped side to side: what it is, its name, its balance in its own
- * currency, and its last digits. A tap shows that account's transactions; the last card adds one.
+ * currency, and its last digits. A running fixed deposit shows what it is worth today instead,
+ * growing day by day; closed ones are left out. A tap opens the account; the last card adds one.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,8 +85,10 @@ fun AccountCarousel(
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
     setAside: Map<String, BigInteger> = emptyMap(),
+    deposits: Map<String, DepositStatus> = emptyMap(),
 ) {
-    val state = rememberCarouselState { accounts.size + 1 }
+    val shown = remember(accounts) { accounts.filterNot { it.isClosed } }
+    val state = rememberCarouselState { shown.size + 1 }
     HorizontalUncontainedCarousel(
         state = state,
         itemWidth = CARD_WIDTH,
@@ -88,15 +96,16 @@ fun AccountCarousel(
         modifier = modifier.fillMaxWidth().height(CARD_HEIGHT),
     ) { index ->
         val shape = RoundedCornerShape(28.dp)
-        val account = accounts.getOrNull(index)
+        val account = shown.getOrNull(index)
         Box(Modifier.fillMaxSize().maskClip(shape)) {
-            if (account == null) AddCard(onAdd) else AccountCard(account, balances[account.id] ?: BigInteger.ZERO, setAside[account.id]) { onAccount(account.id) }
+            if (account == null) AddCard(onAdd)
+            else AccountCard(account, balances[account.id] ?: BigInteger.ZERO, setAside[account.id], deposits[account.id]) { onAccount(account.id) }
         }
     }
 }
 
 @Composable
-private fun AccountCard(account: Account, balance: BigInteger, aside: BigInteger?, onClick: () -> Unit) {
+private fun AccountCard(account: Account, balance: BigInteger, aside: BigInteger?, deposit: DepositStatus?, onClick: () -> Unit) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val tone = remember(account.id, dark) { BadgePalette.forKey(account.id, dark) }
     val locale = LocalValueDisplay.current.numberLocale
@@ -120,7 +129,20 @@ private fun AccountCard(account: Account, balance: BigInteger, aside: BigInteger
             )
         }
         Spacer(Modifier.weight(1f))
-        FitText(ValueFormat.money(balance, account.currency, locale), style = MetricTextStyle, color = tone.content)
+        FitText(ValueFormat.money(deposit?.worth ?: balance, account.currency, locale), style = MetricTextStyle, color = tone.content)
+        deposit?.let {
+            // What it has earned once it has earned anything, then what it pays at maturity.
+            Text(
+                listOfNotNull(
+                    it.earned.takeIf { e -> e.signum() > 0 }?.let { e -> stringResource(R.string.deposit_card_earned, ValueFormat.money(e, account.currency, locale)) },
+                    stringResource(R.string.deposit_on_day, ValueFormat.money(it.atMaturity, account.currency, locale), displayDate(it.deposit.maturityEpochDay)),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.labelMedium,
+                color = tone.content.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         aside?.takeIf { it.signum() > 0 }?.let {
             Text(
                 stringResource(R.string.piggy_free_line, ValueFormat.money(balance - it, account.currency, locale)),
@@ -141,6 +163,9 @@ private fun AccountCard(account: Account, balance: BigInteger, aside: BigInteger
             Text(kind, style = MaterialTheme.typography.labelLarge, color = tone.content.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
             account.digits?.let {
                 Text("•••• $it", style = MaterialTheme.typography.titleSmall, color = tone.content)
+            }
+            account.deposit?.let {
+                Text(rateText(it.rateBp, locale), style = MaterialTheme.typography.titleSmall, color = tone.content)
             }
         }
     }

@@ -87,11 +87,38 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
     override suspend fun saveAccount(account: Account): Boolean = database.withTransaction {
         val old = dao.account(account.id)
         if (!account.isValid() || (old != null && old.currency != account.currency)) return@withTransaction false
+        // Deposits are saved with their terms through saveDeposit, and an account never turns into one.
+        if (account.deposit != null || old?.depositPrincipalMinor != null) return@withTransaction false
         dao.upsert(account.toEntity())
         true
     }
 
     override suspend fun deleteAccount(id: String): Boolean = dao.deleteAccount(id) != 0
+
+    override suspend fun saveDeposit(account: Account, transactions: List<Transaction>): Boolean = database.withTransaction {
+        val old = dao.account(account.id)?.toDomain()
+        if (account.deposit == null || !account.isValid()) return@withTransaction false
+        // An account stays what it was: a deposit cannot become a bank, nor change currency.
+        if (old != null && (old.deposit == null || old.currency != account.currency)) return@withTransaction false
+        val accounts = dao.accounts().associate { it.id to it.toDomain() } + (account.id to account)
+        if (transactions.any { !it.isValid(accounts) || it.partyId != null || it.shares.isNotEmpty() || dao.createdAt(it.id) != null }) {
+            return@withTransaction false
+        }
+        dao.upsert(account.toEntity())
+        if (transactions.isNotEmpty()) dao.insertTransactions(stamped(transactions).map { it.toEntity() })
+        true
+    }
+
+    override suspend fun deleteDeposit(id: String): Boolean = database.withTransaction {
+        if (dao.account(id)?.toDomain()?.deposit == null) return@withTransaction false
+        // Checked first: returning false does not undo what was already deleted.
+        val ledger = readLedger()
+        if (ledger.recurring.any { it.accountId == id } || ledger.budgets.any { it.accountId == id } || ledger.piggyBanks.any { it.accountId == id }) {
+            return@withTransaction false
+        }
+        dao.deleteTransactionsOf(id)
+        dao.deleteAccount(id) != 0
+    }
 
     override suspend fun saveTransaction(transaction: Transaction): Boolean = database.withTransaction {
         val accounts = listOfNotNull(dao.account(transaction.accountId), transaction.destinationId?.let { dao.account(it) })
