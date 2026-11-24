@@ -69,7 +69,7 @@
     </plurals>
     <string name="backup_section_danger">Everything</string>
     <string name="backup_clear">Delete all data</string>
-    <string name="backup_clear_hint">Trackers, money, settings and subscription images.</string>
+    <string name="backup_clear_hint">Trackers, money, settings, recurring payment icons and attachments.</string>
     <string name="backup_clear_dialog">Delete all data?</string>
     <string name="backup_clear_message">Everything is removed. It can be undone from this page until the next restore.</string>
     <string name="backup_clear_action">Delete all</string>
@@ -80,8 +80,8 @@
         <item quantity="other">%s budgets</item>
     </plurals>
     <plurals name="backup_subscriptions">
-        <item quantity="one">%s subscription</item>
-        <item quantity="other">%s subscriptions</item>
+        <item quantity="one">%s recurring payment</item>
+        <item quantity="other">%s recurring payments</item>
     </plurals>
     <plurals name="backup_categories">
         <item quantity="one">%d category</item>

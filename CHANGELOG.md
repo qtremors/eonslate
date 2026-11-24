@@ -1,10 +1,27 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.2.4
+> **Version:** 2.2.5
 > **Last Updated:** 2026-11-24
 
 ---
+
+## [2.2.5] - 2026-11-24
+
+The first release of Eonslate. See [RELEASES.md](RELEASES.md).
+
+- **A new website**: what Eonslate does, live GitHub stars, forks and downloads, the latest version with a direct APK download, the developer, credits and common questions. Dark, with the app's monochrome colors.
+- **A favicon that shows on dark tabs**: the logo turns light when the browser is dark.
+- **No examples that steer**: fields no longer suggest names, units or addresses, and deposits no longer offer preset terms. Every field is yours to fill as you like.
+- Wording in hints and the README is general rather than built around particular uses.
+- **A clean slate, all the way**: an empty Trackers tab no longer offers ready-made trackers to start with, and the last of the old template code is gone.
+- **Recurring, everywhere**: the editor, search, export, backup and welcome say recurring payment where they still said subscription; exports are named `eonslate-recurring.csv`.
+- Clearer hints: a credit card's floor is its limit entered as a negative amount, and the usual amount a day is what is added for each day between logs.
+- About says what Eonslate is now: a private, offline slate for your money and anything else you track.
+- **Long ledgers stay smooth**: Transactions filters and sorts away from the screen's thread, and a burst of changes, such as a batch of payment SMS, reads the ledger once.
+- Changing a recurring payment's price or payee finds what it posted through the database's index rather than reading every transaction.
+- A person or business with money still shared stays exactly; one whose id only appears inside another's can be deleted.
+- Unused text left from earlier screens is removed.
 
 ## [2.2.4] - 2026-11-24
 
@@ -13,7 +30,7 @@
 - **Recurring payments name who they are with**: set one on a recurring payment, and every payment it posts counts for them; naming them later names what it already posted.
 - **People and businesses lead with money**: the list puts who you paid most this year first, with the amount on each row. Paying a shop owner's own UPI is just a payment to them; who owes whom shows only when someone does.
 - **Price changes from a day**: change a fixed recurring amount and say from when. A day in the past re-prices what was already posted from then on; a day ahead keeps the old price until it comes, and the list and forecast show the change coming. Up or down, earlier payments keep their price.
-- **Attachments**: keep a receipt's photo (from your photos or the camera), a PDF, or a link such as the product's page with any transaction. Photos open full screen, PDFs in your PDF app, links in your browser; rows say how many each keeps.
+- **Attachments**: keep a receipt's photo (from your photos or the camera), a PDF, or a link with any transaction. Photos open full screen, PDFs in your PDF app, links in your browser; rows say how many each keeps.
 - Photos are made at most 2048 pixels on their longer side when attached, so receipts stay readable and backups stay small; PDFs up to 15 MB. Backups carry the files, and Undo after deleting a transaction brings its attachments back.
 - **Tracker cards are shorter**: "Logged yesterday" or "Logged 9 days ago" in place of the entry count and a full date.
 - **Trackers come first**: how today is going heads the Due today group, and the consistency summary moved below the trackers.
@@ -53,7 +70,7 @@
 - **Overall floor**: the least to keep across every account in your currency, set from the Transactions menu.
 - Before a payment takes a balance under a floor, the editor says which and by how much, and Save becomes Save anyway.
 - Accounts under their floor, and a total under the overall floor, show first in Notifications; a card says what it keeps, or how far under it is.
-- **Piggy banks**: set money aside inside an account for something you want, such as ₹1,00,000 for a phone, with an optional day to reach it by.
+- **Piggy banks**: set money aside inside an account toward a goal amount, with an optional day to reach it by.
 - Add to it from the account or take it back out; it fills toward the goal and keeps every move in and out.
 - The account keeps the money: its card and row say what is set aside and what is still free to spend.
 - Piggy banks show on Home and on Transactions; New piggy bank is in the Transactions menu.
@@ -80,21 +97,19 @@
 - Payment SMS go to the account whose last digits they name.
 - Tap a card to see only its transactions; Transactions has an account filter, and every row names its account with its digits.
 - Database version 15.
-- **Parts**: turn on Show as parts for a single choice, and each choice becomes a part of the tracker, such as a bike's oil, servicing, battery, tyres and fuel.
+- **Parts**: turn on Show as parts for a single choice, and each choice becomes a part of the tracker.
 - Each part shows on the tracker's card and atop Insights with where it stands: what is left before its interval, when its rhythm says it comes next, or when it was last logged.
 - Each part has its own log button that opens the entry with that part picked.
 - Far-off dates read in months: "In 22 months", "8 months ago".
 - The tab bar keeps its original icons.
 - **Onboarding**: after the intro, set your name, your currency and first account (its kind, balance and last digits), then pick trackers to start with. A wavy bar shows how far along you are; every step can be skipped.
 - **Restore a backup** right from the first screen, for moving from another phone.
-- **Odometer between logs**: an interval by distance counts on at your usual pace, so the odometer needs logging only at each job. "About 1,120 km left", due "around 3 Dec".
-- **Usual amount a day**: set it on an interval, such as 30 km; leave it empty and the pace is learned from your readings.
-- An interval falls due by that estimate too, so the bell says when the oil is due.
+- **Between logs**: an interval by amount adds up at your usual pace, so the number needs logging only when something is done; it shows what is left and a due day estimated from that pace.
+- **Usual amount a day**: set it on an interval; leave it empty and the pace is learned from your readings.
+- An interval falls due by that estimate too, so the bell says when it is due.
 - **Parts in the editor**: a tracker with parts lists them under Parts, each with when it is due again. Tap one to set its interval with that part already chosen.
-- **Counts on**: pick the weekdays the usual amount a day applies, such as Monday to Friday for a commute. Estimates and due dates skip the other days, and a learned pace counts only those days.
+- **Chosen weekdays**: pick the weekdays the usual amount a day applies. Estimates and due dates skip the other days, and a learned pace counts only those days.
 - The separate interval list steps aside for trackers with parts.
-The first release of Eonslate. See [RELEASES.md](RELEASES.md).
-
 - The splash follows the theme: the logo on the app's light page color by day and on black at night, with no flash before the first screen.
 - The mark in Home's top bar takes the theme's text color and lets the page show through.
 - Every build scans the SMS inbox once SMS detection is turned on; `-Peonslate.smsInbox=false` builds without the SMS permission.
@@ -118,7 +133,7 @@ The first release of Eonslate. See [RELEASES.md](RELEASES.md).
 - The Today widget counts like the Trackers tab: daily goals must be met, and due intervals count as due.
 - The Money widget uses the number format from Personalization.
 - Weekday choices for schedules and reminders start on the app's week start.
-- 40 more tracker icons, such as a motorbike, fuel, scissors, a shower, pets and study.
+- 40 more tracker icons.
 - Goal lines say the unit once: "5 of 8 glasses today".
 - Interval tiles lead with what is left, then when it is due and when it was last done.
 - Widgets take a sensible size in the picker, and the money widget is named Money.
@@ -135,7 +150,7 @@ The first release of Eonslate. See [RELEASES.md](RELEASES.md).
 - Insights shows how often each goal was met and the run in a row.
 - **As needed** schedule for things logged when they happen, never due by themselves.
 - Trackers sort into Due today, Not today and As needed once schedules differ.
-- **Intervals**: an As needed tracker can be due again after a time, after a number such as an odometer grows by an amount, or whichever comes first.
+- **Intervals**: an As needed tracker can be due again after a time, after a number grows by an amount, or whichever comes first.
 - Intervals can follow one choice, so one tracker keeps several jobs on their own clocks.
 - **Learned rhythm**: As needed trackers learn their usual pace from history and show what is likely next, with no setup.
 - Cards show what is next; Insights shows each interval and when it was last done.

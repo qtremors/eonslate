@@ -45,7 +45,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -56,9 +55,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.FieldDefinition
 import dev.qtremors.eonslate.core.tracker.domain.model.Tags
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.validation.ValidationError
-import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
 import dev.qtremors.eonslate.core.tracker.ui.FieldTypes
-import dev.qtremors.eonslate.core.tracker.ui.Templates
 import dev.qtremors.eonslate.core.tracker.ui.TrackerSlate
 import dev.qtremors.eonslate.core.tracker.ui.message
 import dev.qtremors.eonslate.core.ui.components.ConfirmDialog
@@ -84,14 +81,6 @@ fun TrackerEditorScreen(
     viewModel: TrackerEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    LaunchedEffect(viewModel.templateId, state.loading) {
-        val spec = viewModel.templateId?.let(Templates::byId) ?: return@LaunchedEffect
-        if (state.loading) return@LaunchedEffect
-        viewModel.applyTemplate { currency ->
-            Templates.instantiate(spec = spec, text = context::getString, ids = UuidIdGenerator, currency = currency, now = 0)
-        }
-    }
     LaunchedEffect(state.done) { if (state.done) (if (state.deleted) onDeleted else onDone)() }
 
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }

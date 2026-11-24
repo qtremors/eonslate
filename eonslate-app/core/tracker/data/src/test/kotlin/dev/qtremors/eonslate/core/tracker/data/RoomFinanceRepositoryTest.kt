@@ -15,9 +15,11 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.Categories
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.PriceStep
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
+import dev.qtremors.eonslate.core.tracker.domain.finance.Share
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import kotlinx.coroutines.Dispatchers
@@ -355,6 +357,46 @@ class RoomFinanceRepositoryTest {
             ledger = finance.observeLedger().first()
             assertEquals(null, ledger.recurring.single().partyId)
             assertTrue(ledger.transactions.all { it.partyId == null })
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun aPartyWithSharesStaysButOneWhoseIdIsOnlyPartOfAnotherCanGo() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            assertTrue(finance.saveParty(Party("p", "First")))
+            assertTrue(finance.saveParty(Party("p2", "Second")))
+            assertTrue(finance.saveParty(Party("a_b", "Third")))
+            val lent = Transaction("lent", bank.id, TransactionKind.EXPENSE, 400, 20_000, shares = listOf(Share("p2", 400)))
+            assertTrue(finance.saveTransaction(lent))
+            // "p" is inside "p2" as text, and "_" is a LIKE wildcard; neither holds anyone back.
+            assertTrue(finance.deleteParty("p"))
+            assertTrue(finance.deleteParty("a_b"))
+            assertFalse(finance.deleteParty("p2"))
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun aPriceChangeLeavesAnotherRecurringPaymentsPostsAlone() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val day = { m: Int, d: Int -> LocalDate.of(2026, m, d).toEpochDay() }
+            // Ids chosen so one's posted ids sort right beside the other's.
+            assertTrue(finance.addRecurring(RecurringPayment("a", bank.id, 100, "A", PaymentInterval.MONTHLY, 3, day(1, 3)), day(3, 10)))
+            assertTrue(finance.addRecurring(RecurringPayment("b", bank.id, 100, "B", PaymentInterval.MONTHLY, 3, day(1, 3)), day(3, 10)))
+            val stored = finance.observeLedger().first().recurring.single { it.id == "a" }
+            assertTrue(finance.updateRecurring(stored, stored.copy(minor = 150), day(3, 10), priceFrom = day(1, 3)))
+            val posted = finance.observeLedger().first().transactions
+            assertEquals(setOf(150L), posted.filter { it.note == "A" }.map { it.minor }.toSet())
+            assertEquals(setOf(100L), posted.filter { it.note == "B" }.map { it.minor }.toSet())
         } finally {
             db.close()
         }

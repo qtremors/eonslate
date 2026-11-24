@@ -28,12 +28,9 @@ sealed interface Destination {
     @Serializable
     data class TrackerDetail(val trackerId: String) : Destination
 
-    /**
-     * Creates a tracker when [trackerId] is null, filled in from [templateId] when that is set, or
-     * edits the tracker with that id.
-     */
+    /** Creates a blank tracker when [trackerId] is null, or edits the tracker with that id. */
     @Serializable
-    data class TrackerEditor(val trackerId: String? = null, val templateId: String? = null) : Destination
+    data class TrackerEditor(val trackerId: String? = null) : Destination
 
     /** The first pages, shown once. */
     @Serializable

@@ -95,8 +95,6 @@
     <string name="error_text_blank">Write something or leave it empty</string>
     <string name="error_line_break">Keep it on one line</string>
     <string name="error_date_range">Pick a real date</string>
-    <string name="error_not_a_number">Not a number</string>
-    <string name="error_too_precise">Use up to %1$d decimals</string>
     <string name="part_not_yet">Not logged yet</string>
     <string name="part_log">Log %1$s</string>
     <string name="part_in">In %1$s</string>

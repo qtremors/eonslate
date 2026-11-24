@@ -33,8 +33,6 @@ fun HomeTab(
     onLog: (String) -> Unit,
     onSettings: () -> Unit,
     onAdd: (TransactionKind) -> Unit,
-    onAddBudget: () -> Unit,
-    onCategory: (String) -> Unit,
     displayName: String = "",
     onLoaded: () -> Unit = {},
     onAccount: (String) -> Unit = {},
@@ -59,7 +57,7 @@ fun HomeTab(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onSubscriptions = onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory, onLoaded = onLoaded, onAccount = onAccount, onAddAccount = onAddAccount, onPiggy = onPiggy) }
+            item(key = "money") { MoneyOverview(onTransactions = onTransactions, onSubscriptions = onSubscriptions, onAdd = onAdd, onLoaded = onLoaded, onAccount = onAccount, onAddAccount = onAddAccount, onPiggy = onPiggy) }
             item(key = "today") { TodayStrip(onLog = onLog, onAll = onTrackers) }
         }
     }

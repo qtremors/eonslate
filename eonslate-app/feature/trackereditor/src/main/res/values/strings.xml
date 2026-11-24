@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="editor_title_new">New tracker</string>
-    <plurals name="gallery_fields">
-        <item quantity="one">%d field</item>
-        <item quantity="other">%d fields</item>
-    </plurals>
     <string name="editor_title_edit">Edit tracker</string>
     <string name="editor_save">Save</string>
     <string name="editor_preview_name">Your tracker</string>
@@ -60,7 +56,6 @@
     <string name="sheet_title_new">New field</string>
     <string name="sheet_title_edit">Edit field</string>
     <string name="sheet_name">Field name</string>
-    <string name="sheet_name_placeholder">Weight, Mood, Pages read</string>
     <string name="sheet_type">Type</string>
     <string name="sheet_type_change_warning">Changing the type clears this field\'s logged values on save.</string>
     <string name="sheet_required">Required</string>
@@ -68,7 +63,6 @@
     <string name="sheet_add">Add</string>
     <string name="sheet_done">Done</string>
     <string name="sheet_unit">Unit</string>
-    <string name="sheet_unit_placeholder">kg, pages, km</string>
     <string name="sheet_decimals">Decimals</string>
     <string name="sheet_min">Lowest</string>
     <string name="sheet_max">Highest</string>
@@ -189,7 +183,7 @@
     <string name="interval_any_log">Any log</string>
     <string name="interval_after_time">After a time</string>
     <string name="interval_after_amount">After an amount</string>
-    <string name="interval_after_amount_hint">When a number, such as an odometer, has grown this much</string>
+    <string name="interval_after_amount_hint">When a number has grown this much</string>
     <string name="interval_every">Every</string>
     <string name="interval_amount">Amount</string>
     <string name="interval_days">Days</string>
@@ -207,14 +201,14 @@
     <string name="sheet_parts">Show as parts</string>
     <string name="sheet_parts_hint">Each choice gets its own row with its last log, what is next, and a log button</string>
     <string name="interval_per_day">Usual amount a day</string>
-    <string name="interval_per_day_hint">Counts on between logs. Leave empty to learn it from your logs.</string>
+    <string name="interval_per_day_hint">Added for each day between logs. Leave empty to learn it from your logs.</string>
     <string name="editor_section_parts">Parts</string>
     <string name="editor_parts_hint">Tap a part to set when it is due again.</string>
     <string name="editor_part_no_interval">No interval</string>
     <string name="interval_part_title">%1$s is due again</string>
     <string name="interval_every_value">Every %1$s</string>
     <string name="interval_per_day_short">%1$s a day</string>
-    <string name="interval_count_days">Counts on</string>
+    <string name="interval_count_days">Days it adds up on</string>
     <plurals name="interval_days_a_week">
         <item quantity="one">%d day a week</item>
         <item quantity="other">%d days a week</item>

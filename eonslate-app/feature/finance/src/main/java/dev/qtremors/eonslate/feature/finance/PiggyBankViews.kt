@@ -116,7 +116,7 @@ internal fun PiggyEditor(
     val entered = listOf<Any?>(name, accountId, target, dated, date)
     val opened = rememberSaveable { entered.toString() }
     EditorSheet(stringResource(if (piggy == null) R.string.piggy_new else R.string.piggy_edit), busy, failed, onDismiss, dirty = entered.toString() != opened) {
-        FormField(name, { name = it }, stringResource(R.string.piggy_name), placeholder = stringResource(R.string.piggy_name_hint), maxLength = PiggyBank.NAME_LIMIT, enabled = !busy)
+        FormField(name, { name = it }, stringResource(R.string.piggy_name), maxLength = PiggyBank.NAME_LIMIT, enabled = !busy)
         AccountChoice(stringResource(R.string.piggy_account), account, accounts, !busy) {
             if (it.currency != account.currency) target = ""
             accountId = it.id

@@ -8,7 +8,8 @@ package dev.qtremors.eonslate.core.tracker.domain.model
  * back to a default icon, so an old backup never breaks the list.
  * @property colorIndex an index into the badge palette in `:core:ui`, below [TrackerColors.COUNT].
  * @property position the order on the home list, smallest first.
- * @property templateId the template the tracker was created from, if any.
+ * @property templateId the ready-made tracker an older version created it from, if any. Nothing
+ * sets it now; it is kept so trackers and backups from then round-trip unchanged.
  * @property tags short labels for filtering Home, already normalized by [Tags.normalize].
  * @property schedule the days it is due, which Today, progress and streaks follow.
  * @property createdAt epoch milliseconds when the tracker was created.

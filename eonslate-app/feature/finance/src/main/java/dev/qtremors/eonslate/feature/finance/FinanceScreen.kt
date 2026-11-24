@@ -175,27 +175,11 @@ fun FinanceScreen(
     viewModel: FinanceViewModel = hiltViewModel(),
     sharedMessage: String? = null,
     onMessageOpened: () -> Unit = {},
-    openInbox: Boolean = false,
-    onInboxOpened: () -> Unit = {},
-    /** Opens a new transaction of this kind, as Home's quick add asks. */
-    openNew: TransactionKind? = null,
-    onNewOpened: () -> Unit = {},
+    /** What another screen asked to open here; [onRequestHandled] clears it once acted on. */
+    request: FinanceRequest? = null,
+    onRequestHandled: () -> Unit = {},
     onManageCategories: (() -> Unit)? = null,
     onSettings: (() -> Unit)? = null,
-    /** Opens the new budget editor, as Home's empty budgets card asks. */
-    openBudget: Boolean = false,
-    onBudgetOpened: () -> Unit = {},
-    /** Shows this month in one category, as a tap on the Home category chart asks. */
-    openCategory: String? = null,
-    onCategoryOpened: () -> Unit = {},
-    /** Shows only this account's transactions, from its card on Home. */
-    openAccount: String? = null,
-    onAccountOpened: () -> Unit = {},
-    openNewAccount: Boolean = false,
-    onNewAccountOpened: () -> Unit = {},
-    /** Opens a piggy bank, from Home. */
-    openPiggy: String? = null,
-    onPiggyOpened: () -> Unit = {},
     /** Opens one person or business's chat, and everyone. */
     onParty: ((String) -> Unit)? = null,
     onPeople: () -> Unit = {},
@@ -245,9 +229,10 @@ fun FinanceScreen(
     val accountShown = accountFilter?.takeIf { id -> ledger?.accounts?.any { it.id == id } != false }
     val filter = TransactionFilter(startDay..lastDay, kindFilter, category, query, sort, accountShown, pendingOnly = pendingOnly)
     var planKind by rememberSaveable { mutableStateOf<TransactionKind?>(null) }
-    var jumpToTop by remember { mutableStateOf(false) }
-    val plans = remember(ledger, query, planKind) { ledger?.plans(query, planKind).orEmpty() }
-    val shown = remember(ledger, filter) { ledger?.filteredTransactions(filter).orEmpty() }
+    // Filtering and sorting a long ledger runs off the main thread; null until the first result.
+    val plans = rememberOffMain(ledger, query, planKind) { ledger?.plans(query, planKind) }.orEmpty()
+    val shownOrNull = rememberOffMain(ledger, filter) { ledger?.filteredTransactions(filter) }
+    val shown = shownOrNull.orEmpty()
     val scope = rememberCoroutineScope()
     val deletedText = stringResource(R.string.finance_transaction_deleted)
     val undoText = stringResource(R.string.finance_undo)
@@ -269,7 +254,7 @@ fun FinanceScreen(
                 export.launch("eonslate-transactions.csv")
             } else {
                 csv.prepareExport(data) { ledger, out -> RecurringCsv.write(ledger, plans, out) }
-                export.launch("eonslate-subscriptions.csv")
+                export.launch("eonslate-recurring.csv")
             }
         }
     }
@@ -299,61 +284,29 @@ fun FinanceScreen(
         editor = type
     }
 
-    LaunchedEffect(openNew) {
-        if (openNew != null) {
-            newKind = openNew
-            open(Editor.TRANSACTION, null)
-            onNewOpened()
-        }
-    }
-    LaunchedEffect(openCategory) {
-        if (openCategory != null) {
-            category = openCategory
-            kindFilter = null
-            period = TransactionPeriod.MONTH
-            query = ""
-            onCategoryOpened()
-        }
-    }
-    LaunchedEffect(openAccount, ledger == null) {
+    // Waits for the ledger, since an account's card opens differently for a deposit.
+    LaunchedEffect(request, ledger == null) {
         val data = ledger ?: return@LaunchedEffect
-        // A deposit's card opens the deposit, not a list of its few transactions.
-        if (openAccount != null && data.accounts.firstOrNull { it.id == openAccount }?.deposit != null) {
-            open(Editor.DEPOSIT_VIEW, openAccount)
-            onAccountOpened()
-        } else if (openAccount != null) {
-            accountFilter = openAccount
-            category = null
-            kindFilter = null
-            period = TransactionPeriod.ALL
-            query = ""
-            onAccountOpened()
+        when (val asked = request ?: return@LaunchedEffect) {
+            FinanceRequest.Inbox -> open(Editor.INBOX, null)
+            FinanceRequest.NewAccount -> open(Editor.ACCOUNT, null)
+            is FinanceRequest.NewTransaction -> {
+                newKind = asked.kind
+                open(Editor.TRANSACTION, null)
+            }
+            is FinanceRequest.Piggy -> open(Editor.PIGGY_VIEW, asked.id)
+            // A deposit's card opens the deposit, not a list of its few transactions.
+            is FinanceRequest.Account -> if (data.accounts.firstOrNull { it.id == asked.id }?.deposit != null) {
+                open(Editor.DEPOSIT_VIEW, asked.id)
+            } else {
+                accountFilter = asked.id
+                category = null
+                kindFilter = null
+                period = TransactionPeriod.ALL
+                query = ""
+            }
         }
-    }
-    LaunchedEffect(openPiggy) {
-        if (openPiggy != null) {
-            open(Editor.PIGGY_VIEW, openPiggy)
-            onPiggyOpened()
-        }
-    }
-    LaunchedEffect(openNewAccount) {
-        if (openNewAccount) {
-            open(Editor.ACCOUNT, null)
-            onNewAccountOpened()
-        }
-    }
-    LaunchedEffect(openBudget) {
-        if (openBudget) {
-            jumpToTop = true
-            open(Editor.BUDGET, null)
-            onBudgetOpened()
-        }
-    }
-    LaunchedEffect(openInbox) {
-        if (openInbox) {
-            open(Editor.INBOX, null)
-            onInboxOpened()
-        }
+        onRequestHandled()
     }
     LaunchedEffect(sharedMessage, busy) {
         if (sharedMessage != null && !busy) {
@@ -452,6 +405,7 @@ fun FinanceScreen(
                 LaunchedEffect(Unit) { viewModel.ensureAccount() }
                 LoadingState(Modifier.fillMaxSize().padding(padding))
             }
+            shownOrNull == null -> LoadingState(Modifier.fillMaxSize().padding(padding))
             else -> LedgerList(
                 data, padding, page, today, query, shown, filter, period, section = section, onSection = onSection,
                 overallFloor = overallFloor, onOverallFloor = { open(Editor.FLOOR, null) },
@@ -490,11 +444,9 @@ fun FinanceScreen(
                     delete = { viewModel.delete(it) { viewModel.pruneIcons() } },
                     add = { open(Editor.RECURRING, null) },
                 ),
-                scrollToTop = jumpToTop,
                 chosenCurrency = currency,
                 onCurrency = viewModel::showCurrency,
                 firstDay = firstDay,
-                onScrolledToTop = { jumpToTop = false },
                 detection = viewModel.detection,
                 onReviewPayments = { open(Editor.INBOX, null) },
             )
@@ -729,8 +681,6 @@ private fun LedgerList(
     planActions: PlanActions = PlanActions({}, {}, { _, _ -> }, {}),
     detection: SmsDetection? = null,
     onReviewPayments: () -> Unit = {},
-    scrollToTop: Boolean = false,
-    onScrolledToTop: () -> Unit = {},
     chosenCurrency: String = "",
     onCurrency: (String) -> Unit = {},
     firstDay: java.time.DayOfWeek = java.time.DayOfWeek.MONDAY,
@@ -768,13 +718,6 @@ private fun LedgerList(
     val budgetHealth = remember(ledger, today) { ledger.budgetHealth(today) }
     val slots = remember(ledger) { chartSlots(ledger) }
     val listState = rememberLazyListState()
-    // Budgets lead the page, so opening one from Home brings the page back to its top.
-    LaunchedEffect(scrollToTop) {
-        if (scrollToTop) {
-            listState.scrollToItem(0)
-            onScrolledToTop()
-        }
-    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,

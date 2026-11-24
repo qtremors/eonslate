@@ -96,17 +96,6 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun aStarterIsSavedAtTheEndWithTodaysTime() = runTest {
-        val repo = FakeRepository(summaries)
-        repo.next = 2
-        val viewModel = HomeViewModel(repo, entries, clock, IdGenerator { "x" }, settings)
-        viewModel.createFrom { Tracker(id = "w", name = "Water", fields = listOf(FieldDefinition("g", "w", "Glasses", FieldConfig.Number())), createdAt = 0) }
-        val saved = repo.saved.single()
-        assertEquals(2, saved.position)
-        assertEquals(5_000L, saved.createdAt)
-    }
-
-    @Test
     fun movingKeepsEveryoneElsesOrder() {
         val ids = listOf("a", "b", "c", "d")
         assertEquals(listOf("a", "c", "b", "d"), HomeViewModel.moved(ids, "c", -1))

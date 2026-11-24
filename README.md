@@ -20,7 +20,7 @@
 
 ## Why Eonslate
 
-Eon and slate: a slate you write on as time passes. Money, habits, a bike's oil changes, haircuts, mood or sleep, each is a record of what happened, where it stands now and what comes next. Eonslate keeps them in one calm app that works fully offline.
+Eon and slate: a slate you write on as time passes. Your money, and anything else you keep a record of: what happened, where it stands now and what comes next. Eonslate keeps it all in one calm app that works fully offline.
 
 ## Download
 
@@ -33,7 +33,7 @@ Get the latest APK from [Releases](https://github.com/qtremors/eonslate/releases
 - **People:** say who each payment was with; lend, borrow, split and settle up in a chat with each person or business.
 - **Your own trackers:** build trackers from typed fields: number, money, duration, rating, yes or no, one or several choices, text and date.
 - **Schedules and goals:** every day, some days, times a week or as needed; daily or weekly goals for numbers and durations.
-- **Intervals and parts:** due again after a time or an amount, such as an oil change every 3,000 km, counted on at your usual pace; a choice can become parts with their own status and log button.
+- **Intervals and parts:** due again after a time or after a number has grown by an amount, counted on at your usual pace; a choice can become parts with their own status and log button.
 - **Notifications:** one bell for SMS finds, bills to confirm, budgets over, intervals due and payments coming up.
 - **A clean slate:** nothing made for you. Build your own trackers, categories and combinations from the start.
 - **Quick logging:** log from Home, a widget or a Quick Settings tile; Today and Money widgets keep up as you log.

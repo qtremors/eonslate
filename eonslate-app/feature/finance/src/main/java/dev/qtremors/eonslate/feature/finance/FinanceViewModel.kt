@@ -224,7 +224,7 @@ class FinanceViewModel @Inject constructor(
         val clean = name.trim()
         if (clean.isEmpty()) return ""
         val key = Party.keyOf(clean)
-        finance.observeLedger().first().parties.firstOrNull { it.key == key }?.let { return it.id }
+        finance.partyIdByKey(key)?.let { return it }
         val party = Party(ids.newId(), clean, PartyKind.guess(clean), clock.nowMillis())
         return party.id.takeIf { finance.saveParty(party) }
     }

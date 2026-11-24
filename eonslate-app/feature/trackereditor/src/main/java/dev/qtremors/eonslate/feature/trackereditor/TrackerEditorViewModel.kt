@@ -69,9 +69,6 @@ class TrackerEditorViewModel @Inject constructor(
 ) : ViewModel() {
     private val trackerId: String? = savedState[ARG_TRACKER_ID]
 
-    /** The template this new tracker starts from, if any; applied once by [applyTemplate]. */
-    val templateId: String? = savedState[ARG_TEMPLATE_ID]
-
     /** The currency new money fields start with; follows the setting as it changes. */
     private var defaultCurrency: String = defaultCurrencyCode()
 
@@ -127,22 +124,6 @@ class TrackerEditorViewModel @Inject constructor(
     private fun editDraft(change: (TrackerDraft) -> TrackerDraft) {
         _state.update { s -> s.draft?.let { s.copy(draft = change(it), dirty = true) } ?: s }
         persist()
-    }
-
-    /**
-     * Fills a new, untouched tracker from a template the screen built in the device's words.
-     * Applied once: after that the person's own edits are kept, even across process death.
-     */
-    fun applyTemplate(build: (currency: String) -> Tracker) {
-        val draft = _state.value.draft ?: return
-        if (!draft.isNew || savedState.get<Boolean>(KEY_TEMPLATE_APPLIED) == true) return
-        savedState[KEY_TEMPLATE_APPLIED] = true
-        viewModelScope.launch {
-            // Read the setting itself, so a template never starts with a currency from before it loaded.
-            val currency = settings.tracking.first().currencyCode()
-            _state.update { it.copy(draft = build(currency).toDraft(currency).copy(createdAt = null, position = null)) }
-            persist()
-        }
     }
 
     fun setName(name: String) = editDraft { it.copy(name = name) }.also { clearTrackerError() }
@@ -311,8 +292,6 @@ class TrackerEditorViewModel @Inject constructor(
     companion object {
         /** The argument name type-safe navigation stores the route's tracker id under. */
         const val ARG_TRACKER_ID = "trackerId"
-        const val ARG_TEMPLATE_ID = "templateId"
-        private const val KEY_TEMPLATE_APPLIED = "editor.templateApplied"
         private const val KEY_DRAFT = "editor.draft"
         private const val KEY_SHEET = "editor.sheet"
         private const val KEY_DIRTY = "editor.dirty"

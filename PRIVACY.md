@@ -1,6 +1,6 @@
 # Privacy Policy for Eonslate
 
-**Last Updated:** 2026-11-18
+**Last Updated:** 2026-11-24
 
 Eonslate is a personal project built with a privacy-first mindset. This policy explains how the app handles your information.
 
@@ -18,12 +18,15 @@ Everything you create is stored in the app's private storage on your device, whi
 
 | What | Where |
 | :--- | :--- |
-| Trackers, fields, entries, reminders, accounts and transactions | The `eonslate.db` database |
+| Trackers, fields, entries, reminders, accounts, transactions and the people and businesses you name | The `eonslate.db` database |
+| Photos and PDFs attached to transactions, and recurring payment icons | The app's private `attachments` and `icons` folders |
 | App settings, such as whether the welcome was seen | The `settings` preferences file |
 
-Uninstalling the app or clearing its storage deletes both. Backups and CSV exports are written to the location you choose.
+Uninstalling the app or clearing its storage deletes all of it. Backups, which include attached files, and CSV exports are written to the location you choose.
 
 Payment SMS import reads text you paste or share. Inbox-enabled builds can scan the selected period after you grant SMS access. Eonslate processes messages locally and stores the transactions you approve and fingerprints used to avoid importing them twice.
+
+Taking a photo for an attachment opens your camera app, which hands the photo back to Eonslate; Eonslate itself does not ask for camera access. Links you attach are stored as text and open in your browser only when you tap them.
 
 Turn on Block screenshots in Settings to protect app windows in screenshots and screen sharing.
 

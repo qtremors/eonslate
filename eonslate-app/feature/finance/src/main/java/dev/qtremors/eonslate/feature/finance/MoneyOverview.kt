@@ -77,8 +77,8 @@ import java.math.BigInteger
 private val LOADING_HEIGHT = 260.dp
 
 /**
- * The money half of Home: the balance up front, this month in and out, where it went, budgets,
- * what is due, and the latest transactions. Tapping a card goes to the tab that manages it.
+ * The money half of Home: the balance and this month in and out, quick add, and the account cards.
+ * Tapping a card goes to the page that manages it.
  */
 @Composable
 fun MoneyOverview(
@@ -86,9 +86,6 @@ fun MoneyOverview(
     onAdd: (TransactionKind) -> Unit = {},
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
-    onAddBudget: () -> Unit = {},
-    /** Opens Transactions on this month in one category. */
-    onCategory: (String) -> Unit = { onTransactions() },
     /** Called once the figures are on screen; the launch splash waits for it. */
     onLoaded: () -> Unit = {},
     /** Opens Transactions showing only this account. */
@@ -112,7 +109,7 @@ fun MoneyOverview(
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MoneyOverviewContent(
-            summary, today, onTransactions, onSubscriptions, onAdd = onAdd, onAddBudget = onAddBudget, onCategory = onCategory,
+            summary, today, onTransactions, onSubscriptions, onAdd = onAdd,
             slots = overview?.slots.orEmpty(), currencies = overview?.currencies.orEmpty(), onCurrency = viewModel::showCurrency,
             cards = {
                 overview?.let { o -> AccountCarousel(o.accounts, o.balances, onAccount, onAddAccount, setAside = o.setAside, deposits = o.deposits) }
@@ -129,8 +126,6 @@ fun MoneyOverviewContent(
     onSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
     onAdd: (TransactionKind) -> Unit = {},
-    onAddBudget: () -> Unit = {},
-    onCategory: (String) -> Unit = { onTransactions() },
     /** Each spending category's chart hue, by key. */
     slots: Map<String, Int> = emptyMap(),
     /** The currencies the accounts use; with several, the tag picks which one Home shows. */

@@ -74,7 +74,6 @@ internal fun FieldSheetContent(
                 value = draft.name,
                 onValueChange = { name -> viewModel.updateSheet { it.copy(name = name) } },
                 label = stringResource(R.string.sheet_name),
-                placeholder = stringResource(R.string.sheet_name_placeholder),
                 error = errorOf {
                     it is ValidationError.FieldNameBlank || it is ValidationError.FieldNameTooLong || it is ValidationError.DuplicateFieldName
                 }?.message(),
@@ -187,7 +186,6 @@ private fun NumberSettings(draft: FieldDraft, errors: List<ValidationError>, lim
         value = draft.unit,
         onValueChange = { unit -> viewModel.updateSheet { it.copy(unit = unit) } },
         label = stringResource(R.string.sheet_unit),
-        placeholder = stringResource(R.string.sheet_unit_placeholder),
         error = errors.firstOrNull { it is ValidationError.UnitTooLong }?.message(),
         capitalization = KeyboardCapitalization.None,
         maxLength = FieldConfig.Number.UNIT_MAX_LENGTH + 4,

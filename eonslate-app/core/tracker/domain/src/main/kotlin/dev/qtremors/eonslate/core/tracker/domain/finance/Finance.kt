@@ -2,6 +2,7 @@ package dev.qtremors.eonslate.core.tracker.domain.finance
 
 import dev.qtremors.eonslate.core.tracker.domain.value.MoneyAmount
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.math.BigInteger
@@ -242,6 +243,9 @@ data class TransactionFilter(
 
 interface FinanceRepository {
     fun observeLedger(): Flow<Ledger>
+
+    /** The id of the person or business whose [Party.key] is [key], if there is one. */
+    suspend fun partyIdByKey(key: String): String? = observeLedger().first().parties.firstOrNull { it.key == key }?.id
     suspend fun saveAccount(account: Account): Boolean
     suspend fun deleteAccount(id: String): Boolean
 

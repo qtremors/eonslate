@@ -56,7 +56,6 @@ class HomeContentUiTest {
     private val opened = mutableListOf<String>()
     private val logged = mutableListOf<String>()
     private var created = 0
-    private val starters = mutableListOf<String>()
 
     private fun show(trackers: List<TrackerSummary>?) {
         compose.setContent {
@@ -75,7 +74,6 @@ class HomeContentUiTest {
                         onArchive = { archived += it.id },
                         onDuplicate = { duplicated += it.id },
                     ),
-                    onStarter = { starters += it },
                     nowMillis = now,
                     selectedTag = selectedTag,
                     onTagChange = { selectedTag = it },
@@ -96,20 +94,6 @@ class HomeContentUiTest {
         compose.onNodeWithText("Nothing tracked yet").assertIsDisplayed()
         compose.onNodeWithText("Create a tracker").performClick()
         assertEquals(1, created)
-    }
-
-    @Test
-    fun anEmptyHomeOffersOneTapStarters() {
-        show(emptyList())
-        compose.onNodeWithText("Or start with one of these").assertIsDisplayed()
-        compose.onNodeWithText("Mood").performClick()
-        assertEquals(listOf("mood"), starters)
-    }
-
-    @Test
-    fun startersStepAsideOnceThereAreTrackers() {
-        show(listOf(TrackerSummary(stretch, 0, null)))
-        assertEquals(0, compose.onAllNodes(androidx.compose.ui.test.hasText("Or start with one of these")).fetchSemanticsNodes().size)
     }
 
     @Test

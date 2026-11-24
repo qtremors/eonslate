@@ -41,7 +41,6 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
@@ -75,10 +74,7 @@ import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
 import dev.qtremors.eonslate.core.tracker.domain.model.Tags
 import dev.qtremors.eonslate.core.tracker.domain.model.Tracker
 import dev.qtremors.eonslate.core.tracker.domain.model.TrackerSummary
-import dev.qtremors.eonslate.core.tracker.domain.time.UuidIdGenerator
-import dev.qtremors.eonslate.core.tracker.ui.Templates
 import dev.qtremors.eonslate.core.tracker.ui.TrackerSlate
-import dev.qtremors.eonslate.core.ui.components.TrackerIcons
 import dev.qtremors.eonslate.core.ui.components.MainActionButton
 import dev.qtremors.eonslate.core.ui.components.EmptyState
 import dev.qtremors.eonslate.core.ui.components.EonslateMenu
@@ -123,12 +119,6 @@ fun HomeScreen(
         onArchived = onArchived,
         onSettings = onSettings,
         onFinance = onFinance,
-        onStarter = { id ->
-            val spec = Templates.byId(id) ?: return@HomeContent
-            viewModel.createFrom { currency ->
-                Templates.instantiate(spec = spec, text = context::getString, ids = UuidIdGenerator, currency = currency, now = 0)
-            }
-        },
         streaks = streaks,
         today = today,
         dueToday = dueToday,
@@ -189,7 +179,6 @@ fun HomeContent(
     snackbar: SnackbarHostState? = null,
     actions: SlateActions? = null,
     /** Creates a tracker from a template in one tap; offered while Home is empty. */
-    onStarter: ((String) -> Unit)? = null,
     nowMillis: Long = System.currentTimeMillis(),
     selectedTag: String? = null,
     onTagChange: (String?) -> Unit = {},
@@ -273,7 +262,6 @@ fun HomeContent(
                     actionLabel = stringResource(R.string.home_empty_action),
                     onAction = onNewTracker,
                 )
-                if (onStarter != null) Starters(onStarter)
             }
             shown.isNullOrEmpty() && tags.isEmpty() -> EmptyState(
                 icon = Icons.Rounded.SearchOff,
@@ -439,31 +427,6 @@ private fun TodayLine(progress: TodayProgress) {
         )
     }
 }
-
-/** One-tap starters under the empty state, for someone who skipped the welcome. */
-@Composable
-private fun Starters(onStarter: (String) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(R.string.home_starters),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HOME_STARTERS.mapNotNull(Templates::byId).forEach { spec ->
-                AssistChip(
-                    onClick = { onStarter(spec.id) },
-                    label = { Text(stringResource(spec.name)) },
-                    leadingIcon = { Icon(TrackerIcons.resolve(spec.iconName), contentDescription = null) },
-                    shape = MaterialTheme.shapes.medium,
-                )
-            }
-        }
-    }
-}
-
-/** The starters an empty Home offers: the quickest to begin with. */
-internal val HOME_STARTERS = listOf("habit", "mood", "water")
 
 /** What a long-press on a slate offers. */
 class SlateActions(

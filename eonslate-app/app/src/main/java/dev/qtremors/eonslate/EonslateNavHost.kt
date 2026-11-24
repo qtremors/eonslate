@@ -21,7 +21,6 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.dp
-import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material.icons.rounded.Savings
@@ -49,6 +48,7 @@ import dev.qtremors.eonslate.core.ui.components.LocalShellHost
 import dev.qtremors.eonslate.core.ui.components.ShellHost
 import dev.qtremors.eonslate.core.ui.components.TabItem
 import dev.qtremors.eonslate.core.ui.theme.LocalReduceMotion
+import dev.qtremors.eonslate.feature.finance.FinanceRequest
 import dev.qtremors.eonslate.feature.finance.FinanceSection
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -103,14 +103,13 @@ fun EonslateNavHost(
     val entry by navController.currentBackStackEntryAsState()
     val destination = entry?.destination
     val shell = remember { ShellHost() }
-    var openInbox by remember { mutableStateOf(false) }
-    var openNew by remember { mutableStateOf<TransactionKind?>(null) }
-    var openBudget by remember { mutableStateOf(false) }
-    var openCategory by remember { mutableStateOf<String?>(null) }
     var openProfile by remember { mutableStateOf(false) }
-    var openAccount by remember { mutableStateOf<String?>(null) }
-    var openNewAccount by remember { mutableStateOf(false) }
-    var openPiggy by remember { mutableStateOf<String?>(null) }
+    // What the Transactions tab opens once it is shown; set just before going there.
+    var financeRequest by remember { mutableStateOf<FinanceRequest?>(null) }
+    val openOnTransactions: (FinanceRequest) -> Unit = { request ->
+        financeRequest = request
+        navController.navigateToTab(Destination.Transactions)
+    }
     val accountActions: @Composable RowScope.() -> Unit = {
         NotificationBell(alertCount) { navController.navigate(Destination.Notifications) { launchSingleTop = true } }
         ProfileAvatar(homeName, onClick = { openProfile = true })
@@ -181,35 +180,15 @@ fun EonslateNavHost(
         composable<Destination.Home> {
             HomeTab(
                 onLoaded = onReady,
-                onAccount = { id ->
-                    openAccount = id
-                    navController.navigateToTab(Destination.Transactions)
-                },
-                onAddAccount = {
-                    openNewAccount = true
-                    navController.navigateToTab(Destination.Transactions)
-                },
-                onPiggy = { id ->
-                    openPiggy = id
-                    navController.navigateToTab(Destination.Transactions)
-                },
+                onAccount = { id -> openOnTransactions(FinanceRequest.Account(id)) },
+                onAddAccount = { openOnTransactions(FinanceRequest.NewAccount) },
+                onPiggy = { id -> openOnTransactions(FinanceRequest.Piggy(id)) },
                 onTransactions = { navController.navigateToTab(Destination.Transactions) },
                 onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
                 onTrackers = { navController.navigateToTab(Destination.Trackers) },
                 onLog = { id -> navController.navigate(Destination.LogEntry(id)) },
                 onSettings = { navController.navigate(Destination.Settings) },
-                onAdd = { kind ->
-                    openNew = kind
-                    navController.navigateToTab(Destination.Transactions)
-                },
-                onAddBudget = {
-                    openBudget = true
-                    navController.navigateToTab(Destination.Transactions)
-                },
-                onCategory = { name ->
-                    openCategory = name
-                    navController.navigateToTab(Destination.Transactions)
-                },
+                onAdd = { kind -> openOnTransactions(FinanceRequest.NewTransaction(kind)) },
                 displayName = homeName,
             )
         }
@@ -227,13 +206,7 @@ fun EonslateNavHost(
         composable<Destination.Transactions> {
             FinanceScreen(
                 FinanceSection.TRANSACTIONS, sharedMessage = latestMessage, onMessageOpened = messageOpened,
-                openInbox = openInbox, onInboxOpened = { openInbox = false },
-                openNew = openNew, onNewOpened = { openNew = null },
-                openBudget = openBudget, onBudgetOpened = { openBudget = false },
-                openCategory = openCategory, onCategoryOpened = { openCategory = null },
-                openAccount = openAccount, onAccountOpened = { openAccount = null },
-                openNewAccount = openNewAccount, onNewAccountOpened = { openNewAccount = false },
-                openPiggy = openPiggy, onPiggyOpened = { openPiggy = null },
+                request = financeRequest, onRequestHandled = { financeRequest = null },
                 onParty = { id -> navController.navigate(Destination.Party(id)) },
                 onPeople = { navController.navigate(Destination.People) },
                 onSection = { navController.navigate(Destination.MoneyPage(it.name)) },
@@ -263,17 +236,11 @@ fun EonslateNavHost(
         composable<Destination.Notifications> {
             NotificationsScreen(
                 onBack = { navController.popBackStack() },
-                onReviewSms = {
-                    openInbox = true
-                    navController.navigateToTab(Destination.Transactions)
-                },
+                onReviewSms = { openOnTransactions(FinanceRequest.Inbox) },
                 onSubscriptions = { navController.navigateToTab(Destination.Subscriptions) },
                 onTransactions = { navController.navigateToTab(Destination.Transactions) },
                 onTracker = { id -> navController.navigate(Destination.TrackerDetail(id)) },
-                onAccount = { id ->
-                    openAccount = id
-                    navController.navigateToTab(Destination.Transactions)
-                },
+                onAccount = { id -> openOnTransactions(FinanceRequest.Account(id)) },
             )
         }
         composable<Destination.Settings> {
@@ -283,10 +250,7 @@ fun EonslateNavHost(
                 onBackup = { navController.navigate(Destination.Backup) },
                 onCategories = { navController.navigate(Destination.Categories) },
                 onDisplay = { navController.navigate(Destination.DisplaySettings) },
-                onScanSms = {
-                    openInbox = true
-                    navController.navigateToTab(Destination.Transactions)
-                },
+                onScanSms = { openOnTransactions(FinanceRequest.Inbox) },
             )
         }
         composable<Destination.DisplaySettings> {

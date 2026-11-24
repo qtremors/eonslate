@@ -351,9 +351,13 @@ interface FinanceDao {
     @Query("UPDATE finance_recurring SET minor = :minor, price_change_minor = NULL, price_change_from = NULL WHERE id = :id")
     suspend fun settlePrice(id: String, minor: Long)
 
-    /** Charges [minor] for what a recurring payment posted on or after [fromDay]. */
-    @Query("UPDATE finance_transactions SET minor = :minor WHERE substr(id, 1, length(:prefix)) = :prefix AND epoch_day >= :fromDay")
-    suspend fun repricePosted(prefix: String, fromDay: Long, minor: Long)
+    /**
+     * Charges [minor] for what a recurring payment posted on or after [fromDay]. Its posted ids all
+     * fall in [from, until) (see `RecurringPayment.transactionIdPrefix`), a range the primary key's
+     * index answers without reading every transaction.
+     */
+    @Query("UPDATE finance_transactions SET minor = :minor WHERE id >= :from AND id < :until AND epoch_day >= :fromDay")
+    suspend fun repricePosted(from: String, until: String, fromDay: Long, minor: Long)
 
     @Query("DELETE FROM finance_recurring WHERE id = :id")
     suspend fun deleteRecurring(id: String)
@@ -411,6 +415,9 @@ interface FinanceDao {
     @Query("SELECT * FROM finance_piggies ORDER BY created_at, id")
     suspend fun piggies(): List<PiggyEntity>
 
+    @Query("SELECT * FROM finance_piggies WHERE id = :id")
+    suspend fun piggy(id: String): PiggyEntity?
+
     @Query("SELECT * FROM finance_piggy_moves ORDER BY epoch_day, created_at, id")
     suspend fun piggyMoves(): List<PiggyMoveEntity>
 
@@ -453,7 +460,12 @@ interface FinanceDao {
     @Insert
     suspend fun insertParties(parties: List<PartyEntity>)
 
-    @Query("SELECT COUNT(*) FROM finance_transactions WHERE shares LIKE '%' || :id || '%'")
+    /**
+     * How many transactions share money with party [id]. Shares are JSON (`ShareColumn`), so this
+     * matches the whole `"party_id":"…"` pair: an id that is part of another never counts, and
+     * `instr` takes `%` and `_` literally where `LIKE` would treat them as wildcards.
+     */
+    @Query("SELECT COUNT(*) FROM finance_transactions WHERE instr(shares, '\"party_id\":\"' || :id || '\"') > 0")
     suspend fun sharesNaming(id: String): Int
 
     @Query("UPDATE finance_transactions SET party_id = NULL WHERE party_id = :id")
@@ -468,6 +480,10 @@ interface FinanceDao {
     @Query("DELETE FROM finance_attachments WHERE transaction_id = :transactionId")
     suspend fun clearAttachmentsOf(transactionId: String)
 
+    /** How many of [ids] another transaction than [transactionId] already keeps. */
+    @Query("SELECT COUNT(*) FROM finance_attachments WHERE id IN (:ids) AND transaction_id != :transactionId")
+    suspend fun attachmentsKeptElsewhere(ids: List<String>, transactionId: String): Int
+
     @Query("DELETE FROM finance_attachments")
     suspend fun clearAttachments()
 
@@ -480,9 +496,9 @@ interface FinanceDao {
     /** Gives what a recurring payment already posted its payee, where none or [old] was named. */
     @Query("""
         UPDATE finance_transactions SET party_id = :party
-        WHERE substr(id, 1, length(:prefix)) = :prefix AND (party_id IS NULL OR party_id IS :old)
+        WHERE id >= :from AND id < :until AND (party_id IS NULL OR party_id IS :old)
     """)
-    suspend fun namePosted(prefix: String, party: String?, old: String?)
+    suspend fun namePosted(from: String, until: String, party: String?, old: String?)
 
     @Query("DELETE FROM finance_parties WHERE id = :id")
     suspend fun deleteParty(id: String)

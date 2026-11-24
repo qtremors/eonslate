@@ -34,7 +34,7 @@ data class Attachment(
     @SerialName("transaction_id") val transactionId: String,
     val kind: AttachmentKind,
     val target: String,
-    /** What it is called, such as a file's name or "Product page"; blank shows the address or the kind. */
+    /** What it is called, such as a file's own name; blank shows the address or the kind. */
     val name: String = "",
     @SerialName("created_at") val createdAt: Long = 0,
 ) {

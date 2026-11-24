@@ -19,6 +19,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.Ledger
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.yield
 import java.time.LocalDate
@@ -29,10 +30,14 @@ import javax.inject.Inject
 class RoomFinanceRepository @Inject constructor(private val database: TrackerDatabase) : FinanceRepository {
     private val dao = database.financeDao()
 
+    /**
+     * The whole ledger, read again after any finance write. Conflated, so a burst of writes (an SMS
+     * batch, a restore) costs one read for the latest state rather than one per write.
+     */
     override fun observeLedger() = database.invalidationTracker.createFlow(
         "finance_accounts", "finance_transactions", "finance_recurring", "finance_budgets", "finance_categories", "finance_parties",
         "finance_piggies", "finance_piggy_moves", "finance_attachments",
-    ).map { database.withTransaction { readLedger() } }
+    ).conflate().map { database.withTransaction { readLedger() } }
 
     private suspend fun readLedger(): Ledger {
         val rows = dao.ledger()
@@ -53,10 +58,12 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         )
     }
 
+    override suspend fun partyIdByKey(key: String): String? = dao.partyByKey(key)
+
     override suspend fun savePiggy(piggy: PiggyBank): Boolean = database.withTransaction {
-        val accounts = dao.accounts().mapTo(HashSet()) { it.id }
+        val accounts = setOfNotNull(dao.account(piggy.accountId)?.id)
         if (!piggy.isValid(accounts)) return@withTransaction false
-        val created = dao.piggies().firstOrNull { it.id == piggy.id }?.createdAt ?: piggy.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
+        val created = dao.piggy(piggy.id)?.createdAt ?: piggy.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
         dao.upsert(piggy.copy(createdAt = created).toEntity())
         true
     }
@@ -146,8 +153,9 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         if (attachments.any { !it.isValid() || it.transactionId != transactionId }) return@withTransaction false
         if (attachments.map { it.id }.toSet().size != attachments.size) return@withTransaction false
         // An attachment already kept by another transaction cannot move here by its id.
-        val elsewhere = dao.attachments().filter { it.transactionId != transactionId }.mapTo(HashSet()) { it.id }
-        if (attachments.any { it.id in elsewhere }) return@withTransaction false
+        if (attachments.isNotEmpty() && dao.attachmentsKeptElsewhere(attachments.map { it.id }, transactionId) > 0) {
+            return@withTransaction false
+        }
         dao.clearAttachmentsOf(transactionId)
         val now = System.currentTimeMillis()
         dao.insertAttachments(attachments.mapIndexed { index, a -> a.copy(createdAt = a.createdAt.takeIf { it > 0 } ?: (now + index)).toEntity() })
@@ -211,10 +219,11 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
             if (!saved.isValid(setOf(account.id))) return@withTransaction false
             if (saved.partyId?.let { dao.party(it) == null } == true) return@withTransaction false
             dao.upsert(saved.toEntity())
-            if (repriced && priceFrom!! < nextDue) dao.repricePosted(saved.transactionIdPrefix, priceFrom, saved.minor)
+            val (from, until) = postedIds(saved)
+            if (repriced && priceFrom!! < nextDue) dao.repricePosted(from, until, priceFrom, saved.minor)
             val payment = saved
             // Naming who it is with names what it already posted, so their totals count it from the start.
-            if (payment.partyId != expected.partyId) dao.namePosted(payment.transactionIdPrefix, payment.partyId, expected.partyId)
+            if (payment.partyId != expected.partyId) dao.namePosted(from, until, payment.partyId, expected.partyId)
             val nextDay = payment.nextEpochDay
             if (!payment.paused && payment.postsAutomatically && nextDay != null && nextDay <= throughDay) postAll(throughDay, throughMinute)
             true
@@ -321,5 +330,14 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         dao.advance(payment.id, nextDay, minute)
         // Once every payment still to come is on or after a price change's day, the new price is the price.
         payment.priceChange?.let { step -> if (nextDay == null || nextDay >= step.fromEpochDay) dao.settlePrice(payment.id, step.minor) }
+    }
+
+    /**
+     * The id range holding every transaction [payment] posted: its prefix ends in ':', so ids that
+     * start with it sort from the prefix up to, but not including, the prefix ending in ';'.
+     */
+    private fun postedIds(payment: RecurringPayment): Pair<String, String> {
+        val prefix = payment.transactionIdPrefix
+        return prefix to prefix.dropLast(1) + (prefix.last() + 1)
     }
 }

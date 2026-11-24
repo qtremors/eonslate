@@ -27,7 +27,7 @@ Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend in
 | `:feature:smsinbox` | Android library | The SMS permission manifest, left out with `-Peonslate.smsInbox=false` |
 | `:feature:reminders` | Android library | A tracker's reminders: time, days, skip if logged |
 | `:core:reminders` | Android library | Alarm sync, receivers and reminder notifications |
-| `:feature:welcome` | Android library | The first run: intro, name, currency and first account, starter trackers |
+| `:feature:welcome` | Android library | The first run: intro, name, currency and first account |
 
 Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
 
@@ -52,11 +52,7 @@ The Licenses page lists `OpenSource.parts`. Full license texts ship as raw resou
 
 ## First run
 
-`MainActivity` keeps the splash up until it knows where to start. `WelcomeGate.shouldShow` shows the welcome only to someone new: never once it was finished or skipped, and never when trackers already exist (after an update or a restore), in which case it is marked seen at once. The welcome's picks and page survive process death in `SavedStateHandle`. An empty Home also offers one-tap starters, for anyone who skipped it.
-
-## Templates
-
-`Templates.all` in `:core:tracker:ui` holds every ready-made tracker as a `TemplateSpec`: an id that never changes (it is stored as the tracker's `templateId`), string resources for every name and choice, an icon and a pigment. `Templates.instantiate` turns one into a `Tracker` in the device's words and currency, with fresh tracker and field ids; choice options keep the template's ids. A test checks that every template builds a valid tracker with a known icon and pigment.
+`MainActivity` keeps the splash up until it knows where to start. `WelcomeGate.shouldShow` shows the welcome only to someone new: never once it was finished or skipped, and never when trackers already exist (after an update or a restore), in which case it is marked seen at once. The welcome's picks and page survive process death in `SavedStateHandle`.
 
 ## Tracker data
 
@@ -94,6 +90,12 @@ Schema 5 adds monthly budgets and recurring payments. Expenses count toward a bu
 Schema 6 adds transaction categories, category budgets, and custom recurring intervals with pause and amount confirmation. Category budgets use an anchored cycle. Variable payments advance only after confirmation.
 
 Schema 8 stores budget names, icons, and colors and adds the finance category catalog. Category renames update transactions, recurring payments, and budgets in one Room transaction. The schema also keeps the next billing minute for hourly subscriptions. Automatic hourly postings keep one transaction per local day.
+
+`RoomFinanceRepository.observeLedger` emits the whole ledger again after any write to a finance table, conflated so a burst of writes costs one read. Screens derive what they show from it; `FinanceScreen` filters and sorts off the main thread with `rememberOffMain`. Writes that touch one row look it up by id rather than reading the table.
+
+A recurring payment posts each occurrence with the id `recurring:<length>:<id>:<day>[:<minute>]`, so posting the same occurrence twice is refused by the primary key. Repricing and naming what it posted select the id range from that prefix up to the prefix ending in `;`, which the primary key's index answers. Shares are JSON on the transaction; `sharesNaming` matches the whole `"party_id":"<id>"` pair with `instr`.
+
+Other screens ask the Transactions tab to open something (an account, a piggy bank, a new transaction, the SMS inbox) with one `FinanceRequest`, which `FinanceScreen` acts on once and clears.
 
 Finance reviews payment SMS from pasted or shared text and scans the inbox once SMS detection is turned on, which is when Android asks for the SMS permission. Every build includes inbox scanning; `-Peonslate.smsInbox=false` builds an APK without the SMS permission that reads pasted or shared text only. The parser recognizes sender aliases, payees, account and card endings, and payment references. It suggests a category and keeps a fingerprint for duplicate detection. Auto-add uses high-confidence matches. Raw SMS stays in memory during import.
 
@@ -198,6 +200,4 @@ Release signing reads `signing.properties` (or `local.properties`) with `signing
 - Package root: `dev.qtremors.eonslate`, with modules under `core.*` and `feature.*`.
 - Release commits are titled `vX.Y.Z: Short Title Case Summary`.
 - User-facing text lives in each module's `strings.xml`.
-- A template's id and its choice option ids never change once shipped: trackers store them, and later imports and insights rely on them.
-- New templates go anywhere in `Templates.all`; each needs at least one required field, a known icon and a valid pigment, which `TemplatesTest` checks.
 - Compose stability for classes in pure Kotlin modules is declared in `eonslate-app/compose-stability.conf`.

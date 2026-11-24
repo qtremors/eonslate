@@ -42,7 +42,6 @@ import dev.qtremors.eonslate.core.tracker.domain.value.EpochDays
 import dev.qtremors.eonslate.core.tracker.domain.value.MoneyAmount
 import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
 import dev.qtremors.eonslate.core.tracker.ui.displayDate
-import dev.qtremors.eonslate.core.ui.components.ConnectedChoices
 import dev.qtremors.eonslate.core.ui.components.ConnectedGroup
 import dev.qtremors.eonslate.core.ui.components.ConnectedItem
 import dev.qtremors.eonslate.core.ui.components.ConnectedRow
@@ -144,7 +143,7 @@ private fun DepositRows(statuses: List<DepositStatus>, onOpen: (String) -> Unit)
 
 /**
  * Makes or changes a fixed deposit: its name, the amount, where the money came from, the rate,
- * the term and how interest compounds. A live line under it says what it grows to.
+ * when it starts and matures, and how interest compounds. A live line under it says what it grows to.
  */
 @Composable
 internal fun DepositEditor(
@@ -190,8 +189,7 @@ internal fun DepositEditor(
         busy, failed, onDismiss, dirty = entered.toString() != opened,
     ) {
         FormField(
-            name, { name = it }, stringResource(R.string.finance_name),
-            placeholder = stringResource(R.string.deposit_name_hint), maxLength = Account.NAME_LIMIT, enabled = !busy,
+            name, { name = it }, stringResource(R.string.finance_name), maxLength = Account.NAME_LIMIT, enabled = !busy,
         )
         if (account == null) SourceChoice(from, sources, !busy) { fromId = it?.id }
         if (account == null && from == null) FormField(
@@ -209,11 +207,6 @@ internal fun DepositEditor(
             keyboardType = KeyboardType.Decimal, suffix = "%", maxLength = 6, enabled = !busy,
         )
         DateField(start, { start = it }, stringResource(R.string.deposit_start), busy)
-        // The usual terms in one tap; the date below takes any other.
-        val years = startDay?.let { s -> TERMS.firstOrNull { LocalDate.ofEpochDay(s).plusYears(it.toLong()).toEpochDay() == maturityDay } }
-        ConnectedChoices(TERMS.map<Int, Int?> { it }, years, { pluralStringResource(R.plurals.deposit_years, it ?: 0, it ?: 0) }, { picked ->
-            if (picked != null && startDay != null) maturity = LocalDate.ofEpochDay(startDay).plusYears(picked.toLong()).toString()
-        })
         DateField(maturity, { maturity = it }, stringResource(R.string.deposit_maturity), busy)
         if (startDay != null && maturityDay != null && !datesValid) {
             Text(stringResource(R.string.deposit_dates_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -416,6 +409,3 @@ internal fun DepositCloseSheet(
         )
     }
 }
-
-/** Terms offered in one tap, in years. */
-private val TERMS = listOf(1, 2, 3, 5)

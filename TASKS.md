@@ -1,7 +1,7 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.2.4
+> **Version:** 2.2.5
 > **Last Updated:** 2026-11-24
 
 ## Roadmap
@@ -59,7 +59,7 @@ Each step is planned as one release commit.
 | 47 | 2.2.3 | Structure: Home as a glance, Money list-first, one place per setting | Done |
 | 48 | 2.2.3 | Fixed deposits that grow on the card and are recorded at maturity | Done |
 | 49 | 2.2.4 | Payees with totals, price changes, attachments (images, PDFs, links), tracker cards | Done |
-| 50 | 2.2.5 | Landing page and a favicon that shows on dark tabs | Planned |
+| 50 | 2.2.5 | Website, no steering examples, audit fixes, and the first release | Done |
 
 ## v2.0.0 parity
 
@@ -148,12 +148,12 @@ From a second v2.0.0 source comparison and a full run on a moto g(40) fusion (An
 
 **Found on the device**
 - [x] Custom subscription images fill their tile (centre crop), the full image still stored
-- [x] Service templates use existing categories (Netflix was saved as an unlisted "Streaming", income as "Income")
+- [x] Service templates use existing categories (one was saved under an unlisted category)
 - [x] A clear "Choose a service" entry in the subscription editor, not only behind Icon › Change
 - [x] Rename the variable switch to "Amount varies"; "Confirm each amount" contradicts "Add the estimate when due"
 - [x] Switch rows in the subscription and budget editors get rounded group shapes
 - [x] Delete all data no longer says "Settings stay"
-- [x] One minus sign everywhere (Net shows "-₹" while Out shows "−₹")
+- [x] One minus sign everywhere (Net showed a hyphen where Out showed a minus sign)
 - [x] Home "By category" says it covers this month
 - [x] After Add budget from Home, Transactions scrolls to the new budget
 - [x] Due labels in brackets start lower case: "(in 30 days)"
@@ -210,7 +210,7 @@ From a stress test with a generated backup (40 subscriptions, 3,147 transactions
 - [x] Or after a number field grows by an amount since the last log, such as an odometer read from any entry
 - [x] Intervals can follow one choice option, so one tracker holds several jobs on their own clocks
 - [x] Without any setup, an As needed tracker learns its usual rhythm from three or more logs, per choice and by a growing number
-- [x] Cards show what is next: "Oil change due at 30,000 km · 1,240 km left", "Usually every 5 weeks · next around 12 Dec"
+- [x] Cards show what is next: the amount left before an interval, or the learned rhythm and when it next comes
 - [x] Insights: each interval with when it was last done, and learned rhythms for jobs without one
 - [x] A due interval puts the tracker under Due today; logging the job starts its clock again
 - [x] One optional "Due again" list under As needed; nothing new for trackers that do not use it
@@ -237,7 +237,7 @@ From a stress test with a generated backup (40 subscriptions, 3,147 transactions
 - [x] New-item editors open with the keyboard on the first field
 
 ### 2.1.9 Closing the gaps
-Checked on the moto with sample data holding goals, a weekday schedule and As needed trackers with and without intervals, in light and dark, with the widgets on the home screen.
+Checked on the phone with sample data holding goals, a weekday schedule and As needed trackers with and without intervals, in light and dark, with the widgets on the home screen.
 - [x] Today widget follows daily goals and due intervals, so it matches the Trackers tab
 - [x] Money widget uses the chosen number format
 - [x] Weekday chips in schedules and reminders start on the app's week start
@@ -253,14 +253,14 @@ Checked on the moto with sample data holding goals, a weekday schedule and As ne
 - [x] Text fields clear inside
 
 ### 2.2.0 Account cards
-Checked on the moto with a bank, a credit card, a wallet and cash.
+Checked on the phone with a bank, a credit card, a wallet and cash.
 - [x] Account kind and last 4 digits (database version 15)
 - [x] Card carousel on Home; a tap filters Transactions to that account
 - [x] Account filter chip; rows and pickers show the digits
 - [x] Payment SMS match an account by its last digits
 
 ### 2.2.0 Parts
-Checked on the moto with the Bike: oil by kilometres, servicing and battery by time, tyre and fuel by last log.
+Checked on the phone with a tracker whose parts were due by amount, by time and by last log.
 - [x] Show as parts on a single choice field (no database change)
 - [x] Part rows on the tracker card and atop Insights
 - [x] A part's log button opens the entry with that part picked
@@ -272,7 +272,7 @@ Checked on the moto with the Bike: oil by kilometres, servicing and battery by t
 - [ ] Walk the onboarding on the phone from a fresh install (covered by the screen test so far)
 
 ### 2.2.0 Parts in the editor
-Checked on the moto: the Bike's oil at 30 km a day on workdays reads about 1,150 km left on a Saturday.
+Checked on the phone: a usual amount a day on chosen weekdays gave the expected amount left and due day.
 - [x] Parts section in the tracker editor; a part's sheet has its job fixed
 - [x] Counts on weekdays for the usual amount a day and the learned pace
 
@@ -288,7 +288,7 @@ Checked on the moto: the Bike's oil at 30 km a day on workdays reads about 1,150
 - [x] Pending flag, row label and filter
 
 ### 2.2.1 People
-Checked on the moto: lent Rahul 500, his chat showed "Owes you", Settle up cleared it.
+Checked on the phone: a lent payment showed "Owes you" in the chat, and Settle up cleared it.
 - [x] Shares on transactions (database version 17); own part counts as spending
 - [x] People strip, People list, a chat per person or business
 - [x] Lent, borrowed, paid back, got back, equal splits; settle up
@@ -300,12 +300,12 @@ Checked on the moto: lent Rahul 500, his chat showed "Owes you", Settle up clear
 - [x] No default categories; category optional on payments; last category deletable
 
 ### 2.2.2 Balance floors
-Checked on the moto: a 10,000 expense against a 1,50,000 floor warned 2,276 under and offered Save anyway.
+Checked on the phone: an expense that took a balance under its floor warned by how much and offered Save anyway.
 - [x] Account floor (database version 18) and an overall floor in settings
 - [x] Editor warning and Save anyway; Notifications and cards show breaches
 
 ### 2.2.2 Piggy banks
-Checked on the moto: a 1,00,000 goal in HDFC, 45,000 added, 45% with 55,000 to go.
+Checked on the phone: a piggy bank filled toward its goal and said what was left to go.
 - [x] Piggy banks and their moves (database version 19), in backups
 - [x] Add and take out; free and set-aside amounts on accounts
 
@@ -317,13 +317,13 @@ From walking every screen on the moto with full data.
 - [x] Transactions opens on this month; lighter heat map; less instruction text
 
 ### 2.2.3 Structure
-Checked on the moto with full data: Home fits one screen, Money shows the list on the first screen.
+Checked on the phone with full data: Home fits one screen, Money shows the list on the first screen.
 - [x] Home: balance, cards, today
 - [x] Money: links row, filters, list; Accounts, Budgets, Piggy banks and Insights as pages
 - [x] Profile and Settings without duplicates; Archived on Trackers
 
 ### 2.2.3 Fixed deposits
-Checked on the moto: ₹1,00,000 at 7% quarterly for a year grows to ₹1,07,185.90, as bank calculators give.
+Checked on the phone: quarterly compounding for a year matches what bank calculators give.
 - [x] A deposit is an account with its terms; database version 20
 - [x] Paid from an account by a transfer, or already there as its opening balance
 - [x] Worth today, earned and maturity value on its card, page and sheet
@@ -332,7 +332,7 @@ Checked on the moto: ₹1,00,000 at 7% quarterly for a year grows to ₹1,07,185
 - [x] Delete removes its transactions; backups keep the terms
 
 ### 2.2.4 Payees, price changes and attachments
-Checked on the moto: naming Apple on iCloud named its 22 past payments; Apple's page shows ₹750 this year and ₹1,650 in all.
+Checked on the phone: naming a recurring payment's payee named its past payments, and the payee's page totals them.
 - [x] Recurring payments have a payee; posted payments carry it; naming it later names the past
 - [x] Payee page: paid this year, month and in all, pinned; by category; their recurring payments
 - [x] People and businesses sorted by what you paid this year
@@ -340,3 +340,20 @@ Checked on the moto: naming Apple on iCloud named its 22 past payments; Apple's 
 - [x] Tracker cards say when they were last logged; Due today carries today's progress
 - [x] Attachments: photo, camera, PDF and link per transaction; files by hash; in backups; Undo keeps them
 - [ ] On the phone: the New price from field and attaching a photo, PDF and link (covered by tests; not yet seen on the device)
+
+### 2.2.5 Website, audit and first release
+Design to be revisited; the structure and live data are in place.
+- [x] Nav, hero with live GitHub stats, features, privacy, design, tech, developer, credits, FAQ, download, footer
+- [x] Download buttons link the latest release's APK and show its version
+- [x] Favicon light on dark tabs; light logo on the dark page
+- [x] Placeholders, preset terms and example wording removed from the app and README
+- [x] Template catalog, Home starter chips and the editor's template route removed; `templateId` kept only so old data round-trips
+- [x] Subscription wording replaced with recurring payment in every user-facing string and the export name
+- [x] Unused strings removed from every module
+- [x] Price and payee changes find posted payments by id range; party deletion matches shares exactly; single-row lookups
+- [x] Ledger reads conflated; Transactions filters and sorts off the main thread
+- [x] One `FinanceRequest` replaces seven open and opened pairs; dead budget and category hooks from Home removed
+- [x] `FinanceViewModel` tests: first account, payees by name, Undo with attachments, refused and overlapping saves
+- [x] Website: repeated privacy claims, swatches, slogans and hard-coded versions removed
+- [ ] On the phone: empty Trackers tab, Recurring editor titles, and a quick add, account card and SMS review from Home
+- [x] RELEASES.md: v2.2.5 as Eonslate's first release

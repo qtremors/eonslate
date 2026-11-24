@@ -10,8 +10,6 @@
     <string name="settings_pure_black_off">Dark theme only</string>
     <string name="settings_colors_wallpaper">Wallpaper</string>
     <string name="settings_section_accent">Accent</string>
-    <string name="settings_section_data">Data</string>
-    <string name="settings_backup">Backup and restore</string>
     <string name="preset_mono">Mono</string>
     <string name="preset_slate">Slate</string>
     <string name="preset_tide">Tide</string>
@@ -24,7 +22,6 @@
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_haptics">Haptics</string>
     <string name="settings_reduce_motion">Reduce motion</string>
-    <string name="settings_section_tracking">Tracking</string>
     <string name="settings_week_start">First day of the week</string>
     <string name="settings_week_auto">Auto</string>
     <string name="settings_week_monday">Mon</string>
@@ -39,13 +36,12 @@
     <string name="settings_currency_unknown">Not a currency this device knows</string>
     <string name="settings_currency_use_device">Use the device\'s</string>
     <string name="settings_currency_save">Save</string>
-    <string name="settings_section_about">About</string>
 
     <string name="about_title">About</string>
     <string name="about_app_name">Eonslate</string>
     <!-- %1$s is the version, such as 2.0.8. -->
     <string name="about_version">Version %1$s</string>
-    <string name="about_tagline">A private, offline tracker for almost anything.</string>
+    <string name="about_tagline">A private, offline slate for your money and anything else you track.</string>
     <string name="about_section_project">Project</string>
     <string name="about_developer">Developer</string>
     <string name="about_developer_name">Tremors</string>

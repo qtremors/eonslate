@@ -201,7 +201,7 @@ private fun LinkDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                     error = if (address.isNotBlank() && link == null) stringResource(R.string.attach_link_invalid) else null,
                     keyboardType = KeyboardType.Uri, maxLength = Attachments.LINK_LIMIT,
                 )
-                FormField(name, { name = it }, stringResource(R.string.attach_link_name), placeholder = stringResource(R.string.attach_link_name_hint), maxLength = Attachment.NAME_LIMIT)
+                FormField(name, { name = it }, stringResource(R.string.attach_link_name), maxLength = Attachment.NAME_LIMIT)
             }
         },
         confirmButton = {

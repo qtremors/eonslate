@@ -36,7 +36,6 @@ import dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress
 import dev.qtremors.eonslate.core.tracker.domain.insights.localDay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -193,15 +192,6 @@ class HomeViewModel @Inject constructor(
         val ids = trackers.value?.map { it.tracker.id } ?: return
         val order = moved(ids, tracker.id, by) ?: return
         viewModelScope.launch { repository.reorder(order) }
-    }
-
-    /** Saves a tracker built from a template after every other tracker. */
-    fun createFrom(build: (currency: String) -> Tracker) {
-        viewModelScope.launch {
-            val tracker = build(settings.tracking.first().currencyCode())
-            val now = clock.nowMillis()
-            repository.saveTracker(tracker.copy(position = repository.nextPosition(), createdAt = now, updatedAt = now))
-        }
     }
 
     /** Adds a copy of [tracker] named [name] after every other tracker, without its entries. */

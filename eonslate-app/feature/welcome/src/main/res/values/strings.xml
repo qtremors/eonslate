@@ -3,20 +3,13 @@
     <string name="welcome_title">Eonslate</string>
     <string name="welcome_subtitle">Your money and anything else, offline.</string>
     <string name="welcome_point_any_title">Money and trackers</string>
-    <string name="welcome_point_any">Spending, budgets, subscriptions, and trackers with your own fields.</string>
+    <string name="welcome_point_any">Accounts, budgets, recurring payments, and trackers with your own fields.</string>
     <string name="welcome_point_see_title">See your patterns</string>
     <string name="welcome_point_see">Streaks, totals, averages and charts.</string>
     <string name="welcome_point_private_title">Private by design</string>
     <string name="welcome_point_private">No accounts, ads or internet.</string>
     <string name="welcome_next">Get started</string>
     <string name="welcome_skip">Skip</string>
-    <string name="welcome_starters_title">Pick a few to start</string>
-    <string name="welcome_starters_subtitle">Change them anytime.</string>
-    <string name="welcome_start_empty">Start with nothing</string>
-    <plurals name="welcome_start_with">
-        <item quantity="one">Start with %d tracker</item>
-        <item quantity="other">Start with %d trackers</item>
-    </plurals>
     <string name="welcome_restore">Restore a backup</string>
     <string name="welcome_continue">Continue</string>
     <string name="welcome_back">Back</string>

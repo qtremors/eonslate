@@ -5,7 +5,6 @@
     <string name="home_empty_message">Create a tracker to start.</string>
     <string name="home_new_tracker">New tracker</string>
     <string name="home_empty_action">Create a tracker</string>
-    <string name="home_starters">Or start with one of these</string>
     <!-- Spoken by screen readers for the quick log button on a tracker. -->
     <string name="home_log">Log %1$s</string>
     <string name="home_just_now">just now</string>
@@ -46,10 +45,6 @@
     </plurals>
     <string name="home_section_later">Not today</string>
     <string name="home_section_as_needed">As needed</string>
-    <plurals name="home_entry_count">
-        <item quantity="one">%d entry</item>
-        <item quantity="other">%d entries</item>
-    </plurals>
     <string name="home_search">Search trackers</string>
     <string name="home_no_matches">No matches</string>
     <string name="home_finance">Finance</string>

@@ -1,5 +1,4 @@
 <resources>
-    <string name="finance_title">Finance</string>
     <string name="account_kind_bank">Bank</string>
     <string name="account_kind_card">Card</string>
     <string name="account_kind_wallet">Wallet</string>
@@ -15,7 +14,7 @@
     <string name="party_from">Received from</string>
     <string name="party_new">New person or business</string>
     <string name="finance_pending">Pending</string>
-    <string name="finance_pending_hint">Not cleared yet, like a card hold or a cheque</string>
+    <string name="finance_pending_hint">Not cleared yet; it still counts in balances</string>
     <string name="finance_more">Notes, lend or split, pending</string>
     <string name="finance_more_notes">Notes, pending</string>
     <string name="share_title">With people</string>
@@ -53,7 +52,7 @@
     <string name="people_person">Person</string>
     <string name="people_business">Business</string>
     <string name="floor_keep">Keep at least</string>
-    <string name="floor_keep_hint">Warns before a payment takes it lower. Below zero suits a card\'s limit.</string>
+    <string name="floor_keep_hint">Warns before a payment takes the balance lower. For a credit card, enter its limit as a negative amount.</string>
     <string name="floor_invalid">Enter an amount</string>
     <string name="floor_overall">Overall</string>
     <string name="floor_overall_title">Overall floor</string>
@@ -69,7 +68,6 @@
     <string name="piggy_new">New piggy bank</string>
     <string name="piggy_edit">Edit piggy bank</string>
     <string name="piggy_name">What it is for</string>
-    <string name="piggy_name_hint">A new phone</string>
     <string name="piggy_account">Kept in</string>
     <string name="piggy_goal">Goal</string>
     <string name="piggy_dated">Reach it by a day</string>
@@ -100,7 +98,6 @@
     <string name="deposit_new">New fixed deposit</string>
     <string name="deposit_edit">Edit deposit</string>
     <string name="deposit_empty">No fixed deposits</string>
-    <string name="deposit_name_hint">SBI FD</string>
     <string name="deposit_from">Paid from</string>
     <string name="deposit_from_none">Already there</string>
     <string name="deposit_amount">Amount</string>
@@ -142,10 +139,6 @@
         <item quantity="one">Matures tomorrow</item>
         <item quantity="other">Matures in %d days</item>
     </plurals>
-    <plurals name="deposit_years">
-        <item quantity="one">%d year</item>
-        <item quantity="other">%d years</item>
-    </plurals>
     <string name="people_paid_this_year">Paid this year</string>
     <string name="people_paid_year">%1$s this year</string>
     <string name="people_paid_month">%1$s this month</string>
@@ -164,10 +157,9 @@
     <string name="attach_pdf">PDF</string>
     <string name="attach_link">Link</string>
     <string name="attach_link_address">Address</string>
-    <string name="attach_link_hint">amazon.in/dp/…</string>
+    <string name="attach_link_hint">https://…</string>
     <string name="attach_link_invalid">Not a web address</string>
     <string name="attach_link_name">Name</string>
-    <string name="attach_link_name_hint">Product page</string>
     <string name="attach_link_add">Add</string>
     <string name="attach_photo_name">Photo</string>
     <string name="attach_pdf_name">PDF</string>
@@ -200,7 +192,6 @@
     </plurals>
     <string name="finance_accounts">Accounts</string>
     <string name="finance_activity">Money</string>
-    <string name="finance_empty">No accounts</string>
     <string name="finance_new_account">New account</string>
     <string name="finance_edit_account">Edit account</string>
     <string name="finance_new_transaction">New transaction</string>
@@ -213,7 +204,6 @@
     <string name="finance_opening">Opening balance</string>
     <string name="finance_amount">Amount</string>
     <string name="finance_date">Date</string>
-    <string name="finance_note">Note</string>
     <string name="finance_account">Account</string>
     <string name="finance_from">From</string>
     <string name="finance_to">To</string>
@@ -227,18 +217,11 @@
     <string name="finance_failed">Couldn’t save the change.</string>
     <string name="finance_empty_activity">No transactions</string>
     <string name="finance_transfer_accounts">%1$s → %2$s</string>
-    <string name="finance_transaction_title">%1$s · %2$s</string>
-    <string name="finance_plans">Plans</string>
     <string name="finance_budgets">Budgets</string>
-    <string name="finance_previous_month">Previous month</string>
-    <string name="finance_next_month">Next month</string>
     <string name="finance_monthly_limit">Monthly budget</string>
-    <string name="finance_budget_unset">%1$s spent · No budget</string>
-    <string name="finance_budget_progress">%1$s of %2$s spent</string>
-    <string name="finance_recurring">Recurring payments</string>
-    <string name="finance_no_recurring">No subscriptions</string>
-    <string name="finance_new_recurring">New subscription</string>
-    <string name="finance_remove_recurring">Remove subscription?</string>
+    <string name="finance_no_recurring">No recurring payments</string>
+    <string name="finance_new_recurring">New recurring payment</string>
+    <string name="finance_remove_recurring">Remove recurring payment?</string>
     <string name="finance_remove_recurring_message">Payments already posted stay in your history.</string>
     <string name="finance_weekly">Weekly</string>
     <string name="finance_monthly">Monthly</string>
@@ -269,7 +252,7 @@
     <string name="finance_remove_budget">Delete budget?</string>
     <string name="finance_remove_budget_message">Recorded expenses stay in your history.</string>
     <string name="finance_over_budget">Over budget</string>
-    <string name="finance_edit_recurring">Edit subscription</string>
+    <string name="finance_edit_recurring">Edit recurring payment</string>
     <string name="finance_record_due">Record payment</string>
     <string name="finance_payment_name">Name</string>
     <string name="finance_variable">Amount varies</string>
@@ -287,7 +270,6 @@
     <string name="finance_period_today">Today</string>
     <string name="finance_period_week">This week</string>
     <string name="finance_period_month">This month</string>
-    <string name="finance_totals">%1$s income · %2$s expenses</string>
     <string name="finance_csv_options">CSV options</string>
     <string name="finance_csv_export">Export transactions</string>
     <string name="finance_csv_export_matches">Export matching transactions</string>
@@ -313,10 +295,6 @@
     <string name="overview_net">Net</string>
     <string name="overview_by_category">By category</string>
     <string name="overview_uncategorized">Uncategorized</string>
-    <string name="overview_budgets">Budgets</string>
-    <string name="overview_due">Due this week</string>
-    <string name="overview_recent">Recent</string>
-    <string name="overview_all">All</string>
     <string name="finance_default_account">Main</string>
     <string name="finance_yesterday">Yesterday</string>
     <string name="finance_per_month">Recurring per month</string>
@@ -356,7 +334,7 @@
     <string name="finance_sort_newest">Newest</string>
     <string name="finance_sort_oldest">Oldest</string>
     <string name="finance_sort_largest">Largest</string>
-    <string name="finance_search_subscriptions">Search subscriptions</string>
+    <string name="finance_search_subscriptions">Search recurring payments</string>
     <string name="overview_add_income">+ Income</string>
     <string name="overview_add_expense">− Expense</string>
     <string name="finance_cancel">Cancel</string>
@@ -441,7 +419,6 @@
         <item quantity="one">%1$d transaction</item>
         <item quantity="other">%1$d transactions</item>
     </plurals>
-    <string name="finance_budget_spending">Spent this period</string>
     <string name="finance_export_budgets">Export budgets</string>
     <string name="finance_all_accounts">All accounts</string>
     <string name="finance_all_accounts_detail">Count this category in every %1$s account</string>
@@ -449,9 +426,6 @@
     <string name="finance_budget_left">%1$s left · %2$s</string>
     <string name="finance_budget_over_by">%1$s over · %2$s</string>
     <string name="overview_budget_used">%1$s</string>
-    <string name="overview_manage_budgets">Manage budgets</string>
-    <string name="overview_no_budgets">No budgets active</string>
-    <string name="overview_add_budget">Add budget</string>
     <plurals name="finance_every_hours">
         <item quantity="one">Every hour</item>
         <item quantity="other">Every %1$d hours</item>
@@ -472,16 +446,13 @@
         <item quantity="one">Every year</item>
         <item quantity="other">Every %1$d years</item>
     </plurals>
-    <string name="finance_kind_all_plans">All</string>
-    <string name="finance_expenses">Expenses</string>
-    <string name="finance_incomes">Income</string>
     <string name="finance_variable_badge">Varies</string>
     <string name="finance_variable_estimated">Estimated</string>
     <string name="finance_posts_daily">Added at most once a day</string>
     <string name="finance_pause">Pause</string>
     <string name="finance_resume">Resume</string>
     <string name="finance_edit">Edit</string>
-    <string name="finance_export_subscriptions">Export subscriptions</string>
+    <string name="finance_export_subscriptions">Export recurring payments</string>
     <string name="finance_auto_estimate">Add the estimate when due</string>
     <string name="finance_auto_estimate_on">Added automatically; edit it once the real amount is known.</string>
     <string name="finance_auto_estimate_off">Waits for you to enter the amount.</string>
@@ -493,7 +464,6 @@
     <string name="overview_range_half">6M</string>
     <string name="overview_range_year">1Y</string>
     <string name="overview_range_all">All</string>
-    <string name="overview_tap_bar">Tap a bar for its details.</string>
     <string name="overview_spent">Spent %1$s</string>
     <string name="overview_earned">In %1$s</string>
     <string name="overview_top">Most on %1$s, %2$s</string>
@@ -511,8 +481,6 @@
     <string name="overview_mode_spending">Spending</string>
     <string name="overview_mode_in_out">In vs out</string>
     <string name="overview_mode_net">Net</string>
-    <string name="overview_by_category_month">Spending this month</string>
-    <string name="overview_total">Total</string>
     <string name="finance_budget_total_limit">Total limit</string>
     <string name="finance_budget_total_spent">Total spent</string>
     <string name="finance_budget_total_left">Left</string>
