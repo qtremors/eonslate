@@ -16,6 +16,10 @@ enum class PaymentInterval {
     @SerialName("yearly") YEARLY,
 }
 
+/** A price that starts on a day, such as a subscription going from ₹119 to ₹149 in December. */
+@Serializable
+data class PriceStep(val minor: Long, @SerialName("from_epoch_day") val fromEpochDay: Long)
+
 @Serializable
 data class RecurringPayment(
     val id: String,
@@ -40,14 +44,22 @@ data class RecurringPayment(
     @SerialName("next_minute") val nextMinute: Int? = null,
     /** For a [variable] amount: post [minor] as an estimate when due, rather than waiting to be told. */
     @SerialName("auto_estimate") val autoEstimate: Boolean = false,
+    /** Who it is paid to or comes from, such as Apple for Apple Music; every payment it posts names them. */
+    @SerialName("party_id") val partyId: String? = null,
+    /** A new price coming: payments from its day on are charged it, and then it is the price. */
+    @SerialName("price_change") val priceChange: PriceStep? = null,
 ) {
+    /** What the payment on [epochDay] costs: the new price once its day has come, else the price. */
+    fun amountOn(epochDay: Long): Long = priceChange?.takeIf { epochDay >= it.fromEpochDay }?.minor ?: minor
+
     /** Fixed amounts post when due, and so do variable ones set to post their estimate. */
     val postsAutomatically: Boolean get() = !variable || autoEstimate
 
     val nextOccurrence: LocalDateTime?
         get() = nextEpochDay?.let { LocalDate.ofEpochDay(it).atStartOfDay().plusMinutes((nextMinute ?: 0).toLong()) }
 
-    internal val transactionIdPrefix: String get() = "recurring:${id.length}:$id:"
+    /** What every payment it posts has its id start with. */
+    val transactionIdPrefix: String get() = "recurring:${id.length}:$id:"
 
     fun isValid(accountIds: Set<String>): Boolean = id.isNotBlank() && accountId in accountIds &&
         minor > 0 && note.length <= Transaction.NOTE_LIMIT && anchorDay in 1..31 &&
@@ -55,12 +67,13 @@ data class RecurringPayment(
         (nextEpochDay == null || nextEpochDay in Transaction.DATES) &&
         (startEpochDay == null || startEpochDay in Transaction.DATES) && details.length <= DETAILS_LIMIT &&
         (color == null || color in 0..0xFFFFFF) &&
+        (priceChange == null || (priceChange.minor > 0 && priceChange.fromEpochDay in Transaction.DATES)) &&
         if (interval == PaymentInterval.HOURLY && nextEpochDay != null) nextMinute != null && nextMinute in 0..1439
         else nextMinute == null
 
     fun transactionOn(epochDay: Long, minute: Int? = null): Transaction {
         val occurrence = if (minute == null) "$epochDay" else "$epochDay:$minute"
-        return Transaction(transactionIdPrefix + occurrence, accountId, kind, minor, epochDay, note, category = category)
+        return Transaction(transactionIdPrefix + occurrence, accountId, kind, amountOn(epochDay), epochDay, note, category = category, partyId = partyId)
     }
 
     /** Keep the original day after a short month, for example Jan 31 → Feb 28 → Mar 31. */

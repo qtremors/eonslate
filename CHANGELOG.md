@@ -1,10 +1,23 @@
 # Eonslate Changelog
 
 > **Project:** Eonslate
-> **Version:** 2.2.3
-> **Last Updated:** 2026-11-23
+> **Version:** 2.2.4
+> **Last Updated:** 2026-11-24
 
 ---
+
+## [2.2.4] - 2026-11-24
+
+- **Who you pay, with totals**: a person or business's page now leads with what you paid them this year, this month and in all, and what you got from them; it stays in view above the conversation.
+- **By category**: the same page splits what you paid them by category, so everything you pay one payee adds up under them. Their recurring payments are listed there too.
+- **Recurring payments name who they are with**: set one on a recurring payment, and every payment it posts counts for them; naming them later names what it already posted.
+- **People and businesses lead with money**: the list puts who you paid most this year first, with the amount on each row. Paying a shop owner's own UPI is just a payment to them; who owes whom shows only when someone does.
+- **Price changes from a day**: change a fixed recurring amount and say from when. A day in the past re-prices what was already posted from then on; a day ahead keeps the old price until it comes, and the list and forecast show the change coming. Up or down, earlier payments keep their price.
+- **Attachments**: keep a receipt's photo (from your photos or the camera), a PDF, or a link such as the product's page with any transaction. Photos open full screen, PDFs in your PDF app, links in your browser; rows say how many each keeps.
+- Photos are made at most 2048 pixels on their longer side when attached, so receipts stay readable and backups stay small; PDFs up to 15 MB. Backups carry the files, and Undo after deleting a transaction brings its attachments back.
+- **Tracker cards are shorter**: "Logged yesterday" or "Logged 9 days ago" in place of the entry count and a full date.
+- **Trackers come first**: how today is going heads the Due today group, and the consistency summary moved below the trackers.
+- Database version 21.
 
 ## [2.2.3] - 2026-11-23
 

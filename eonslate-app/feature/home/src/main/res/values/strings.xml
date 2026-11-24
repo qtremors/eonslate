@@ -28,8 +28,16 @@
     <string name="archived_empty_title">Nothing archived</string>
     <string name="archived_empty_message">Archived trackers show up here.</string>
     <string name="home_no_entries">Nothing logged yet</string>
-    <!-- %1$s is the entry count, such as "12 entries"; %2$s is when the latest was, such as "2 hours ago". -->
-    <string name="home_entry_summary">%1$s, latest %2$s</string>
+    <!-- %1$s is when, such as "2 hours ago", "yesterday" or "14 Oct". -->
+    <string name="home_last_logged">Logged %1$s</string>
+    <string name="home_yesterday">yesterday</string>
+    <plurals name="home_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <!-- Beside "Due today": %1$d logged out of %2$d. -->
+    <string name="home_due_count">%1$d of %2$d logged</string>
+    <string name="home_due_all">All logged</string>
     <string name="home_section_due">Due today</string>
     <string name="home_overview">%1$d%% consistent across %2$d trackers</string>
     <plurals name="home_overview_title">

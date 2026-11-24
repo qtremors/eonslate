@@ -1,5 +1,12 @@
 package dev.qtremors.eonslate.feature.finance
 
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import dev.qtremors.eonslate.core.tracker.domain.finance.Account
+import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
+import dev.qtremors.eonslate.core.tracker.domain.finance.paidThisYear
+import dev.qtremors.eonslate.core.tracker.domain.finance.totalsWith
+import dev.qtremors.eonslate.core.tracker.domain.finance.PartyTotals
 import dev.qtremors.eonslate.core.tracker.domain.finance.Floors
 import dev.qtremors.eonslate.core.tracker.domain.finance.Categories
 import androidx.compose.runtime.CompositionLocalProvider
@@ -80,19 +87,33 @@ import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
 import java.math.BigInteger
 import java.time.LocalDate
 
-/** Each person or business's last day with you, and where you stand with them in each currency. */
-internal data class PersonLine(val party: Party, val last: Long?, val owed: Map<String, BigInteger>)
+/**
+ * Each person or business: their last day with you, what you paid them this year, and where you
+ * stand with them, each by currency.
+ */
+internal data class PersonLine(val party: Party, val last: Long?, val owed: Map<String, BigInteger>, val paid: Map<String, BigInteger> = emptyMap())
 
-internal fun Ledger.people(): List<PersonLine> {
+/** Everyone you deal with, who you paid most this year first, then the most recent. */
+internal fun Ledger.people(today: LocalDate = LocalDate.now()): List<PersonLine> {
     val owed = owed()
+    val paid = paidThisYear(today)
     val last = HashMap<String, Long>()
     for (t in transactions) {
         val ids = listOfNotNull(t.partyId) + t.shares.map { it.partyId }
         for (id in ids) if (t.epochDay > (last[id] ?: Long.MIN_VALUE)) last[id] = t.epochDay
     }
-    return parties.map { PersonLine(it, last[it.id], owed[it.id].orEmpty()) }
-        // Anyone with money between you first, then the most recent.
-        .sortedWith(compareByDescending<PersonLine> { it.owed.isNotEmpty() }.thenByDescending { it.last ?: Long.MIN_VALUE }.thenBy { it.party.key })
+    // Amounts in different currencies do not compare; the most paid in any one decides.
+    val most = { line: PersonLine -> line.paid.values.maxOrNull() ?: BigInteger.ZERO }
+    return parties.map { PersonLine(it, last[it.id], owed[it.id].orEmpty(), paid[it.id].orEmpty()) }
+        .sortedWith(compareByDescending(most).thenByDescending { it.last ?: Long.MIN_VALUE }.thenBy { it.party.key })
+}
+
+/** "₹2,328 this year", in each currency paid. */
+@Composable
+internal fun paidLine(paid: Map<String, BigInteger>): String? {
+    if (paid.isEmpty()) return null
+    val locale = LocalValueDisplay.current.numberLocale
+    return stringResource(R.string.people_paid_year, paid.entries.joinToString(" + ") { (currency, minor) -> ValueFormat.money(minor, currency, locale) })
 }
 
 /** Every transaction with [partyId]: paid to or by them, or shared with them. */
@@ -127,33 +148,6 @@ internal fun ShareKind.label(): String = stringResource(
     },
 )
 
-/** The people you deal with most, as a row atop Transactions; a tap opens their chat. */
-@Composable
-internal fun PeopleStrip(ledger: Ledger, onParty: (String) -> Unit, onAll: () -> Unit) {
-    // Only people: shops and services are not who you lend to or split with.
-    val people = remember(ledger) { ledger.people().filter { it.party.kind == PartyKind.PERSON }.take(STRIP_SIZE) }
-    if (people.isEmpty()) return
-    Column {
-        SectionHeader(stringResource(R.string.people_title)) {
-            TextButton(shapes = ButtonDefaults.shapes(), onClick = onAll) { Text(stringResource(R.string.people_all)) }
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(people, key = { it.party.id }) { line ->
-                val (owed, color) = owedText(line.owed)
-                Column(
-                    Modifier.width(80.dp).clickable(role = Role.Button) { onParty(line.party.id) }.padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    PartyBadge(line.party, 52.dp)
-                    Text(line.party.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-                    if (line.owed.isNotEmpty()) Text(owed, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 2, textAlign = TextAlign.Center)
-                }
-            }
-        }
-    }
-}
-
 /** Everyone you have paid or been paid by, who owes whom first; a tap opens their chat. */
 @Composable
 fun PeopleScreen(onBack: () -> Unit, onParty: (String) -> Unit, viewModel: FinanceViewModel = hiltViewModel()) {
@@ -184,7 +178,9 @@ fun PeopleScreen(onBack: () -> Unit, onParty: (String) -> Unit, viewModel: Finan
                 ConnectedItem(index, group.size) {
                     ConnectedRow(
                         title = line.party.name,
+                        // What you paid them leads; who owes whom only when someone does.
                         supporting = listOfNotNull(
+                            paidLine(line.paid),
                             owed.takeIf { line.owed.isNotEmpty() },
                             line.last?.let { dayLabel(it, LocalDate.now()) },
                         ).joinToString(" · ").ifBlank { null },
@@ -242,11 +238,30 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
         val owed = remember(data) { data.owed()[partyId].orEmpty() }
         val chat = remember(data) { data.withParty(partyId) }
         val accounts = remember(data) { data.accounts.associateBy { it.id } }
+        val totals = remember(data) { data.totalsWith(partyId, viewModel.today()) }
+        val plans = remember(data) { data.recurring.filter { it.partyId == partyId } }
         val listState = rememberLazyListState()
         // The newest payment is at the bottom, as in a chat.
         LaunchedEffect(chat.size) { if (chat.isNotEmpty()) listState.scrollToItem(chat.size + chat.map { it.epochDay }.distinct().size) }
-        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val direction = androidx.compose.ui.platform.LocalLayoutDirection.current
+        Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+        // What you paid them stays in view however far the chat scrolls.
+        if (totals.isNotEmpty()) PaidSummary(totals, Modifier.padding(start = padding.calculateStartPadding(direction), end = padding.calculateEndPadding(direction)))
+        LazyColumn(
+            Modifier.fillMaxWidth().weight(1f),
+            state = listState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = padding.calculateStartPadding(direction),
+                end = padding.calculateEndPadding(direction),
+                bottom = padding.calculateBottomPadding(),
+            ),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             item(key = "head") { PartyHead(party, owed, onNew = { creating = it }) }
+            totals.firstOrNull()?.takeIf { it.byCategory.size > 1 || it.byCategory.singleOrNull()?.first?.isNotEmpty() == true }?.let { main ->
+                item(key = "categories") { PaidByCategory(main) }
+            }
+            if (plans.isNotEmpty()) item(key = "plans") { PartyPlans(plans, accounts) }
             if (chat.isEmpty()) item(key = "none") {
                 Text(
                     stringResource(R.string.people_no_payments),
@@ -269,6 +284,7 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
                 items(list, key = { it.id }) { t -> Bubble(t, partyId, accounts[t.accountId]?.let { it.label to it.currency }) { editing = t } }
             }
         }
+        }
         val parties = remember(data) { data.partiesByUse() }
         val suggest = remember(data) { { kind: TransactionKind -> Categories.suggestions(data, kind) } }
         CompositionLocalProvider(LocalCategorySuggestions provides suggest, LocalCategoryStyles provides data.categories) {
@@ -277,13 +293,15 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
                 TransactionEditor(
                     transaction = t, accounts = usualAccounts(data), today = viewModel.today(), prefill = null,
                     busy = busy, failed = failed, onDismiss = { if (!busy) editing = null },
-                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details, partyName, pending, share ->
+                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details, partyName, pending, share, attached ->
                         viewModel.save(
                             t.copy(accountId = account, kind = kind, minor = amount, epochDay = day, note = note, destinationId = destination,
                                 category = category, smsKey = smsKey, details = details, pending = pending),
-                            partyName, share,
+                            partyName, share, attached,
                         ) { editing = null }
                     },
+                    initialAttachments = data.attachmentsByTransaction[t.id].orEmpty(),
+                    newId = viewModel::newId,
                     onDelete = { viewModel.delete(t) { editing = null } },
                     parties = parties,
                     floorCheck = { candidate -> Floors.breaches(data, candidate, t, floor) },
@@ -294,12 +312,13 @@ fun PartyScreen(partyId: String, onBack: () -> Unit, viewModel: FinanceViewModel
             TransactionEditor(
                 transaction = null, accounts = usualAccounts(data), today = viewModel.today(), prefill = null, initialKind = new.kind,
                 busy = busy, failed = failed, onDismiss = { if (!busy) creating = null },
-                onSave = { account, kind, amount, day, note, destination, category, smsKey, details, partyName, pending, share ->
+                onSave = { account, kind, amount, day, note, destination, category, smsKey, details, partyName, pending, share, attached ->
                     viewModel.save(
                         Transaction(viewModel.newId(), account, kind, amount, day, note, destination, category, smsKey, details, pending = pending),
-                        partyName, share,
+                        partyName, share, attached,
                     ) { creating = null }
                 },
+                newId = viewModel::newId,
                 onDelete = null,
                 parties = parties,
                 floorCheck = { candidate -> Floors.breaches(data, candidate, null, floor) },
@@ -335,7 +354,8 @@ private fun PartyHead(party: Party, owed: Map<String, BigInteger>, onNew: (NewWi
     Surface(color = MaterialTheme.colorScheme.surfaceBright, shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PartyBadge(party, 72.dp)
-            Text(text, style = MaterialTheme.typography.titleLarge, color = color)
+            // Who owes whom matters only once money is lent, borrowed or split with them.
+            if (owed.isNotEmpty()) Text(text, style = MaterialTheme.typography.titleLarge, color = color)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
                 FilledTonalButton(shapes = ButtonDefaults.shapes(), onClick = { onNew(NewWith(TransactionKind.EXPENSE)) }, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.people_you_paid))
@@ -356,6 +376,70 @@ private fun PartyHead(party: Party, owed: Map<String, BigInteger>, onNew: (NewWi
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.people_settle)) }
+            }
+        }
+    }
+}
+
+/** What you paid them this year, large, with this month, in all, and what came back from them. */
+@Composable
+private fun PaidSummary(totals: List<PartyTotals>, modifier: Modifier = Modifier) {
+    val locale = LocalValueDisplay.current.numberLocale
+    Surface(color = MaterialTheme.colorScheme.surfaceBright, shape = RoundedCornerShape(24.dp), modifier = modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(stringResource(R.string.people_paid_this_year), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            totals.forEach { t ->
+                Text(ValueFormat.money(t.paidThisYear, t.currency, locale), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    listOfNotNull(
+                        stringResource(R.string.people_paid_month, ValueFormat.money(t.paidThisMonth, t.currency, locale)),
+                        stringResource(R.string.people_paid_all, ValueFormat.money(t.paidInAll, t.currency, locale)),
+                        t.receivedInAll.takeIf { it.signum() > 0 }?.let { stringResource(R.string.people_got_all, ValueFormat.money(it, t.currency, locale)) },
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** What you paid them, by category, in all: Apple Music and iCloud for Apple. */
+@Composable
+private fun PaidByCategory(totals: PartyTotals) {
+    val locale = LocalValueDisplay.current.numberLocale
+    Column {
+        SectionHeader(stringResource(R.string.people_by_category))
+        ConnectedGroup {
+            totals.byCategory.forEachIndexed { index, (category, minor) ->
+                ConnectedItem(index, totals.byCategory.size) {
+                    ConnectedRow(
+                        title = category.ifEmpty { stringResource(R.string.people_no_category) },
+                        trailing = { Text(ValueFormat.money(minor, totals.currency, locale), style = MaterialTheme.typography.titleSmall) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The recurring payments with them, such as Apple Music and iCloud, and what each costs. */
+@Composable
+private fun PartyPlans(plans: List<RecurringPayment>, accounts: Map<String, Account>) {
+    val locale = LocalValueDisplay.current.numberLocale
+    Column {
+        SectionHeader(stringResource(R.string.people_recurring))
+        ConnectedGroup {
+            plans.forEachIndexed { index, plan ->
+                ConnectedItem(index, plans.size) {
+                    ConnectedRow(
+                        title = plan.note,
+                        supporting = listOfNotNull(plan.interval.label(), plan.category.ifBlank { null }).joinToString(" · "),
+                        trailing = {
+                            accounts[plan.accountId]?.let { Text(ValueFormat.money(plan.minor, it.currency, locale), style = MaterialTheme.typography.titleSmall) }
+                        },
+                    )
+                }
             }
         }
     }
@@ -412,4 +496,3 @@ private fun PartyEditor(party: Party, onDismiss: () -> Unit, onSave: (String, Pa
     }
 }
 
-private const val STRIP_SIZE = 12

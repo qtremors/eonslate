@@ -1,5 +1,7 @@
 package dev.qtremors.eonslate.core.tracker.data.db
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.AttachmentKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
 import dev.qtremors.eonslate.core.tracker.domain.finance.PartyKind
@@ -27,6 +29,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction as LedgerTr
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.Compounding
+import dev.qtremors.eonslate.core.tracker.domain.finance.PriceStep
 import dev.qtremors.eonslate.core.tracker.domain.finance.Deposit
 
 @Entity(tableName = "finance_accounts")
@@ -143,7 +146,7 @@ internal fun Party.toEntity() =
     foreignKeys = [
         ForeignKey(entity = AccountEntity::class, parentColumns = ["id"], childColumns = ["account_id"], onDelete = ForeignKey.RESTRICT),
     ],
-    indices = [Index("account_id"), Index("next_epoch_day")],
+    indices = [Index("account_id"), Index("next_epoch_day"), Index("party_id")],
 )
 data class RecurringEntity(
     @PrimaryKey val id: String,
@@ -164,12 +167,36 @@ data class RecurringEntity(
     val color: Int? = null,
     @ColumnInfo(name = "next_minute") val nextMinute: Int? = null,
     @ColumnInfo(name = "auto_estimate", defaultValue = "0") val autoEstimate: Boolean = false,
+    @ColumnInfo(name = "party_id") val partyId: String? = null,
+    @ColumnInfo(name = "price_change_minor") val priceChangeMinor: Long? = null,
+    @ColumnInfo(name = "price_change_from") val priceChangeFrom: Long? = null,
 ) {
     fun toDomain() = RecurringPayment(
         id, accountId, minor, note, PaymentInterval.valueOf(interval), anchorDay, nextEpochDay,
         TransactionKind.valueOf(kind), every, paused, variable, category, startEpochDay, details, icon, color, nextMinute, autoEstimate,
+        partyId, if (priceChangeMinor != null && priceChangeFrom != null) PriceStep(priceChangeMinor, priceChangeFrom) else null,
     )
 }
+
+@Entity(
+    tableName = "finance_attachments",
+    foreignKeys = [
+        ForeignKey(entity = TransactionEntity::class, parentColumns = ["id"], childColumns = ["transaction_id"], onDelete = ForeignKey.CASCADE),
+    ],
+    indices = [Index("transaction_id")],
+)
+data class AttachmentEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "transaction_id") val transactionId: String,
+    val kind: String,
+    val target: String,
+    @ColumnInfo(defaultValue = "''") val name: String = "",
+    @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long = 0,
+) {
+    fun toDomain(): Attachment? = AttachmentKind.fromKey(kind)?.let { Attachment(id, transactionId, it, target, name, createdAt) }
+}
+
+internal fun Attachment.toEntity() = AttachmentEntity(id, transactionId, kind.storageKey, target, name, createdAt)
 
 @Entity(
     tableName = "finance_budgets",
@@ -217,7 +244,7 @@ internal fun Account.toEntity() = AccountEntity(
 internal fun RecurringPayment.toEntity() =
     RecurringEntity(
         id, accountId, minor, note, interval.name, anchorDay, nextEpochDay, kind.name, every, paused, variable, category,
-        startEpochDay, details, icon, color, nextMinute, autoEstimate,
+        startEpochDay, details, icon, color, nextMinute, autoEstimate, partyId, priceChange?.minor, priceChange?.fromEpochDay,
     )
 
 internal fun CategoryBudget.toEntity() =
@@ -319,6 +346,14 @@ interface FinanceDao {
 
     @Query("UPDATE finance_recurring SET next_epoch_day = :nextDay, next_minute = :minute WHERE id = :id")
     suspend fun advance(id: String, nextDay: Long?, minute: Int?)
+
+    /** A price change whose day has come becomes the price. */
+    @Query("UPDATE finance_recurring SET minor = :minor, price_change_minor = NULL, price_change_from = NULL WHERE id = :id")
+    suspend fun settlePrice(id: String, minor: Long)
+
+    /** Charges [minor] for what a recurring payment posted on or after [fromDay]. */
+    @Query("UPDATE finance_transactions SET minor = :minor WHERE substr(id, 1, length(:prefix)) = :prefix AND epoch_day >= :fromDay")
+    suspend fun repricePosted(prefix: String, fromDay: Long, minor: Long)
 
     @Query("DELETE FROM finance_recurring WHERE id = :id")
     suspend fun deleteRecurring(id: String)
@@ -423,6 +458,31 @@ interface FinanceDao {
 
     @Query("UPDATE finance_transactions SET party_id = NULL WHERE party_id = :id")
     suspend fun forgetParty(id: String)
+
+    @Query("UPDATE finance_recurring SET party_id = NULL WHERE party_id = :id")
+    suspend fun forgetRecurringParty(id: String)
+
+    @Query("SELECT * FROM finance_attachments ORDER BY created_at, id")
+    suspend fun attachments(): List<AttachmentEntity>
+
+    @Query("DELETE FROM finance_attachments WHERE transaction_id = :transactionId")
+    suspend fun clearAttachmentsOf(transactionId: String)
+
+    @Query("DELETE FROM finance_attachments")
+    suspend fun clearAttachments()
+
+    @Insert
+    suspend fun insertAttachments(attachments: List<AttachmentEntity>)
+
+    @Query("SELECT COUNT(*) FROM finance_transactions WHERE id = :id")
+    suspend fun transactionExists(id: String): Int
+
+    /** Gives what a recurring payment already posted its payee, where none or [old] was named. */
+    @Query("""
+        UPDATE finance_transactions SET party_id = :party
+        WHERE substr(id, 1, length(:prefix)) = :prefix AND (party_id IS NULL OR party_id IS :old)
+    """)
+    suspend fun namePosted(prefix: String, party: String?, old: String?)
 
     @Query("DELETE FROM finance_parties WHERE id = :id")
     suspend fun deleteParty(id: String)

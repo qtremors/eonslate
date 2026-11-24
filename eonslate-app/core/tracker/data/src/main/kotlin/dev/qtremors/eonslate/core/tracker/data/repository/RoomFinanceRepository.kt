@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachments
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
+import dev.qtremors.eonslate.core.tracker.domain.finance.PriceStep
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
@@ -28,7 +31,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
 
     override fun observeLedger() = database.invalidationTracker.createFlow(
         "finance_accounts", "finance_transactions", "finance_recurring", "finance_budgets", "finance_categories", "finance_parties",
-        "finance_piggies", "finance_piggy_moves",
+        "finance_piggies", "finance_piggy_moves", "finance_attachments",
     ).map { database.withTransaction { readLedger() } }
 
     private suspend fun readLedger(): Ledger {
@@ -46,6 +49,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
             parties = dao.parties().map { it.toDomain() },
             piggyBanks = dao.piggies().map { it.toDomain() },
             piggyMoves = dao.piggyMoves().map { it.toDomain() },
+            attachments = dao.attachments().mapNotNull { it.toDomain() },
         )
     }
 
@@ -80,6 +84,7 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         // Someone who still has money lent, borrowed or split with them stays, or those would lose their side.
         if (dao.sharesNaming(id) > 0) return@withTransaction false
         dao.forgetParty(id)
+        dao.forgetRecurringParty(id)
         dao.deleteParty(id)
         true
     }
@@ -136,6 +141,19 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
 
     override suspend fun deleteTransaction(id: String) = dao.deleteTransaction(id)
 
+    override suspend fun saveAttachments(transactionId: String, attachments: List<Attachment>): Boolean = database.withTransaction {
+        if (dao.transactionExists(transactionId) == 0 || attachments.size > Attachments.PER_TRANSACTION) return@withTransaction false
+        if (attachments.any { !it.isValid() || it.transactionId != transactionId }) return@withTransaction false
+        if (attachments.map { it.id }.toSet().size != attachments.size) return@withTransaction false
+        // An attachment already kept by another transaction cannot move here by its id.
+        val elsewhere = dao.attachments().filter { it.transactionId != transactionId }.mapTo(HashSet()) { it.id }
+        if (attachments.any { it.id in elsewhere }) return@withTransaction false
+        dao.clearAttachmentsOf(transactionId)
+        val now = System.currentTimeMillis()
+        dao.insertAttachments(attachments.mapIndexed { index, a -> a.copy(createdAt = a.createdAt.takeIf { it > 0 } ?: (now + index)).toEntity() })
+        true
+    }
+
     override suspend fun deleteTransactions(ids: Collection<String>) = database.withTransaction {
         ids.distinct().chunked(500).forEach { dao.deleteTransactions(it) }
     }
@@ -164,17 +182,39 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
         val account = dao.account(payment.accountId) ?: return@withTransaction false
         val nextDay = payment.nextEpochDay ?: return@withTransaction false
         if (!payment.isValid(setOf(account.id))) return@withTransaction false
+        if (payment.partyId?.let { dao.party(it) == null } == true) return@withTransaction false
         dao.insertRecurring(listOf(payment.toEntity()))
         if (!payment.paused && payment.postsAutomatically && nextDay <= throughDay) postAll(throughDay, throughMinute)
         true
     }
 
-    override suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long, throughMinute: Int): Boolean =
+    override suspend fun updateRecurring(
+        expected: RecurringPayment,
+        payment: RecurringPayment,
+        throughDay: Long,
+        throughMinute: Int,
+        priceFrom: Long?,
+    ): Boolean =
         database.withTransaction {
             if (expected.id != payment.id || dao.recurring(expected.id)?.toDomain() != expected) return@withTransaction false
             val account = dao.account(payment.accountId) ?: return@withTransaction false
-            if (!payment.isValid(setOf(account.id))) return@withTransaction false
-            dao.upsert(payment.toEntity())
+            if (priceFrom != null && priceFrom !in Transaction.DATES) return@withTransaction false
+            // A new price from a day: payments already posted from then on are charged it; one still to
+            // come waits for its day. Amounts told one by one, as for a varying bill, stay as told.
+            val repriced = priceFrom != null && payment.minor != expected.minor && !payment.variable
+            val nextDue = expected.nextEpochDay ?: Long.MAX_VALUE
+            val saved = when {
+                !repriced -> payment
+                priceFrom!! >= nextDue -> payment.copy(minor = expected.minor, priceChange = PriceStep(payment.minor, priceFrom))
+                else -> payment.copy(priceChange = null)
+            }
+            if (!saved.isValid(setOf(account.id))) return@withTransaction false
+            if (saved.partyId?.let { dao.party(it) == null } == true) return@withTransaction false
+            dao.upsert(saved.toEntity())
+            if (repriced && priceFrom!! < nextDue) dao.repricePosted(saved.transactionIdPrefix, priceFrom, saved.minor)
+            val payment = saved
+            // Naming who it is with names what it already posted, so their totals count it from the start.
+            if (payment.partyId != expected.partyId) dao.namePosted(payment.transactionIdPrefix, payment.partyId, expected.partyId)
             val nextDay = payment.nextEpochDay
             if (!payment.paused && payment.postsAutomatically && nextDay != null && nextDay <= throughDay) postAll(throughDay, throughMinute)
             true
@@ -277,6 +317,9 @@ class RoomFinanceRepository @Inject constructor(private val database: TrackerDat
 
     private suspend fun advance(payment: RecurringPayment, next: LocalDateTime?) {
         val minute = next?.takeIf { payment.interval == PaymentInterval.HOURLY }?.let { it.hour * 60 + it.minute }
-        dao.advance(payment.id, next?.toLocalDate()?.toEpochDay(), minute)
+        val nextDay = next?.toLocalDate()?.toEpochDay()
+        dao.advance(payment.id, nextDay, minute)
+        // Once every payment still to come is on or after a price change's day, the new price is the price.
+        payment.priceChange?.let { step -> if (nextDay == null || nextDay >= step.fromEpochDay) dao.settlePrice(payment.id, step.minor) }
     }
 }

@@ -186,6 +186,9 @@ private fun PlanRow(payment: RecurringPayment, account: Account, today: LocalDat
             else -> null
         },
         if (payment.interval == PaymentInterval.HOURLY) stringResource(R.string.finance_posts_daily) else null,
+        payment.priceChange?.let {
+            stringResource(R.string.recurring_price_coming, ValueFormat.money(it.minor, account.currency, LocalValueDisplay.current.numberLocale), displayDate(it.fromEpochDay))
+        },
         payment.details.lineSequence().firstOrNull { it.isNotBlank() }?.trim(),
     ).joinToString(" · ")
     Box {

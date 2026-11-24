@@ -132,7 +132,12 @@ data class Ledger(
     val parties: List<Party> = emptyList(),
     @SerialName("piggy_banks") val piggyBanks: List<PiggyBank> = emptyList(),
     @SerialName("piggy_moves") val piggyMoves: List<PiggyMove> = emptyList(),
+    /** Receipts and links kept with transactions. */
+    val attachments: List<Attachment> = emptyList(),
 ) {
+    /** Each transaction's attachments, oldest first. */
+    val attachmentsByTransaction: Map<String, List<Attachment>> get() = attachments.groupBy { it.transactionId }
+
     /** Each party by id, for names on rows. */
     val partiesById: Map<String, Party> get() = parties.associateBy { it.id }
 
@@ -275,10 +280,27 @@ interface FinanceRepository {
      */
     suspend fun deleteParty(id: String): Boolean
     suspend fun deleteTransaction(id: String)
+
+    /**
+     * Makes [attachments] what [transactionId] keeps, adding, keeping and removing in one go;
+     * false, and nothing changed, when one is not valid or there are too many.
+     */
+    suspend fun saveAttachments(transactionId: String, attachments: List<Attachment>): Boolean
     /** Deletes all of [ids] in one database transaction, or none of them. */
     suspend fun deleteTransactions(ids: Collection<String>)
     suspend fun addRecurring(payment: RecurringPayment, throughDay: Long, throughMinute: Int = 1439): Boolean
-    suspend fun updateRecurring(expected: RecurringPayment, payment: RecurringPayment, throughDay: Long, throughMinute: Int = 1439): Boolean
+    /**
+     * Saves an edit. With [priceFrom], a new amount is a price change from that day: payments it
+     * already posted from then on are charged the new price, and one still to come waits for its
+     * day. Without it, a new amount applies from the next payment.
+     */
+    suspend fun updateRecurring(
+        expected: RecurringPayment,
+        payment: RecurringPayment,
+        throughDay: Long,
+        throughMinute: Int = 1439,
+        priceFrom: Long? = null,
+    ): Boolean
     suspend fun deleteRecurring(id: String)
     suspend fun recordRecurring(expected: RecurringPayment, minor: Long, day: Long): Boolean
     suspend fun postDue(throughDay: Long, throughMinute: Int = 1439)

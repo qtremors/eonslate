@@ -81,4 +81,48 @@ class PartiesTest {
         assertTrue(problems.toString(), problems.any { "missing party" in it })
         assertTrue(problems.toString(), problems.any { "two parties" in it })
     }
+
+    @Test
+    fun whatYouPayACompanyAddsUpAcrossItsCategories() {
+        val apple = Party("apple", "Apple", PartyKind.BUSINESS)
+        val today = java.time.LocalDate.of(2026, 11, 24)
+        val day = { m: Int, d: Int -> java.time.LocalDate.of(2026, m, d).toEpochDay() }
+        val usd = Account("usd", "Wise", "USD")
+        val ledger = Ledger(
+            accounts = listOf(bank, usd),
+            parties = listOf(apple, rahul),
+            transactions = listOf(
+                Transaction("m1", "bank", TransactionKind.EXPENSE, 11_900, day(11, 3), "Apple Music", category = "Music", partyId = "apple"),
+                Transaction("m2", "bank", TransactionKind.EXPENSE, 11_900, day(10, 3), "Apple Music", category = "music", partyId = "apple"),
+                Transaction("i1", "bank", TransactionKind.EXPENSE, 7_500, day(11, 10), "iCloud", category = "Cloud", partyId = "apple"),
+                Transaction("old", "bank", TransactionKind.EXPENSE, 50_000, java.time.LocalDate.of(2025, 6, 1).toEpochDay(), partyId = "apple"),
+                Transaction("refund", "bank", TransactionKind.INCOME, 2_000, day(11, 12), partyId = "apple"),
+                Transaction("dollars", "usd", TransactionKind.EXPENSE, 999, day(11, 1), partyId = "apple"),
+                Transaction("chai", "bank", TransactionKind.EXPENSE, 2_000, day(11, 20), partyId = "p1"),
+            ),
+        )
+        val (inr, dollars) = ledger.totalsWith("apple", today)
+        assertEquals("INR", inr.currency)
+        assertEquals(java.math.BigInteger.valueOf(19_400), inr.paidThisMonth)
+        assertEquals(java.math.BigInteger.valueOf(31_300), inr.paidThisYear)
+        assertEquals(java.math.BigInteger.valueOf(81_300), inr.paidInAll)
+        assertEquals(java.math.BigInteger.valueOf(2_000), inr.receivedInAll)
+        // Music in either case is one category; money paid with none is its own line.
+        assertEquals(
+            listOf("" to 50_000L, "Music" to 23_800L, "Cloud" to 7_500L),
+            inr.byCategory.map { it.first to it.second.toLong() },
+        )
+        assertEquals("USD", dollars.currency)
+        // A person paid for a purchase counts like a shop.
+        assertEquals(java.math.BigInteger.valueOf(2_000), ledger.paidThisYear(today)["p1"]?.get("INR"))
+        assertEquals(java.math.BigInteger.valueOf(31_300), ledger.paidThisYear(today)["apple"]?.get("INR"))
+    }
+
+    @Test
+    fun aRecurringPaymentPostsWithItsPayee() {
+        val music = RecurringPayment("r", "bank", 11_900, "Apple Music", PaymentInterval.MONTHLY, 3, 20_000, partyId = "apple")
+        assertEquals("apple", music.transactionOn(20_000).partyId)
+        val snapshot = BackupSnapshot(schema = 21, createdAt = 0, appVersion = "t", accounts = listOf(bank), recurring = listOf(music))
+        assertTrue(BackupCheck.problems(snapshot, currentSchema = 21).any { "recurring r names a missing party" in it })
+    }
 }

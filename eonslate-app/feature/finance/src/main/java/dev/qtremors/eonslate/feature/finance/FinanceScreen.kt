@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
 import androidx.compose.material.icons.rounded.LockClock
 import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
 import dev.qtremors.eonslate.core.tracker.domain.finance.MoneySummary
@@ -536,7 +537,7 @@ fun FinanceScreen(
                     busy = busy,
                     failed = failed,
                     onDismiss = { if (!busy) finishReview() },
-                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details, party, pending, share ->
+                    onSave = { account, kind, amount, day, note, destination, category, smsKey, details, party, pending, share, attached ->
                         viewModel.save(
                             Transaction(
                                 transaction?.id ?: viewModel.newId(), account, kind, amount, day, note,
@@ -544,10 +545,13 @@ fun FinanceScreen(
                             ),
                             party,
                             share,
+                            attached,
                             finishReview,
                         )
                     },
                     parties = remember(data) { data.partiesByUse() },
+                    initialAttachments = transaction?.let { data.attachmentsByTransaction[it.id] }.orEmpty(),
+                    newId = viewModel::newId,
                     floorCheck = { candidate -> Floors.breaches(data, candidate, transaction, overallFloor) },
                     onDelete = transaction?.let { { viewModel.delete(it, done) } },
                 )
@@ -559,11 +563,15 @@ fun FinanceScreen(
                 val original = remember { existing }
                 RecurringEditor(
                     original, spendingAccounts(data), viewModel.today(), busy, failed, dismiss,
-                    onSave = { viewModel.schedule(original, it.copy(id = original?.id ?: viewModel.newId()), done) },
+                    onSave = { payment, party, priceFrom ->
+                        viewModel.schedule(original, payment.copy(id = original?.id ?: viewModel.newId()), party, priceFrom, done)
+                    },
                     onDelete = existing?.let { { viewModel.delete(it, done) } },
                     onRecord = existing?.takeIf { !it.paused && it.nextEpochDay != null }?.let {
                         { open(Editor.DUE, it.id) }
                     },
+                    parties = remember(data) { data.partiesByUse() },
+                    initialParty = original?.partyId?.let { id -> data.parties.firstOrNull { it.id == id }?.name }.orEmpty(),
                 )
             }
         }
@@ -754,6 +762,7 @@ private fun LedgerList(
     val setAside = remember(ledger) { PiggyBanks.setAside(ledger) }
     val accounts = remember(ledger.accounts) { ledger.accounts.associateBy { it.id } }
     val parties = remember(ledger.parties) { ledger.partiesById }
+    val attachedCount = remember(ledger.attachments) { ledger.attachments.groupingBy { it.transactionId }.eachCount() }
     // The account most payments use goes unsaid on rows; only the others are named.
     val usual = remember(ledger) { usualAccounts(ledger).firstOrNull()?.id.takeIf { ledger.accounts.size > 1 } }
     val budgetHealth = remember(ledger, today) { ledger.budgetHealth(today) }
@@ -982,7 +991,10 @@ private fun LedgerList(
             itemsIndexed(day, key = { _, transaction -> "transaction-" + transaction.id }) { index, transaction ->
                 val source = accounts.getValue(transaction.accountId)
                 // Out of date order, each row says its own day.
-                val (title, details) = rowText(transaction, parties, accounts, usual, if (byDate) null else dayLabel(transaction.epochDay, today))
+                val (title, details) = rowText(
+                    transaction, parties, accounts, usual, if (byDate) null else dayLabel(transaction.epochDay, today),
+                    attached = attachedCount[transaction.id] ?: 0,
+                )
                 val picked = transaction.id in selected
                 val toggle = { selected = if (picked) selected - transaction.id else selected + transaction.id }
                 ConnectedItem(index, day.size) {
@@ -1478,10 +1490,13 @@ internal fun TransactionEditor(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?, String, String, Boolean, ShareDraft) -> Unit,
+    onSave: (String, TransactionKind, Long, Long, String, String?, String, String?, String, String, Boolean, ShareDraft, List<Attachment>) -> Unit,
     onDelete: (() -> Unit)?,
     /** People and businesses to pick from, the most recently paid first. */
     parties: List<Party> = emptyList(),
+    /** What it already keeps: receipts and links. */
+    initialAttachments: List<Attachment> = emptyList(),
+    newId: () -> String = { java.util.UUID.randomUUID().toString() },
     /** For a new payment from someone's chat: them, how it is shared, and an amount to settle up. */
     initialParty: String = "",
     initialShare: ShareDraft? = null,
@@ -1534,7 +1549,8 @@ internal fun TransactionEditor(
     val transfer = kind == TransactionKind.TRANSFER
     val title = stringResource(if (transaction == null) R.string.finance_new_transaction else R.string.finance_edit_transaction)
 
-    val entered = listOf<Any?>(kind, accountId, destinationId, amount, date, note, details, category, party, pending, share)
+    var attachments by remember { mutableStateOf(initialAttachments) }
+    val entered = listOf<Any?>(kind, accountId, destinationId, amount, date, note, details, category, party, pending, share, attachments)
     // A share that does not suit the kind goes back to all yours.
     val shown = if (share.mode.fits(kind)) share else ShareDraft()
     val shareReady = !(shown.needsParty && party.isBlank()) && !(shown.mode == ShareMode.SPLIT && shown.splitWith.isEmpty())
@@ -1582,6 +1598,8 @@ internal fun TransactionEditor(
         if (!transfer) {
             CategoryPicker(category, { category = it }, kind, busy)
         }
+        // A receipt or the product's page, kept with it; always in reach, since it is often why you open it.
+        AttachmentsSection(attachments, { attachments = it }, !busy, newId)
         // Notes, people and pending wait behind More, so a plain payment stays short. They open on
         // their own when one is already set.
         var more by rememberSaveable { mutableStateOf(details.isNotBlank() || pending || shown.mode != ShareMode.MINE) }
@@ -1638,7 +1656,7 @@ internal fun TransactionEditor(
                     onSave(
                         account.id, kind, parsed, day, note.trim(), destination?.id?.takeIf { transfer },
                         if (transfer) "" else category.trim(), smsKey, details.trim(),
-                        if (transfer) "" else party.trim(), pending, if (transfer) ShareDraft() else shown,
+                        if (transfer) "" else party.trim(), pending, if (transfer) ShareDraft() else shown, attachments,
                     )
                 }
             },

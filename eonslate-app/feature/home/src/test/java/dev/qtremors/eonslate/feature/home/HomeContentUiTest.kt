@@ -121,7 +121,7 @@ class HomeContentUiTest {
             )
         )
         compose.onNodeWithText("Nothing logged yet").assertIsDisplayed()
-        compose.onNodeWithText("3 entries, latest just now").assertIsDisplayed()
+        compose.onNodeWithText("Logged just now").assertIsDisplayed()
         compose.onNodeWithText("Run").performClick()
         assertEquals(listOf("r"), opened)
     }
@@ -158,6 +158,19 @@ class HomeContentUiTest {
         todayProgress = dev.qtremors.eonslate.core.tracker.domain.insights.TodayProgress(1, 2)
         show(listOf(TrackerSummary(stretch, 1, now), TrackerSummary(run, 0, null)))
         compose.onNodeWithContentDescription("1 of 2 logged today").assertIsDisplayed()
+    }
+
+    @Test
+    fun slatesSayWhenTheyWereLastLoggedOnOneShortLine() {
+        val day = 86_400_000L
+        show(
+            listOf(
+                TrackerSummary(stretch, 2, now - day),
+                TrackerSummary(run, 9, now - 9 * day),
+            )
+        )
+        compose.onNodeWithText("Logged yesterday").assertIsDisplayed()
+        compose.onNodeWithText("Logged 9 days ago").assertIsDisplayed()
     }
 
     @Test

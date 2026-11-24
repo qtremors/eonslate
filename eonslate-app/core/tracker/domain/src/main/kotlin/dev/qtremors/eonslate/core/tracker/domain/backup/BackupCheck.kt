@@ -49,12 +49,16 @@ object BackupCheck {
         snapshot.parties.filterNot { it.isValid() }.forEach { add("invalid party ${it.id}") }
         val parties = snapshot.parties.mapTo(HashSet()) { it.id }
         snapshot.transactions.filter { it.partyId != null && it.partyId !in parties }.forEach { add("transaction ${it.id} names a missing party") }
+        snapshot.recurring.filter { it.partyId != null && it.partyId !in parties }.forEach { add("recurring ${it.id} names a missing party") }
         snapshot.transactions.filter { t -> t.shares.any { it.partyId !in parties } }.forEach { add("transaction ${it.id} shares with a missing party") }
         duplicates(snapshot.piggyBanks.map { it.id }).forEach { add("piggy bank $it appears twice") }
         snapshot.piggyBanks.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid piggy bank ${it.id}") }
         val piggies = snapshot.piggyBanks.mapTo(HashSet()) { it.id }
         snapshot.piggyMoves.filter { !it.isValid() || it.piggyId !in piggies }.forEach { add("invalid piggy bank move ${it.id}") }
         snapshot.recurring.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid recurring payment ${it.id}") }
+        duplicates(snapshot.attachments.map { it.id }).forEach { add("attachment $it appears twice") }
+        val transactionIds = snapshot.transactions.mapTo(HashSet()) { it.id }
+        snapshot.attachments.filter { !it.isValid() || it.transactionId !in transactionIds }.forEach { add("invalid attachment ${it.id}") }
         snapshot.budgets.filterNot { it.isValid(accounts.keys) }.forEach { add("invalid budget ${it.id}") }
         snapshot.categories.filterNot { it.isValid() }.forEach { add("invalid category ${it.id}") }
 

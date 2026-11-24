@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.ui.theme.LocalValueDisplay
+import dev.qtremors.eonslate.core.tracker.ui.ValueFormat
+import dev.qtremors.eonslate.core.tracker.domain.finance.Party
 import dev.qtremors.eonslate.core.ui.components.rememberFocusOnOpen
 import dev.qtremors.eonslate.core.tracker.ui.displayDate
 import androidx.compose.foundation.layout.Arrangement
@@ -54,10 +57,17 @@ internal fun RecurringEditor(
     busy: Boolean,
     failed: Boolean,
     onDismiss: () -> Unit,
-    onSave: (RecurringPayment) -> Unit,
+    /** The payment, who it is with by name (blank for nobody), and the day a new price starts. */
+    onSave: (RecurringPayment, String, Long?) -> Unit,
     onDelete: (() -> Unit)?,
     onRecord: (() -> Unit)?,
+    /** Payees to pick from, the most used first. */
+    parties: List<Party> = emptyList(),
+    initialParty: String = "",
 ) {
+    var party by rememberSaveable { mutableStateOf(initialParty) }
+    // When a changed price starts: the next payment unless said otherwise.
+    var priceFrom by rememberSaveable { mutableStateOf((existing?.nextEpochDay?.let(LocalDate::ofEpochDay) ?: today).toString()) }
     var accountId by rememberSaveable { mutableStateOf(existing?.accountId ?: accounts.first().id) }
     val account = accounts.firstOrNull { it.id == accountId } ?: accounts.first()
     var amount by rememberSaveable { mutableStateOf(existing?.let { moneyInput(it.minor, account.currency) }.orEmpty()) }
@@ -82,7 +92,7 @@ internal fun RecurringEditor(
     val title = stringResource(if (existing == null) R.string.finance_new_recurring else R.string.finance_edit_recurring)
     val suggest = LocalCategorySuggestions.current
 
-    val entered = listOf<Any?>(accountId, amount, note, category, interval, every, kind, paused, variable, autoEstimate, color, date, started, details, icon, minute)
+    val entered = listOf<Any?>(accountId, amount, note, category, interval, every, kind, paused, variable, autoEstimate, color, date, started, details, icon, minute, party)
     val opened = remember { entered }
     EditorSheet(title, busy, failed, onDismiss, dirty = entered != opened) {
         ConnectedChoices(listOf(TransactionKind.EXPENSE, TransactionKind.INCOME), kind, { it.label() }, { if (!busy) kind = it })
@@ -100,7 +110,31 @@ internal fun RecurringEditor(
         }, busy = busy)
         ColorChoice(color, icon, note, busy) { color = it }
         AmountField(amount, { amount = it }, account.currency, busy, focus = existing == null)
+        // A fixed price that changes says from when: the payments before it keep the old price.
+        val repriced = existing != null && !variable && parsed != null && parsed != existing.minor && existing.accountId == account.id
+        val priceDay = parseDay(priceFrom)
+        if (repriced) {
+            DateField(priceFrom, { priceFrom = it }, stringResource(R.string.recurring_price_from_label), busy)
+            val locale = LocalValueDisplay.current.numberLocale
+            val old = ValueFormat.money(existing!!.minor, account.currency, locale)
+            val new = ValueFormat.money(parsed!!, account.currency, locale)
+            if (priceDay != null) Text(
+                if (priceDay < (existing.nextEpochDay ?: Long.MAX_VALUE)) stringResource(R.string.recurring_price_past, displayDate(priceDay), new)
+                else stringResource(R.string.recurring_price_future, old, new, displayDate(priceDay)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else existing?.priceChange?.takeIf { parsed == existing.minor }?.let { step ->
+            val locale = LocalValueDisplay.current.numberLocale
+            Text(
+                stringResource(R.string.recurring_price_coming, ValueFormat.money(step.minor, account.currency, locale), displayDate(step.fromEpochDay)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         FormField(note, { note = it }, stringResource(R.string.finance_payment_name), maxLength = Transaction.NOTE_LIMIT, enabled = !busy)
+        // Who it goes to, such as Apple for Apple Music, so their page counts every payment.
+        PartyField(party, { party = it }, kind, parties, !busy)
         CategoryPicker(category, { category = it }, kind, busy)
         PeriodFields(interval, { interval = it }, every, { every = it }, busy, allowHourly = true)
         DateField(
@@ -144,7 +178,7 @@ internal fun RecurringEditor(
             }
         }
         SaveRow(
-            canSave = !busy && parsed != null && day != null && repeat != null && note.isNotBlank(),
+            canSave = !busy && parsed != null && day != null && repeat != null && note.isNotBlank() && (!repriced || priceDay != null),
             onSave = {
                 if (parsed != null && day != null && repeat != null) {
                     val anchor = existing?.takeIf { it.nextEpochDay == day }?.anchorDay ?: LocalDate.ofEpochDay(day).dayOfMonth
@@ -157,7 +191,11 @@ internal fun RecurringEditor(
                             color = color,
                             nextMinute = minute.takeIf { interval == PaymentInterval.HOURLY },
                             autoEstimate = variable && autoEstimate,
-                        )
+                            // A price change already coming stays unless the price is changed again.
+                            priceChange = existing?.priceChange?.takeIf { parsed == existing.minor },
+                        ),
+                        party,
+                        priceDay.takeIf { repriced },
                     )
                 }
             },

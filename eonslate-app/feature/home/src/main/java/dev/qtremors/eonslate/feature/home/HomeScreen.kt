@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.home
 
+import androidx.compose.ui.semantics.heading
 import dev.qtremors.eonslate.core.tracker.ui.PartRows
 import dev.qtremors.eonslate.core.tracker.domain.insights.PartStatus
 import dev.qtremors.eonslate.core.ui.components.LocalAccountActions
@@ -293,13 +294,11 @@ fun HomeContent(
                         TagChips(tags, tag, onPick = { picked -> onTagChange(picked.takeUnless { it == tag }) })
                     }
                 }
-                if (today != null && today.total > 0 && query.isBlank() && tag == null) {
-                    item(key = "today", span = { GridItemSpan(maxLineSpan) }) { TodayLine(today) }
-                }
-                // Consistency across the trackers shown (a tag narrows it), once two or more have any.
-                val measured = shown.orEmpty().mapNotNull { s -> consistency[s.tracker.id]?.let { s.tracker to it } }
-                if (measured.size >= 2 && query.isBlank()) {
-                    item(key = "overview", span = { GridItemSpan(maxLineSpan) }) { ConsistencyOverview(measured) }
+                // How today is going heads the trackers due today; with no sections, it heads them all.
+                val todayShown = today?.takeIf { it.total > 0 && query.isBlank() && tag == null }
+                val dueSection = sections.any { it.first == R.string.home_section_due }
+                if (todayShown != null && !dueSection) {
+                    item(key = "today", span = { GridItemSpan(maxLineSpan) }) { TodayLine(todayShown) }
                 }
                 if (shown.isNullOrEmpty()) {
                     item(key = "none", span = { GridItemSpan(maxLineSpan) }) {
@@ -307,7 +306,9 @@ fun HomeContent(
                     }
                 }
                 sections.forEach { (title, list) ->
-                if (title != null) item(key = "section-$title", span = { GridItemSpan(maxLineSpan) }) {
+                if (title == R.string.home_section_due && todayShown != null) item(key = "today", span = { GridItemSpan(maxLineSpan) }) {
+                    DueHeader(todayShown)
+                } else if (title != null) item(key = "section-$title", span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         stringResource(title),
                         style = MaterialTheme.typography.titleSmall,
@@ -383,8 +384,40 @@ fun HomeContent(
                     }
                 }
                 }
+                // Consistency across the trackers shown (a tag narrows it), once two or more have any:
+                // a look back, so it sits after the trackers rather than above them.
+                val measured = shown.orEmpty().mapNotNull { s -> consistency[s.tracker.id]?.let { s.tracker to it } }
+                if (measured.size >= 2 && query.isBlank()) {
+                    item(key = "overview", span = { GridItemSpan(maxLineSpan) }) { ConsistencyOverview(measured) }
+                }
             }
         }
+    }
+}
+
+/** "Due today" with how many are logged and a meter, as the first section's header. */
+@Composable
+private fun DueHeader(progress: TodayProgress) {
+    val text = if (progress.logged == progress.total) stringResource(R.string.home_today_all, progress.total)
+    else stringResource(R.string.home_today, progress.logged, progress.total)
+    val title = stringResource(R.string.home_section_due)
+    Column(
+        // One heading for screen readers: the section and how today is going.
+        Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp).clearAndSetSemantics {
+            contentDescription = "$title, $text"
+            heading()
+        },
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+            Text(
+                if (progress.logged == progress.total) stringResource(R.string.home_due_all) else stringResource(R.string.home_due_count, progress.logged, progress.total),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Meter(fraction = progress.logged.toFloat() / progress.total, color = MaterialTheme.colorScheme.primary, contentDescription = text)
     }
 }
 
@@ -440,17 +473,38 @@ class SlateActions(
     val onDuplicate: (Tracker) -> Unit = {},
 )
 
+/**
+ * When it was last logged, short enough for one line on a slate: "Logged just now", "Logged 2
+ * hours ago", "Logged yesterday", "Logged 9 days ago", then the day ("Logged 14 Oct"). The count
+ * of entries lives on the tracker's page.
+ */
 @Composable
 private fun summaryLine(summary: TrackerSummary, nowMillis: Long): String {
     val last = summary.lastEntryAt ?: return stringResource(R.string.home_no_entries)
-    val count = pluralStringResource(R.plurals.home_entry_count, summary.entryCount, summary.entryCount)
-    // Under a minute reads as "just now" rather than "0 minutes ago".
-    val relative = if (nowMillis - last in 0 until DateUtils.MINUTE_IN_MILLIS) stringResource(R.string.home_just_now)
-    // Android capitalises it ("In 4 hours") for the start of a sentence; here it sits mid-line.
-    else DateUtils.getRelativeTimeSpanString(last, nowMillis, DateUtils.MINUTE_IN_MILLIS).toString()
-        .replaceFirstChar { it.lowercase(java.util.Locale.getDefault()) }
-    return stringResource(R.string.home_entry_summary, count, relative)
+    val zone = java.time.ZoneId.systemDefault()
+    val days = java.time.temporal.ChronoUnit.DAYS.between(
+        java.time.Instant.ofEpochMilli(last).atZone(zone).toLocalDate(),
+        java.time.Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate(),
+    )
+    val locale = java.util.Locale.getDefault()
+    val `when` = when {
+        // Under a minute reads as "just now" rather than "0 minutes ago".
+        nowMillis - last in 0 until DateUtils.MINUTE_IN_MILLIS -> stringResource(R.string.home_just_now)
+        // Android capitalises it ("In 4 hours") for the start of a sentence; here it sits mid-line.
+        days <= 0L -> DateUtils.getRelativeTimeSpanString(last, nowMillis, DateUtils.MINUTE_IN_MILLIS).toString().replaceFirstChar { it.lowercase(locale) }
+        days == 1L -> stringResource(R.string.home_yesterday)
+        days < RECENT_DAYS -> pluralStringResource(R.plurals.home_days_ago, days.toInt(), days.toInt())
+        else -> {
+            val day = java.time.Instant.ofEpochMilli(last).atZone(zone).toLocalDate()
+            val pattern = if (day.year == java.time.LocalDate.now(zone).year) "d MMM" else "d MMM yyyy"
+            day.format(java.time.format.DateTimeFormatter.ofPattern(pattern, locale))
+        }
+    }
+    return stringResource(R.string.home_last_logged, `when`)
 }
+
+/** Up to this many days a slate counts them; past it, it names the day. */
+private const val RECENT_DAYS = 30L
 
 /** All shown trackers' due days done, as one ring, beside the three most consistent ones. */
 @Composable

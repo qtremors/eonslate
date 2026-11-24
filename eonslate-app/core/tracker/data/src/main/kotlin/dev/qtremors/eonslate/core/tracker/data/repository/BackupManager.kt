@@ -1,5 +1,8 @@
 package dev.qtremors.eonslate.core.tracker.data.repository
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachments
+import dev.qtremors.eonslate.core.tracker.domain.finance.AttachmentKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
 import java.util.Base64
 import dev.qtremors.eonslate.core.tracker.domain.backup.PreferenceStore
 import dev.qtremors.eonslate.core.tracker.domain.backup.ArchiveHeader
@@ -42,6 +45,8 @@ class BackupManager(
     private val afterReplace: suspend () -> Unit = {},
     /** The app preferences, which travel in backups too. */
     private val preferences: PreferenceStore? = null,
+    /** Where attachment files live; they travel inside every backup, as icons do. */
+    private val attachments: File? = null,
 ) : Backups {
     private val lock = Mutex()
     private val point = File(directory, RESTORE_POINT)
@@ -51,7 +56,7 @@ class BackupManager(
     override val restorePoint: StateFlow<Long?> = _restorePoint.asStateFlow()
 
     override suspend fun create(password: CharArray?, appVersion: String): ByteArray = lock.withLock {
-        val snapshot = withPreferences(withIcons(repository.snapshot(appVersion)))
+        val snapshot = withPreferences(withAttachments(withIcons(repository.snapshot(appVersion))))
         withContext(work) { BackupArchive.encode(snapshot, password, iterations) }
     }
 
@@ -68,11 +73,12 @@ class BackupManager(
 
     override suspend fun restore(snapshot: BackupSnapshot, appVersion: String) = lock.withLock {
         BackupCheck.requireSound(snapshot, repository.schema)
-        val current = withPreferences(withIcons(repository.snapshot(appVersion)))
+        val current = withPreferences(withAttachments(withIcons(repository.snapshot(appVersion))))
         val replacement = snapshot.legacy?.applyTo(snapshot, current) ?: snapshot
         BackupCheck.requireSound(replacement, repository.schema)
         withContext(work) {
             writeIcons(replacement)
+            writeAttachments(replacement)
             directory.mkdirs()
             pending.writeBytes(BackupArchive.encode(current, password = null))
         }
@@ -91,7 +97,10 @@ class BackupManager(
         }
         _restorePoint.value = point.takeIf(File::isFile)?.lastModified()
         replacement.preferences?.let { preferences?.replace(it) }
-        withContext(work) { pruneIcons(replacement) }
+        withContext(work) {
+            pruneIcons(replacement)
+            pruneAttachments(replacement)
+        }
         caughtUp()
     }
 
@@ -110,12 +119,18 @@ class BackupManager(
             ?: throw BackupException(BackupProblem.NOT_A_BACKUP)
         val snapshot = withContext(work) { BackupArchive.decode(bytes, password = null) }
         BackupCheck.requireSound(snapshot, repository.schema)
-        withContext(work) { writeIcons(snapshot) }
+        withContext(work) {
+            writeIcons(snapshot)
+            writeAttachments(snapshot)
+        }
         repository.replaceAll(snapshot)
         withContext(work) { point.delete() }
         _restorePoint.value = null
         snapshot.preferences?.let { preferences?.replace(it) }
-        withContext(work) { pruneIcons(snapshot) }
+        withContext(work) {
+            pruneIcons(snapshot)
+            pruneAttachments(snapshot)
+        }
         caughtUp()
     }
 
@@ -154,6 +169,39 @@ class BackupManager(
         }
     }
 
+    private suspend fun withAttachments(snapshot: BackupSnapshot): BackupSnapshot = withContext(work) {
+        val dir = attachments ?: return@withContext snapshot
+        val files = Attachments.files(snapshot.attachments).mapNotNull { (hash, kind) ->
+            File(dir, "$hash.${kind.extension}").takeIf { Attachment.HASH.matches(hash) && it.isFile }
+                ?.let { hash to Base64.getEncoder().encodeToString(it.readBytes()) }
+        }.toMap()
+        snapshot.copy(attachmentFiles = files)
+    }
+
+    /** Writes a backup's attachment files: only real JPEGs and PDFs, under their checked hash names. */
+    private fun writeAttachments(snapshot: BackupSnapshot) {
+        val dir = attachments ?: return
+        dir.mkdirs()
+        val kinds = Attachments.files(snapshot.attachments)
+        snapshot.attachmentFiles.forEach { (hash, data) ->
+            val kind = kinds[hash] ?: return@forEach
+            if (!Attachment.HASH.matches(hash)) return@forEach
+            val bytes = runCatching { Base64.getDecoder().decode(data) }.getOrNull() ?: return@forEach
+            val fits = when (kind) {
+                AttachmentKind.IMAGE -> IconBytes.isImage(bytes)
+                AttachmentKind.PDF -> AttachmentBytes.isPdf(bytes)
+                AttachmentKind.LINK -> false
+            }
+            if (fits && bytes.size <= Attachments.MAX_FILE_BYTES) File(dir, "$hash.${kind.extension}").writeBytes(bytes)
+        }
+    }
+
+    /** Removes attachment files nothing uses now; the restore point keeps its own copies. */
+    private fun pruneAttachments(snapshot: BackupSnapshot) {
+        val dir = attachments ?: return
+        AttachmentBytes.prune(dir, Attachments.files(snapshot.attachments).keys)
+    }
+
     companion object {
         private const val FILE_PREFIX = "file:"
         private val HASH = Regex("[0-9a-f]{64}")
@@ -179,5 +227,17 @@ internal object IconBytes {
         val lower = text.lowercase()
         return (text.startsWith("<svg") || text.startsWith("<?xml")) && "<svg" in lower &&
             "<!doctype" !in lower && "<!entity" !in lower && "<script" !in lower
+    }
+}
+
+/** Checks and tidies attachment files. */
+object AttachmentBytes {
+    fun isPdf(bytes: ByteArray): Boolean = bytes.size >= 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-"
+
+    /** Deletes the files in [dir] whose hash is not in [used]. */
+    fun prune(dir: File, used: Set<String>) {
+        dir.listFiles { file -> file.isFile }?.forEach { file ->
+            if (file.name.substringBefore('.') !in used) file.delete()
+        }
     }
 }

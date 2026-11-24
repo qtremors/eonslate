@@ -61,6 +61,7 @@ object TrackerDatabaseModule {
             finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
         },
         preferences = preferences,
+        attachments = File(context.filesDir, "attachments"),
     )
 
     @Provides

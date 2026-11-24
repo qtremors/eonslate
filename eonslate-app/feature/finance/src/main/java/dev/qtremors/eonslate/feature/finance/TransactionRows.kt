@@ -13,7 +13,8 @@ internal data class RowText(val title: String, val details: String?)
 /**
  * One rule for every list: who it was with names it; else the note, the category, the kind. Under
  * it, in order: pending, lent or borrowed, the note when the name took the title, the category,
- * the account only when it is not the [usual] one, the day when [day] is set, and the notes.
+ * the account only when it is not the [usual] one, the day when [day] is set, the notes, and how
+ * many attachments it keeps.
  */
 @Composable
 internal fun rowText(
@@ -22,6 +23,8 @@ internal fun rowText(
     accounts: Map<String, Account>,
     usual: String?,
     day: String? = null,
+    /** How many receipts and links it keeps. */
+    attached: Int = 0,
 ): RowText {
     val party = t.partyId?.let(parties::get)?.name
     val title = party ?: t.note.ifBlank { t.category.ifBlank { t.kind.label() } }
@@ -40,6 +43,7 @@ internal fun rowText(
         account,
         day,
         t.details.lineSequence().firstOrNull { it.isNotBlank() }?.trim(),
+        attachedText(attached),
     ).joinToString(" · ").ifBlank { null }
     return RowText(title, details)
 }

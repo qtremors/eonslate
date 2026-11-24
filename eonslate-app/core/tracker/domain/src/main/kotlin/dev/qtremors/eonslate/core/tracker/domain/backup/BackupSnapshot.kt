@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.core.tracker.domain.backup
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyMove
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBank
 import dev.qtremors.eonslate.core.tracker.domain.model.Interval
@@ -47,6 +48,10 @@ data class BackupSnapshot(
     /** Piggy banks and what went in and out of them; added in schema 19. */
     @SerialName("piggy_banks") val piggyBanks: List<PiggyBank> = emptyList(),
     @SerialName("piggy_moves") val piggyMoves: List<PiggyMove> = emptyList(),
+    /** Receipts and links kept with transactions; added in schema 21. */
+    val attachments: List<Attachment> = emptyList(),
+    /** The attachments' files by hash, as base64. */
+    @SerialName("attachment_files") val attachmentFiles: Map<String, String> = emptyMap(),
     /** App preferences by name; null in files made before they were included, which leaves them as they are. */
     val preferences: Map<String, String>? = null,
     @Transient val legacy: LegacyFinance? = null,

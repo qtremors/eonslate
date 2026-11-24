@@ -53,11 +53,13 @@ class RoomBackupRepository @Inject constructor(
             parties = finance.parties().map { it.toDomain() },
             piggyBanks = finance.piggies().map { it.toDomain() },
             piggyMoves = finance.piggyMoves().map { it.toDomain() },
+            attachments = finance.attachments().mapNotNull { it.toDomain() },
         )
     }
 
     override suspend fun replaceAll(snapshot: BackupSnapshot) {
         database.withTransaction {
+            finance.clearAttachments()
             finance.clearTransactions()
             finance.clearParties()
             finance.clearPiggyMoves()
@@ -82,6 +84,7 @@ class RoomBackupRepository @Inject constructor(
             finance.insertPiggies(snapshot.piggyBanks.map { it.toEntity() })
             finance.insertPiggyMoves(snapshot.piggyMoves.map { it.toEntity() })
             finance.insertTransactions(snapshot.transactions.map { it.toEntity() })
+            finance.insertAttachments(snapshot.attachments.map { it.toEntity() })
             finance.insertRecurring(snapshot.recurring.map { it.toEntity() })
             finance.insertBudgets(snapshot.budgets.map { it.toEntity() })
             finance.insertCategories(snapshot.categories.map { it.toEntity() })

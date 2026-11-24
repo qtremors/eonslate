@@ -217,12 +217,17 @@ class WelcomeTest {
         override suspend fun deletePiggyMove(id: String) = Unit
         override suspend fun deleteTransaction(id: String) = Unit
         override suspend fun deleteTransactions(ids: Collection<String>) = Unit
+        override suspend fun saveAttachments(
+            transactionId: String,
+            attachments: List<dev.qtremors.eonslate.core.tracker.domain.finance.Attachment>,
+        ) = false
         override suspend fun addRecurring(payment: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment, throughDay: Long, throughMinute: Int) = false
         override suspend fun updateRecurring(
             expected: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment,
             payment: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment,
             throughDay: Long,
             throughMinute: Int,
+            priceFrom: Long?,
         ) = false
         override suspend fun deleteRecurring(id: String) = Unit
         override suspend fun recordRecurring(expected: dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment, minor: Long, day: Long) = false

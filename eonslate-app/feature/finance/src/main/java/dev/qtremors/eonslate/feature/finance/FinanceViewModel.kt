@@ -1,5 +1,6 @@
 package dev.qtremors.eonslate.feature.finance
 
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
 import dev.qtremors.eonslate.core.tracker.domain.finance.DepositStatus
 import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
 import dev.qtremors.eonslate.core.tracker.domain.finance.PiggyBanks
@@ -112,6 +113,14 @@ class FinanceViewModel @Inject constructor(
             finance.postDue(now.toLocalDate().toEpochDay(), now.hour * 60 + now.minute)
         }
         viewModelScope.launch { detection.refresh() }
+        // Files from attachments removed, or picked and never saved, go at the next launch rather
+        // than at once, so Undo can still bring a deleted transaction's receipts back.
+        viewModelScope.launch {
+            runCatching {
+                val used = finance.observeLedger().first().attachments.filter { it.isFile }.mapTo(HashSet()) { it.target }
+                AttachmentFiles.prune(context, used)
+            }
+        }
     }
 
     private fun now() = Instant.ofEpochMilli(clock.nowMillis()).atZone(ZoneId.of(clock.zoneId()))
@@ -145,12 +154,20 @@ class FinanceViewModel @Inject constructor(
      * Saves [transaction] with [partyName] as who it was with: an existing person or business by
      * name, or a new one made for it. Blank leaves it unnamed; null keeps the one it has.
      */
-    fun save(transaction: Transaction, partyName: String?, share: ShareDraft?, onDone: () -> Unit) = write(onDone) {
-        val partyId = (if (partyName == null) transaction.partyId else partyFor(partyName) ?: return@write false)?.takeIf { it.isNotEmpty() }
-        val shares = if (share == null) transaction.shares else sharesFor(share, partyId, transaction.minor) ?: return@write false
+    fun save(transaction: Transaction, partyName: String?, share: ShareDraft?, onDone: () -> Unit) = save(transaction, partyName, share, null, onDone)
+
+    /** Saves [transaction] and, when given, makes [attachments] what it keeps. */
+    fun save(transaction: Transaction, partyName: String?, share: ShareDraft?, attachments: List<Attachment>?, onDone: () -> Unit) = write(onDone) {
+        saveTransaction(transaction, partyName, share) &&
+            (attachments == null || finance.saveAttachments(transaction.id, attachments.map { it.copy(transactionId = transaction.id) }))
+    }
+
+    private suspend fun saveTransaction(transaction: Transaction, partyName: String?, share: ShareDraft?): Boolean {
+        val partyId = (if (partyName == null) transaction.partyId else partyFor(partyName) ?: return false)?.takeIf { it.isNotEmpty() }
+        val shares = if (share == null) transaction.shares else sharesFor(share, partyId, transaction.minor) ?: return false
         // Money that is all someone else's is not yours to file under a category.
         val all = transaction.copy(partyId = partyId, shares = shares)
-        finance.saveTransaction(if (shares.isNotEmpty() && all.own == 0L) all.copy(category = "") else all)
+        return finance.saveTransaction(if (shares.isNotEmpty() && all.own == 0L) all.copy(category = "") else all)
             .also { saved -> if (saved) transaction.smsKey?.let(detection::recorded) }
     }
 
@@ -222,7 +239,9 @@ class FinanceViewModel @Inject constructor(
     fun restore(transaction: Transaction) {
         viewModelScope.launch {
             try {
-                finance.saveTransaction(transaction)
+                if (finance.saveTransaction(transaction)) {
+                    deletedAttachments.remove(transaction.id)?.takeIf { it.isNotEmpty() }?.let { finance.saveAttachments(transaction.id, it) }
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -231,7 +250,11 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
+    /** What a deleted transaction kept, so Undo brings its receipts and links back too. */
+    private val deletedAttachments = HashMap<String, List<Attachment>>()
+
     fun delete(transaction: Transaction, onDone: () -> Unit) = write(onDone) {
+        deletedAttachments[transaction.id] = ledger.value?.attachmentsByTransaction?.get(transaction.id).orEmpty()
         finance.deleteTransaction(transaction.id)
         true
     }
@@ -246,12 +269,15 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    fun schedule(expected: RecurringPayment?, payment: RecurringPayment, onDone: () -> Unit) = write(onDone) {
+    fun schedule(expected: RecurringPayment?, payment: RecurringPayment, partyName: String, priceFrom: Long? = null, onDone: () -> Unit) = write(onDone) {
+        // A name not seen before becomes a new payee; blank names nobody.
+        val party = partyFor(partyName) ?: return@write false
+        val payment = payment.copy(partyId = party.ifEmpty { null })
         val now = now()
         val day = now.toLocalDate().toEpochDay()
         val minute = now.hour * 60 + now.minute
         if (expected == null) finance.addRecurring(payment, day, minute)
-        else finance.updateRecurring(expected, payment, day, minute)
+        else finance.updateRecurring(expected, payment, day, minute, priceFrom)
     }
 
     /**

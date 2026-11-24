@@ -1,8 +1,8 @@
 # Eonslate - Tasks
 
 > **Project:** Eonslate
-> **Version:** 2.2.3
-> **Last Updated:** 2026-11-23
+> **Version:** 2.2.4
+> **Last Updated:** 2026-11-24
 
 ## Roadmap
 
@@ -58,7 +58,7 @@ Each step is planned as one release commit.
 | 46 | 2.2.3 | Audit fixes: people apart from businesses, Recurring, one row rule, month default | Done |
 | 47 | 2.2.3 | Structure: Home as a glance, Money list-first, one place per setting | Done |
 | 48 | 2.2.3 | Fixed deposits that grow on the card and are recorded at maturity | Done |
-| 49 | 2.2.4 | Receipt photos on transactions | Planned |
+| 49 | 2.2.4 | Payees with totals, price changes, attachments (images, PDFs, links), tracker cards | Done |
 | 50 | 2.2.5 | Landing page and a favicon that shows on dark tabs | Planned |
 
 ## v2.0.0 parity
@@ -330,3 +330,13 @@ Checked on the moto: ₹1,00,000 at 7% quarterly for a year grows to ₹1,07,185
 - [x] Close or close early: interest or charges recorded, then paid into an account
 - [x] Matured and maturing deposits in Notifications; overall floor leaves deposits out
 - [x] Delete removes its transactions; backups keep the terms
+
+### 2.2.4 Payees, price changes and attachments
+Checked on the moto: naming Apple on iCloud named its 22 past payments; Apple's page shows ₹750 this year and ₹1,650 in all.
+- [x] Recurring payments have a payee; posted payments carry it; naming it later names the past
+- [x] Payee page: paid this year, month and in all, pinned; by category; their recurring payments
+- [x] People and businesses sorted by what you paid this year
+- [x] New price from a day, up or down: past days re-price what was posted, future days wait
+- [x] Tracker cards say when they were last logged; Due today carries today's progress
+- [x] Attachments: photo, camera, PDF and link per transaction; files by hash; in backups; Undo keeps them
+- [ ] On the phone: the New price from field and attaching a photo, PDF and link (covered by tests; not yet seen on the device)

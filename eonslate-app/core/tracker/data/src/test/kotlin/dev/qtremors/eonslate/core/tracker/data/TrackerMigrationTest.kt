@@ -42,6 +42,34 @@ class TrackerMigrationTest {
     }
 
     @Test
+    fun version20RecurringPaymentsNameNobody() = runTest {
+        ExportedSchema.create(context, name, 20).use {
+            it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")
+            it.execSQL(
+                "INSERT INTO finance_recurring (id, account_id, minor, note, interval, anchor_day, next_epoch_day, kind, every, paused, variable, category, details, auto_estimate) " +
+                    "VALUES ('r', 'bank', 119, 'Apple Music', 'MONTHLY', 1, 20000, 'EXPENSE', 1, 0, 0, '', '', 0)"
+            )
+        }
+        val db = Room.databaseBuilder(context, TrackerDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            val finance = RoomFinanceRepository(db)
+            val ledger = finance.observeLedger().first()
+            assertEquals(null, ledger.recurring.single().partyId)
+            assertEquals(null, ledger.recurring.single().priceChange)
+            assertTrue(ledger.attachments.isEmpty())
+            // The attachments table works after the upgrade.
+            assertTrue(finance.saveTransaction(dev.qtremors.eonslate.core.tracker.domain.finance.Transaction(
+                "t", "bank", dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind.EXPENSE, 100, 20_000,
+            )))
+            assertTrue(finance.saveAttachments("t", listOf(dev.qtremors.eonslate.core.tracker.domain.finance.Attachment(
+                "a", "t", dev.qtremors.eonslate.core.tracker.domain.finance.AttachmentKind.LINK, "https://amazon.in/x",
+            ))))
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun version19AccountsAreNotDeposits() = runTest {
         ExportedSchema.create(context, name, 19).use {
             it.execSQL("INSERT INTO finance_accounts (id, name, currency, opening_minor, kind) VALUES ('bank', 'Bank', 'INR', 0, 'bank')")

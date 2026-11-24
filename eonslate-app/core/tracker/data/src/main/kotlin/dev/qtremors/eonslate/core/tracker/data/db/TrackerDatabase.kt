@@ -21,6 +21,7 @@ import dev.qtremors.eonslate.core.tracker.domain.model.TrackerColors
         EntryValueEntity::class,
         ReminderEntity::class,
         AccountEntity::class,
+        AttachmentEntity::class,
         TransactionEntity::class,
         RecurringEntity::class,
         CategoryBudgetEntity::class,
@@ -40,7 +41,7 @@ abstract class TrackerDatabase : RoomDatabase() {
     abstract fun financeDao(): FinanceDao
 
     companion object {
-        const val VERSION = 20
+        const val VERSION = 21
         const val NAME = "eonslate.db"
 
         /**
@@ -285,10 +286,26 @@ object TrackerMigrations {
         }
     }
 
+    /** Who a recurring payment is with, such as Apple for Apple Music, a new price coming, and attachments. */
+    val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN party_id TEXT")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_recurring_party_id ON finance_recurring (party_id)")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN price_change_minor INTEGER")
+            db.execSQL("ALTER TABLE finance_recurring ADD COLUMN price_change_from INTEGER")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS finance_attachments (id TEXT NOT NULL, transaction_id TEXT NOT NULL, kind TEXT NOT NULL, " +
+                    "target TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(id), " +
+                    "FOREIGN KEY(transaction_id) REFERENCES finance_transactions(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_finance_attachments_transaction_id ON finance_attachments (transaction_id)")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
-        MIGRATION_19_20,
+        MIGRATION_19_20, MIGRATION_20_21,
     )
 }
 

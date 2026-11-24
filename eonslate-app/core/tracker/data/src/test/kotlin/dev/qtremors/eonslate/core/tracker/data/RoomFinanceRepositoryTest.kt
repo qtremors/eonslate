@@ -6,6 +6,8 @@ import dev.qtremors.eonslate.core.tracker.data.repository.RoomFinanceRepository
 import dev.qtremors.eonslate.core.tracker.domain.backup.DataCounts
 import dev.qtremors.eonslate.core.tracker.domain.finance.Account
 import dev.qtremors.eonslate.core.tracker.domain.finance.AccountKind
+import dev.qtremors.eonslate.core.tracker.domain.finance.Attachment
+import dev.qtremors.eonslate.core.tracker.domain.finance.AttachmentKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.Compounding
 import dev.qtremors.eonslate.core.tracker.domain.finance.Deposit
 import dev.qtremors.eonslate.core.tracker.domain.finance.Deposits
@@ -14,6 +16,7 @@ import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryChoice
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryKind
 import dev.qtremors.eonslate.core.tracker.domain.finance.CategoryBudget
 import dev.qtremors.eonslate.core.tracker.domain.finance.PaymentInterval
+import dev.qtremors.eonslate.core.tracker.domain.finance.PriceStep
 import dev.qtremors.eonslate.core.tracker.domain.finance.RecurringPayment
 import dev.qtremors.eonslate.core.tracker.domain.finance.Transaction
 import dev.qtremors.eonslate.core.tracker.domain.finance.TransactionKind
@@ -321,6 +324,145 @@ class RoomFinanceRepositoryTest {
             val restore = BackupManager(RoomBackupRepository(target, clock), folder.newFolder(), Dispatchers.Unconfined)
             restore.restore(restore.open(backups.create(null, "2.4.8"), null), "2.4.8")
             assertEquals(terms, RoomFinanceRepository(target).observeLedger().first().accounts.single { it.id == "fd" }.deposit)
+        } finally {
+            target.close()
+            source.close()
+        }
+    }
+
+    @Test
+    fun namingWhoARecurringPaymentIsWithNamesWhatItAlreadyPosted() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val music = RecurringPayment("music", bank.id, 119, "Apple Music", PaymentInterval.MONTHLY, 1, 20_000)
+            assertTrue(finance.addRecurring(music, 20_060))
+            assertTrue(finance.saveTransaction(Transaction("lunch", bank.id, TransactionKind.EXPENSE, 300, 20_010)))
+            // Three months fall in the 60 days it caught up on.
+            assertEquals(3, finance.observeLedger().first().transactions.count { it.note == "Apple Music" })
+            // Edits start from what is stored: catching up moved its next day on.
+            val stored = finance.observeLedger().first().recurring.single()
+            // A payee who does not exist is refused.
+            assertFalse(finance.updateRecurring(stored, stored.copy(partyId = "nobody"), 20_060))
+            assertTrue(finance.saveParty(dev.qtremors.eonslate.core.tracker.domain.finance.Party("apple", "Apple")))
+            assertTrue(finance.updateRecurring(stored, stored.copy(partyId = "apple"), 20_060))
+            var ledger = finance.observeLedger().first()
+            assertTrue(ledger.transactions.filter { it.note == "Apple Music" }.all { it.partyId == "apple" })
+            assertEquals(null, ledger.transactions.single { it.id == "lunch" }.partyId)
+            // Deleting the payee leaves the payment and what it posted, without the name.
+            assertTrue(finance.deleteParty("apple"))
+            ledger = finance.observeLedger().first()
+            assertEquals(null, ledger.recurring.single().partyId)
+            assertTrue(ledger.transactions.all { it.partyId == null })
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun aPriceRiseChargesOnlyThePaymentsFromItsDay() = runTest {
+        val db = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(db)
+            finance.saveAccount(bank)
+            val day = { m: Int, d: Int -> LocalDate.of(2026, m, d).toEpochDay() }
+            val music = RecurringPayment("music", bank.id, 119, "Apple Music", PaymentInterval.MONTHLY, 3, day(1, 3))
+            assertTrue(finance.addRecurring(music, day(3, 10)))
+            suspend fun amounts() = finance.observeLedger().first().transactions.sortedBy { it.epochDay }.map { it.minor }
+            assertEquals(listOf(119L, 119L, 119L), amounts())
+
+            // Noticed late: the price went up in February, so February and March change and January stays.
+            var stored = finance.observeLedger().first().recurring.single()
+            assertTrue(finance.updateRecurring(stored, stored.copy(minor = 149), day(3, 10), priceFrom = day(2, 3)))
+            assertEquals(listOf(119L, 149L, 149L), amounts())
+            assertEquals(149L, finance.observeLedger().first().recurring.single().minor)
+
+            // Told ahead: from May it costs 199; April still posts 149, then 199 becomes the price.
+            stored = finance.observeLedger().first().recurring.single()
+            assertTrue(finance.updateRecurring(stored, stored.copy(minor = 199), day(3, 10), priceFrom = day(5, 3)))
+            stored = finance.observeLedger().first().recurring.single()
+            assertEquals(149L, stored.minor)
+            assertEquals(PriceStep(199, day(5, 3)), stored.priceChange)
+            finance.postDue(day(5, 10))
+            assertEquals(listOf(119L, 149L, 149L, 149L, 199L), amounts())
+            stored = finance.observeLedger().first().recurring.single()
+            assertEquals(199L, stored.minor)
+            assertEquals(null, stored.priceChange)
+
+            // A price cut works the same way: May drops back to 99, April keeps 149.
+            assertTrue(finance.updateRecurring(stored, stored.copy(minor = 99), day(5, 10), priceFrom = day(5, 3)))
+            assertEquals(listOf(119L, 149L, 149L, 149L, 99L), amounts())
+            stored = finance.observeLedger().first().recurring.single()
+            assertEquals(99L, stored.minor)
+
+            // Without a day, a new amount applies from the next payment and leaves what was posted.
+            assertTrue(finance.updateRecurring(stored, stored.copy(minor = 249), day(5, 10)))
+            assertEquals(listOf(119L, 149L, 149L, 149L, 99L), amounts())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun attachmentsStayWithTheirTransactionAndTravelInABackup() = runTest {
+        val source = inMemoryDatabase()
+        val target = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(source)
+            finance.saveAccount(bank)
+            assertTrue(finance.saveTransaction(Transaction("phone", bank.id, TransactionKind.EXPENSE, 50_000, 20_000)))
+            val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 1, 2, 3)
+            val hash = "b".repeat(64)
+            val files = folder.newFolder("attachments")
+            java.io.File(files, "$hash.jpg").writeBytes(jpeg)
+            val receipt = Attachment("r", "phone", AttachmentKind.IMAGE, hash, "Receipt")
+            val page = Attachment("l", "phone", AttachmentKind.LINK, "https://amazon.in/dp/B0C", "Product page")
+            assertTrue(finance.saveAttachments("phone", listOf(receipt, page)))
+            assertEquals(listOf("r", "l"), finance.observeLedger().first().attachments.map { it.id })
+            // Nothing for a transaction that does not exist, nor a link that is not one.
+            assertFalse(finance.saveAttachments("missing", emptyList()))
+            assertFalse(finance.saveAttachments("phone", listOf(page.copy(target = "amazon"))))
+            assertEquals(2, finance.observeLedger().first().attachments.size)
+
+            val clock = FakeClock()
+            val restoredFiles = folder.newFolder("restored")
+            val backups = BackupManager(RoomBackupRepository(source, clock), folder.newFolder(), Dispatchers.Unconfined, attachments = files)
+            val restore = BackupManager(RoomBackupRepository(target, clock), folder.newFolder(), Dispatchers.Unconfined, attachments = restoredFiles)
+            restore.restore(restore.open(backups.create(null, "2.4.9"), null), "2.4.9")
+            assertEquals(listOf(receipt, page), RoomFinanceRepository(target).observeLedger().first().attachments.map { it.copy(createdAt = 0) })
+            assertTrue(jpeg.contentEquals(java.io.File(restoredFiles, "$hash.jpg").readBytes()))
+
+            // Removing one keeps the other; deleting the transaction takes the rest with it.
+            assertTrue(finance.saveAttachments("phone", listOf(page)))
+            assertEquals(listOf("l"), finance.observeLedger().first().attachments.map { it.id })
+            finance.deleteTransaction("phone")
+            assertTrue(finance.observeLedger().first().attachments.isEmpty())
+        } finally {
+            target.close()
+            source.close()
+        }
+    }
+
+    @Test
+    fun aBackupWritesOnlyRealFilesForAttachments() = runTest {
+        val source = inMemoryDatabase()
+        val target = inMemoryDatabase()
+        try {
+            val finance = RoomFinanceRepository(source)
+            finance.saveAccount(bank)
+            finance.saveTransaction(Transaction("t", bank.id, TransactionKind.EXPENSE, 100, 20_000))
+            val hash = "c".repeat(64)
+            val files = folder.newFolder("fake")
+            // Not a PDF, whatever it is called.
+            java.io.File(files, "$hash.pdf").writeBytes("#!/bin/sh".toByteArray())
+            assertTrue(finance.saveAttachments("t", listOf(Attachment("p", "t", AttachmentKind.PDF, hash))))
+            val clock = FakeClock()
+            val restoredFiles = folder.newFolder("safe")
+            val backups = BackupManager(RoomBackupRepository(source, clock), folder.newFolder(), Dispatchers.Unconfined, attachments = files)
+            val restore = BackupManager(RoomBackupRepository(target, clock), folder.newFolder(), Dispatchers.Unconfined, attachments = restoredFiles)
+            restore.restore(restore.open(backups.create(null, "2.4.9"), null), "2.4.9")
+            assertFalse(java.io.File(restoredFiles, "$hash.pdf").exists())
         } finally {
             target.close()
             source.close()

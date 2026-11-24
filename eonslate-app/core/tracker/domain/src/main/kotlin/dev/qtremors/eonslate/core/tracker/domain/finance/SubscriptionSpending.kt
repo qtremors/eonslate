@@ -54,7 +54,8 @@ data class SubscriptionSpending(
                 }
                 while (next != null && next.toLocalDate() <= limit) {
                     val month = YearMonth.from(next)
-                    forecast[month] = forecast.getValue(month) + amount
+                    // A price change coming shows in the months it applies to.
+                    forecast[month] = forecast.getValue(month) + BigInteger.valueOf(payment.amountOn(next.toLocalDate().toEpochDay()))
                     next = payment.after(next, next.toLocalDate().atTime(LocalTime.MAX))
                 }
             }
