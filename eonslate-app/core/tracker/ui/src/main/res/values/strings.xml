@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="field_type_number">Number</string>
+    <string name="field_type_money">Money</string>
+    <string name="field_type_duration">Duration</string>
+    <string name="field_type_rating">Rating</string>
+    <string name="field_type_yes_no">Yes or no</string>
+    <string name="field_type_single_choice">One choice</string>
+    <string name="field_type_multi_choice">Several choices</string>
+    <string name="field_type_text">Text</string>
+    <string name="field_type_date">Date</string>
+
+    <!-- Spoken for the streak pill on a tracker slate. -->
+    <plurals name="slate_streak">
+        <item quantity="one">%d-day streak</item>
+        <item quantity="other">%d-day streak</item>
+    </plurals>
+
+    <string name="value_yes">Yes</string>
+    <string name="value_no">No</string>
+    <!-- Hours and minutes of a duration, such as "6 h 30 m". -->
+    <string name="value_hours_minutes">%1$d h %2$02d m</string>
+    <!-- Whole minutes of a duration under an hour, such as "32 m". -->
+    <string name="value_minutes">%1$d m</string>
+    <!-- Minutes and seconds of a short duration, such as "4 m 05 s". -->
+    <string name="value_minutes_seconds">%1$d m %2$02d s</string>
+    <string name="value_rating">%1$d/%2$d</string>
+    <string name="value_removed_option">Removed choice</string>
+
+    <string name="error_internal">Something is off here. Try again.</string>
+    <string name="error_tracker_not_found">This tracker no longer exists.</string>
+    <string name="error_tracker_name_blank">Give the tracker a name</string>
+    <string name="error_too_long">Keep it under %1$d characters</string>
+    <string name="error_no_fields">Add at least one field</string>
+    <string name="error_too_many_fields">A tracker can have up to %1$d fields</string>
+    <string name="error_field_name_blank">Give the field a name</string>
+    <string name="error_duplicate_field_name">Another field already has this name</string>
+    <string name="error_decimals">Use 0 to %1$d decimals</string>
+    <string name="error_min_above_max">The lowest value is above the highest</string>
+    <string name="error_unknown_currency">Use a three-letter currency code, such as USD</string>
+    <string name="error_max_duration">The longest time must be more than zero</string>
+    <string name="error_goal">The goal must be above zero.</string>
+    <string name="goal_progress_day">%1$s of %2$s today</string>
+    <string name="goal_progress_week">%1$s of %2$s this week</string>
+    <string name="goal_limit_day">%1$s, at most %2$s today</string>
+    <string name="goal_limit_week">%1$s, at most %2$s this week</string>
+    <string name="interval_today">today</string>
+    <plurals name="interval_in_days">
+        <item quantity="one">in %d day</item>
+        <item quantity="other">in %d days</item>
+    </plurals>
+    <plurals name="interval_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <plurals name="interval_gap_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="interval_gap_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <plurals name="interval_gap_months">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+    <plurals name="interval_gap_years">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
+    <string name="interval_due">due %1$s</string>
+    <string name="interval_due_at">due at %1$s</string>
+    <string name="interval_left">%1$s left</string>
+    <string name="interval_over">%1$s over</string>
+    <string name="interval_never">Not logged yet</string>
+    <string name="interval_last">Last %1$s</string>
+    <string name="interval_last_at">Last %1$s at %2$s</string>
+    <string name="rhythm_every">Usually every %1$s</string>
+    <string name="rhythm_next_on">next around %1$s</string>
+    <string name="rhythm_next_at">next at %1$s</string>
+    <string name="error_rating_scale">Pick a scale from %1$d to %2$d</string>
+    <string name="error_no_options">Add at least one choice</string>
+    <string name="error_too_many_options">Up to %1$d choices</string>
+    <string name="error_option_blank">Name this choice</string>
+    <string name="error_duplicate_option">Two choices have this name</string>
+    <string name="error_text_limit">Allow 1 to %1$d characters</string>
+    <string name="error_entry_empty">Fill in a field or write a note</string>
+    <string name="error_required">Required</string>
+    <string name="error_below_min">Below the lowest allowed value</string>
+    <string name="error_above_max">Above the highest allowed value</string>
+    <string name="error_negative_duration">A time cannot be negative</string>
+    <string name="error_rating_range">Pick 1 to %1$d</string>
+    <string name="error_unknown_option">This choice was removed</string>
+    <string name="error_text_blank">Write something or leave it empty</string>
+    <string name="error_line_break">Keep it on one line</string>
+    <string name="error_date_range">Pick a real date</string>
+    <string name="part_not_yet">Not logged yet</string>
+    <string name="part_log">Log %1$s</string>
+    <string name="part_in">In %1$s</string>
+    <string name="part_ago">%1$s ago</string>
+    <string name="interval_about_left">about %1$s left</string>
+    <string name="interval_about_over">about %1$s over</string>
+    <string name="interval_around">around %1$s</string>
+</resources>

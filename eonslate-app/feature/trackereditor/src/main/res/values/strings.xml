@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_title_new">New tracker</string>
+    <string name="editor_title_edit">Edit tracker</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_preview_name">Your tracker</string>
+    <string name="editor_preview_no_fields">Add a field to start logging</string>
+
+    <string name="editor_section_details">Details</string>
+    <string name="editor_name">Name</string>
+    <string name="editor_description">Description</string>
+    <string name="editor_description_hint">Optional</string>
+    <string name="editor_section_icon">Icon</string>
+    <string name="editor_section_color">Pigment</string>
+    <string name="editor_section_fields">Fields</string>
+    <plurals name="editor_field_count">
+        <item quantity="one">%1$d of %2$d</item>
+        <item quantity="other">%1$d of %2$d</item>
+    </plurals>
+    <string name="editor_add_field">Add field</string>
+    <string name="editor_needs_field">Add at least one field to save</string>
+    <string name="editor_bad_limit">A limit is not a number</string>
+
+    <string name="editor_field_edit">Edit</string>
+    <string name="editor_field_up">Move up</string>
+    <string name="editor_field_down">Move down</string>
+    <string name="editor_field_remove">Remove</string>
+
+    <plurals name="editor_decimals">
+        <item quantity="one">%d decimal</item>
+        <item quantity="other">%d decimals</item>
+    </plurals>
+    <plurals name="editor_choice_count">
+        <item quantity="one">%d choice</item>
+        <item quantity="other">%d choices</item>
+    </plurals>
+    <string name="editor_rating_of">Out of %1$d</string>
+    <string name="editor_text_multiline_short">Several lines</string>
+    <string name="editor_required_short">Required</string>
+
+    <string name="editor_section_manage">Manage</string>
+    <string name="editor_archive">Archive</string>
+    <string name="editor_delete">Delete tracker</string>
+    <string name="editor_delete_title">Delete %1$s?</string>
+    <string name="editor_delete_message">Deletes the tracker and all its entries. This can\'t be undone.</string>
+    <string name="editor_delete_confirm">Delete</string>
+
+    <string name="editor_discard_title">Leave without saving?</string>
+    <string name="editor_discard_message">Your changes will be lost.</string>
+    <string name="editor_discard_confirm">Leave</string>
+
+    <string name="editor_missing_title">Tracker not found</string>
+    <string name="editor_missing_message">It may have been deleted.</string>
+    <string name="editor_missing_action">Go back</string>
+
+    <string name="sheet_title_new">New field</string>
+    <string name="sheet_title_edit">Edit field</string>
+    <string name="sheet_name">Field name</string>
+    <string name="sheet_type">Type</string>
+    <string name="sheet_type_change_warning">Changing the type clears this field\'s logged values on save.</string>
+    <string name="sheet_required">Required</string>
+    <string name="sheet_remove">Remove field</string>
+    <string name="sheet_add">Add</string>
+    <string name="sheet_done">Done</string>
+    <string name="sheet_unit">Unit</string>
+    <string name="sheet_decimals">Decimals</string>
+    <string name="sheet_min">Lowest</string>
+    <string name="sheet_max">Highest</string>
+    <plurals name="sheet_limit_invalid">
+        <item quantity="one">A number with up to %d decimal</item>
+        <item quantity="other">A number with up to %d decimals</item>
+    </plurals>
+    <string name="sheet_limit_whole">A whole number</string>
+    <string name="sheet_currency">Currency</string>
+    <string name="sheet_currency_hint">ISO code, like INR or USD</string>
+    <string name="sheet_rating_scale">Scale</string>
+    <string name="sheet_choices">Choices</string>
+    <string name="sheet_choice_n">Choice %1$d</string>
+    <string name="sheet_choice_remove">Remove choice %1$d</string>
+    <string name="sheet_choice_add">Add choice</string>
+    <string name="sheet_text_multiline">Several lines</string>
+    <string name="sheet_duration_hint">Hours and minutes</string>
+    <string name="sheet_goal">Goal</string>
+    <string name="sheet_goal_hint">A day counts as done once it is met</string>
+    <string name="sheet_goal_at_least">At least</string>
+    <string name="sheet_goal_at_most">At most</string>
+    <string name="sheet_goal_target">Target</string>
+    <string name="sheet_goal_minutes">Minutes</string>
+    <string name="sheet_goal_day">Per day</string>
+    <string name="sheet_goal_week">Per week</string>
+    <string name="sheet_goal_invalid">Enter a target above zero</string>
+    <string name="sheet_yes_no_hint">Yes or no</string>
+    <string name="sheet_date_hint">A calendar day</string>
+
+    <!-- In the order of TrackerIcons.all. -->
+    <string-array name="editor_icon_names">
+        <item>Sparkles</item>
+        <item>Money</item>
+        <item>Mood</item>
+        <item>Workout</item>
+        <item>Book</item>
+        <item>Water</item>
+        <item>Medication</item>
+        <item>Sleep</item>
+        <item>Meditation</item>
+        <item>Timer</item>
+        <item>Heart</item>
+        <item>Star</item>
+        <item>Water drop</item>
+        <item>Food</item>
+        <item>Coffee</item>
+        <item>Running</item>
+        <item>Cycling</item>
+        <item>Swimming</item>
+        <item>Spa</item>
+        <item>Heart rate</item>
+        <item>Healing</item>
+        <item>Mind</item>
+        <item>Motorbike</item>
+        <item>Car</item>
+        <item>Fuel</item>
+        <item>Tools</item>
+        <item>Cleaning</item>
+        <item>Haircut</item>
+        <item>Shower</item>
+        <item>Soap</item>
+        <item>Pets</item>
+        <item>Plants</item>
+        <item>Home</item>
+        <item>Shopping</item>
+        <item>Savings</item>
+        <item>Work</item>
+        <item>Study</item>
+        <item>Code</item>
+        <item>Art</item>
+        <item>Music</item>
+        <item>Camera</item>
+        <item>Games</item>
+        <item>Travel</item>
+        <item>Language</item>
+        <item>Idea</item>
+        <item>Energy</item>
+        <item>Event</item>
+        <item>No smoking</item>
+        <item>No alcohol</item>
+        <item>Drinks</item>
+        <item>Science</item>
+        <item>Phone</item>
+    </string-array>
+    <!-- In the order of BadgePalette's pigments. -->
+    <string-array name="editor_pigment_names">
+        <item>Slate</item>
+        <item>Ember</item>
+        <item>Moss</item>
+        <item>Tide</item>
+        <item>Clay</item>
+        <item>Saffron</item>
+        <item>Plum</item>
+        <item>Lichen</item>
+        <item>Rust</item>
+        <item>Lagoon</item>
+        <item>Heather</item>
+        <item>Sand</item>
+        <item>Pine</item>
+        <item>Coral</item>
+        <item>Iris</item>
+        <item>Ochre</item>
+        <item>Stone</item>
+    </string-array>
+    <string name="editor_tags">Tags</string>
+    <string name="editor_tags_hint">Comma separated</string>
+    <string name="editor_section_schedule">Schedule</string>
+    <string name="editor_schedule_daily">Every day</string>
+    <string name="editor_schedule_days">Some days</string>
+    <string name="editor_schedule_weekly">Times a week</string>
+    <string name="editor_schedule_as_needed">As needed</string>
+    <string name="editor_schedule_as_needed_hint">Due only when an interval says so; it also learns its usual rhythm</string>
+    <string name="interval_title">Due again</string>
+    <string name="interval_add">Add interval</string>
+    <string name="interval_new">New interval</string>
+    <string name="interval_edit">Edit interval</string>
+    <string name="interval_for">For</string>
+    <string name="interval_any_log">Any log</string>
+    <string name="interval_after_time">After a time</string>
+    <string name="interval_after_amount">After an amount</string>
+    <string name="interval_after_amount_hint">When a number has grown this much</string>
+    <string name="interval_every">Every</string>
+    <string name="interval_amount">Amount</string>
+    <string name="interval_days">Days</string>
+    <string name="interval_weeks">Weeks</string>
+    <string name="interval_months">Months</string>
+    <string name="interval_years">Years</string>
+    <string name="interval_or">" or "</string>
+    <string name="interval_incomplete">Not saved until complete</string>
+    <string name="interval_save">Save</string>
+    <string name="interval_remove">Remove</string>
+    <plurals name="editor_schedule_times">
+        <item quantity="one">%d day a week, any day</item>
+        <item quantity="other">%d days a week, any days</item>
+    </plurals>
+    <string name="sheet_parts">Show as parts</string>
+    <string name="sheet_parts_hint">Each choice gets its own row with its last log, what is next, and a log button</string>
+    <string name="interval_per_day">Usual amount a day</string>
+    <string name="interval_per_day_hint">Added for each day between logs. Leave empty to learn it from your logs.</string>
+    <string name="editor_section_parts">Parts</string>
+    <string name="editor_parts_hint">Tap a part to set when it is due again.</string>
+    <string name="editor_part_no_interval">No interval</string>
+    <string name="interval_part_title">%1$s is due again</string>
+    <string name="interval_every_value">Every %1$s</string>
+    <string name="interval_per_day_short">%1$s a day</string>
+    <string name="interval_count_days">Days it adds up on</string>
+    <plurals name="interval_days_a_week">
+        <item quantity="one">%d day a week</item>
+        <item quantity="other">%d days a week</item>
+    </plurals>
+</resources>

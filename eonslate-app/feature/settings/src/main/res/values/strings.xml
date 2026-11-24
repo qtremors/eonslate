@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_pure_black">Pure black</string>
+    <string name="settings_pure_black_off">Dark theme only</string>
+    <string name="settings_colors_wallpaper">Wallpaper</string>
+    <string name="settings_section_accent">Accent</string>
+    <string name="preset_mono">Mono</string>
+    <string name="preset_slate">Slate</string>
+    <string name="preset_tide">Tide</string>
+    <string name="preset_moss">Moss</string>
+    <string name="preset_ochre">Ochre</string>
+    <string name="preset_clay">Clay</string>
+    <string name="preset_rose">Rose</string>
+    <string name="preset_dusk">Dusk</string>
+    <string name="preset_graphite">Graphite</string>
+    <string name="settings_section_behavior">Behavior</string>
+    <string name="settings_haptics">Haptics</string>
+    <string name="settings_reduce_motion">Reduce motion</string>
+    <string name="settings_week_start">First day of the week</string>
+    <string name="settings_week_auto">Auto</string>
+    <string name="settings_week_monday">Mon</string>
+    <string name="settings_week_sunday">Sun</string>
+    <string name="settings_week_saturday">Sat</string>
+    <string name="settings_currency">Currency</string>
+    <!-- %1$s is a currency code such as EUR. -->
+    <string name="settings_currency_chosen">%1$s</string>
+    <string name="settings_currency_device">%1$s (device)</string>
+    <string name="settings_currency_sheet_hint">For new money fields. Existing fields keep theirs.</string>
+    <string name="settings_currency_code">Currency code</string>
+    <string name="settings_currency_unknown">Not a currency this device knows</string>
+    <string name="settings_currency_use_device">Use the device\'s</string>
+    <string name="settings_currency_save">Save</string>
+
+    <string name="about_title">About</string>
+    <string name="about_app_name">Eonslate</string>
+    <!-- %1$s is the version, such as 2.0.8. -->
+    <string name="about_version">Version %1$s</string>
+    <string name="about_tagline">A private, offline slate for your money and anything else you track.</string>
+    <string name="about_section_project">Project</string>
+    <string name="about_developer">Developer</string>
+    <string name="about_developer_name">Tremors</string>
+    <string name="about_source">Source code</string>
+    <string name="about_releases">Releases</string>
+    <string name="about_issues">Report an issue</string>
+    <string name="about_section_legal">Legal</string>
+    <string name="about_privacy_hint">Nothing leaves your device</string>
+    <string name="about_license">License</string>
+    <string name="about_license_name">Tremors Source License 2.0</string>
+    <string name="about_section_device">This device</string>
+    <!-- Maker, model, Android version and API level. -->
+    <string name="about_device">%1$s %2$s · Android %3$s (API %4$d)</string>
+    <string name="about_device_hint">Tap to copy</string>
+    <string name="about_copied">Copied</string>
+
+    <string name="licenses_title">Open source licenses</string>
+    <string name="licenses_section">Built with</string>
+    <string name="licenses_project">Open the project</string>
+
+    <string name="privacy_title">Privacy</string>
+    <string name="settings_block_screenshots">Block screenshots</string>
+    <string name="privacy_collect_title">No data collection</string>
+    <string name="privacy_collect">Eonslate does not collect or transmit any personal data, tracked entries, financial records, usage statistics or telemetry.</string>
+    <string name="privacy_offline_title">Offline by design</string>
+    <string name="privacy_offline">Eonslate does not have the internet permission, so it cannot send anything you track over the network.</string>
+    <string name="privacy_where_title">Where your data lives</string>
+    <string name="privacy_where">Your tracker and finance records live in the app\'s private database. Settings live in its private settings file.</string>
+    <string name="privacy_permissions_title">Permissions</string>
+    <string name="privacy_permissions">Reminders can ask for notifications and exact alarms. Inbox scanning asks for SMS access in builds that include it.</string>
+    <string name="privacy_source_title">Source code</string>
+    <string name="privacy_source">Eonslate\'s source code is public, so anyone can check how it handles your data.</string>
+    <string name="settings_section_sms">SMS</string>
+    <string name="settings_sms_detect">Detect payment SMS</string>
+    <string name="settings_sms_auto">Auto-add high-confidence payments</string>
+    <string name="settings_categories">Manage categories</string>
+    <string name="settings_display">Personalization</string>
+    <string name="settings_display_name">Display name</string>
+    <string name="settings_number_format">Number format</string>
+    <string name="settings_date_format">Date format</string>
+    <string name="settings_format_device">Device</string>
+    <string name="settings_date_day_first">Day first</string>
+    <string name="settings_date_month_first">Month first</string>
+    <string name="settings_date_year_first">Year first</string>
+    <string name="settings_sms_scan">Scan past payment SMS</string>
+    <string name="about_changelog">Changelog</string>
+    <string name="about_package">Package</string>
+    <string name="settings_section_you">You</string>
+    <string name="settings_section_money">Money</string>
+    <string name="settings_display_hint">Your name, and how numbers and dates read</string>
+</resources>

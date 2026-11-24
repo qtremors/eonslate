@@ -1,0 +1,12 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="dev.qtremors.eonslate.quicklog.TrackerPickerActivity"
+    android:initialLayout="@layout/widget_quick_log"
+    android:minWidth="110dp"
+    android:minHeight="48dp"
+    android:previewLayout="@layout/widget_quick_log"
+    android:resizeMode="horizontal"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

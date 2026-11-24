@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title">Trackers</string>
+    <string name="home_empty_title">Nothing tracked yet</string>
+    <string name="home_empty_message">Create a tracker to start.</string>
+    <string name="home_new_tracker">New tracker</string>
+    <string name="home_empty_action">Create a tracker</string>
+    <!-- Spoken by screen readers for the quick log button on a tracker. -->
+    <string name="home_log">Log %1$s</string>
+    <string name="home_just_now">just now</string>
+    <!-- %1$d trackers logged today out of %2$d. -->
+    <string name="home_today">%1$d of %2$d logged today</string>
+    <string name="home_today_all">All %1$d logged today</string>
+    <string name="home_archived">Archived trackers</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_move_earlier">Move earlier</string>
+    <string name="home_move_later">Move later</string>
+    <string name="home_edit">Edit</string>
+    <string name="home_duplicate">Duplicate</string>
+    <!-- The name of a duplicated tracker; %1$s is the original's name. -->
+    <string name="home_copy_name">%1$s copy</string>
+    <string name="home_archive">Archive</string>
+    <string name="home_archived_message">%1$s archived</string>
+    <string name="home_undo">Undo</string>
+    <string name="archived_title">Archived</string>
+    <string name="archived_supporting">Archived</string>
+    <string name="archived_empty_title">Nothing archived</string>
+    <string name="archived_empty_message">Archived trackers show up here.</string>
+    <string name="home_no_entries">Nothing logged yet</string>
+    <!-- %1$s is when, such as "2 hours ago", "yesterday" or "14 Oct". -->
+    <string name="home_last_logged">Logged %1$s</string>
+    <string name="home_yesterday">yesterday</string>
+    <plurals name="home_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <!-- Beside "Due today": %1$d logged out of %2$d. -->
+    <string name="home_due_count">%1$d of %2$d logged</string>
+    <string name="home_due_all">All logged</string>
+    <string name="home_section_due">Due today</string>
+    <string name="home_overview">%1$d%% consistent across %2$d trackers</string>
+    <plurals name="home_overview_title">
+        <item quantity="one">Consistency across %d tracker</item>
+        <item quantity="other">Consistency across %d trackers</item>
+    </plurals>
+    <string name="home_section_later">Not today</string>
+    <string name="home_section_as_needed">As needed</string>
+    <string name="home_search">Search trackers</string>
+    <string name="home_no_matches">No matches</string>
+    <string name="home_finance">Finance</string>
+    <string name="today_title">Today</string>
+    <string name="today_logged">%1$d of %2$d logged</string>
+    <string name="today_all">All</string>
+</resources>

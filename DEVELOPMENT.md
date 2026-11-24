@@ -1,537 +1,203 @@
-# Earnslate - Developer Documentation
+# Eonslate - Developer Documentation
 
-> Architecture, implementation notes, conventions, and verification guidance for Earnslate development.
+> **Project:** Eonslate
+> **Version:** 2.2.0
+> **Last Updated:** 2026-11-22
 
-**Version:** 2.0.0 | **Last Updated:** 2026-08-18
-**Scope:** Internal development, financial data architecture, SMS parsing engine, UI paradigms, testing, and release maintenance.
+## Architecture
 
----
+Eonslate is a multi-module Android project in `eonslate-app/`. Modules depend inward: features use core modules, and core modules never depend on features.
 
-## Table of Contents
+| Module | Kind | Role |
+| :--- | :--- | :--- |
+| `:app` | Android application | Entry point, splash, navigation host, dependency injection root |
+| `:core:navigation:api` | Kotlin JVM | Type-safe `@Serializable` destinations shared by features |
+| `:core:settings` | Android library | App settings in DataStore (appearance, welcome seen), apart from tracker data |
+| `:core:tracker:domain` | Kotlin JVM | Tracker, field and entry models, exact value codecs, validators, insights (streaks, field stats, daily series), repository interfaces |
+| `:core:tracker:data` | Android library | Room database, DAOs, integrity triggers, repositories, Hilt bindings |
+| `:core:tracker:ui` | Android library | Tracker UI shared by features: the tracker slate, field type labels and icons, validation messages, value formatting, templates |
+| `:core:ui` | Android library | Material 3 Expressive theme, tokens and shared components |
+| `:feature:home` | Android library | Home: the grid of tracker slates, and the archived trackers page |
+| `:feature:entry` | Android library | Logging and editing an entry: typed inputs, date and time, note |
+| `:feature:trackerdetail` | Android library | A tracker's page: totals, entries by day, month calendar, delete with undo |
+| `:feature:trackereditor` | Android library | Tracker builder: the template gallery, details, icon, pigment, fields and the field sheet |
+| `:feature:settings` | Android library | Settings, About, open source licenses and the in-app privacy page |
+| `:feature:backup` | Android library | Creating, restoring and undoing backups |
+| `:feature:finance` | Android library | Accounts, income, expenses and transfers |
+| `:feature:smsinbox` | Android library | The SMS permission manifest, left out with `-Peonslate.smsInbox=false` |
+| `:feature:reminders` | Android library | A tracker's reminders: time, days, skip if logged |
+| `:core:reminders` | Android library | Alarm sync, receivers and reminder notifications |
+| `:feature:welcome` | Android library | The first run: intro, name, currency and first account |
 
-- [Architecture Overview](#architecture-overview)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Runtime Flow](#runtime-flow)
-- [Core Concepts & Financial Models](#core-concepts--financial-models)
-- [Navigation & State Architecture](#navigation--state-architecture)
-- [Persistence & Database Layer](#persistence--database-layer)
-- [Smart SMS Parsing Engine](#smart-sms-parsing-engine)
-- [Backup, Restore & Data Portability](#backup-restore--data-portability)
-- [UI & Design System](#ui--design-system)
-- [Feature Modules Deep Dive](#feature-modules-deep-dive)
-- [Naming Conventions](#naming-conventions)
-- [Configuration & Build System](#configuration--build-system)
-- [Security & Privacy Practices](#security--privacy-practices)
-- [Error Handling & Recovery](#error-handling--recovery)
-- [Testing Suite](#testing-suite)
-- [Build & Release Engineering](#build--release-engineering)
-- [Troubleshooting & Maintenance](#troubleshooting--maintenance)
-- [Feedback](#feedback)
+Planned modules follow the same pattern: pure Kotlin `domain` modules for models and rules, Android `data` modules for Room and storage, and one `feature` module per screen area.
 
----
+## Navigation
 
-## Architecture Overview
+- One shell in `EonslateNavHost`: the `NavHost` and a `FloatingTabBar` with four tabs (Home, Transactions, Subscriptions, Trackers). Tabs switch with saved state, so each keeps its back stack and scroll.
+- On pages below a tab the bar morphs into Back and the page title. `LocalShellHost` collects the title from `EonslateScaffold` and the action from `MainActionButton`, so pages need no shell code; outside the shell (tests) both render themselves.
+- The page's main action sits beside the bar and animates in and out. Transitions are springs: tabs crossfade, pages slide.
+- Budgets lead the Transactions tab and Subscriptions holds recurring payments. Category management opens from Settings or the Transactions menu. Editors get category suggestions from `Categories.suggestions` through `LocalCategorySuggestions`.
 
-Earnslate is built with a **clean, reactive MVVM architecture** powered by Jetpack Compose, Kotlin Coroutines, Hilt dependency injection, Room SQLite persistence, and Jetpack DataStore Preferences.
+## Settings
 
-```mermaid
-graph TD
-    A["Compose UI Layer<br/>Screens + Forms + Sheets"] -->|typed intents / user actions| B["AppViewModel<br/>StateFlow&lt;AppState&gt;"]
-    B -->|data operations| C["EarnslateRepository"]
-    B -->|settings flow| D["SettingsStore (DataStore)"]
-    B -->|backup / export| E["BackupManager"]
-    B -->|sms inbox scan| F["SmsManager"]
-    F -->|pattern heuristics| G["SmsParser (100% Offline)"]
-    C -->|Room DAOs & Transactions| H["EarnslateDatabase (SQLite)"]
-    H --> I["TransactionDao"]
-    H --> J["BudgetDao"]
-    H --> K["SubscriptionDao"]
-    H --> L["CategoryDao"]
-    E --> M["IconStore (Custom Icons)"]
-    E --> H
-    E --> D
-```
+`Appearance` in `:core:settings` stores the theme, pure black, the color source, the preset, haptics and reduce motion, each by name so a value from a newer version falls back to its default. `Appearance.toThemeOptions()` in `:app` maps it onto `:core:ui`'s `ThemeOptions`, and `MainActivity` feeds it to `EonslateTheme`, so a change recolors the whole app at once. A near-grey preset seed uses Material's neutral scheme so it stays grey.
 
-### Key Architectural Decisions
+`Tracking` holds the week's first day and the currency new money fields start with; `firstDayOfWeek()` and `currencyCode()` fall back to the device. Screens that build trackers from templates pass a builder to their view model, which calls it with the currency read from settings, so a template never starts with a stale default. `InMemorySettingsRepository` stands in for DataStore in tests and previews.
 
-| Decision | Rationale |
-|----------|-----------|
-| **Jetpack Compose Single-Module Architecture** | Keeps UI completely declarative, simplifies state hoisting, eliminates XML view boilerplate, and enables fast compilation and seamless previewing. |
-| **Offline-First by Design** | The Android manifest intentionally omits `android.permission.INTERNET`. All financial computations, storage, categorization, and SMS parsing operate locally on-device. |
-| **Room Database with Upsert Contracts** | SQLite storage backed by Room `@Upsert` operations and transactional helpers guarantees ACID compliance across transaction, budget, subscription, and category tables. |
-| **DataStore Preferences for App Settings** | User preferences (theme, currency, locale, accent, haptics) are stored in Jetpack DataStore Preferences with atomic JSON serialization for zero-flicker startup. |
-| **On-Device Regex Heuristic SMS Engine** | Financial transactional SMS parsing runs 100% offline through structured regex heuristics, filtering OTPs/spam and extracting amounts, accounts, merchants, and categories without external NLP dependencies. |
-| **Transactional Backup with Asset Bundling** | JSON backup files (`v2.0.0` envelope) package complete application state alongside base64-encoded, sanitized custom subscription icons with atomic database rollback on import failure. |
-| **MaterialKolor Dynamic Palette Engine** | Harmonizes color schemes with dynamic Android 12+ wallpaper palettes or 10 custom selectable accent themes with full OLED pure-black support. |
-| **Responsive Dual-Mode Navigation** | Automatically adapts between a floating pill navigation bar on compact mobile devices and a side `NavigationRail` on medium/expanded tablets (`>= 840dp`). |
+`DisplayPreferences` stores the Home display name, number locale, and date pattern in DataStore. `MainActivity` supplies these choices to `ValueFormat` through `LocalValueDisplay`. Stored dates and CSV fields keep their portable formats.
 
----
+The screenshot setting applies Android's secure-window flag to the main app and the tracker picker.
 
-## Technology Stack
+The Licenses page lists `OpenSource.parts`. Full license texts ship as raw resources: Apache 2.0 taken verbatim from the Android SDK's NOTICE file and the MIT body from a published MIT license. Roboto Flex shows the copyright and license notice embedded in the font itself.
+
+## First run
+
+`MainActivity` keeps the splash up until it knows where to start. `WelcomeGate.shouldShow` shows the welcome only to someone new: never once it was finished or skipped, and never when trackers already exist (after an update or a restore), in which case it is marked seen at once. The welcome's picks and page survive process death in `SavedStateHandle`.
+
+## Tracker data
+
+A tracker owns an ordered list of fields; each entry fills some of them. Values are never floating point:
+
+| Field type | Stored as | Column |
+| :--- | :--- | :--- |
+| Number | Whole number scaled by 10^decimals (12.5 kg with one decimal is 125) | `long_value` |
+| Money | Minor units of the field's ISO 4217 currency | `long_value` |
+| Duration | Seconds | `long_value` |
+| Rating | 1 to the field's scale | `long_value` |
+| Yes/no | 0 or 1 | `long_value` |
+| Date | Days since 1970-01-01 | `long_value` |
+| Single choice | Option id | `text_value` |
+| Multi choice | JSON array of option ids, sorted | `text_value` |
+| Text | The text | `text_value` |
+
+- Field rules live in `FieldConfig`, stored as JSON keyed by `kind`. Unknown properties are ignored, so new optional settings need no migration.
+- Tracker tags are stored as a JSON string array in `trackers.tags` (schema 3, `MIGRATION_2_3`) and included in backups.
+- Home search matches tracker names, descriptions, field names and tags. The selected tag filter is saved in DataStore.
+- `saveTracker` validates, then writes the tracker and exactly its fields in one transaction. `FieldValueAdapter` rescales values when decimals or currency digits change, and drops values whose type or option is gone. Limits (min, max, scale, length) apply to new input only.
+- SQLite triggers in `TrackerIntegrity` refuse rows that break the rules. Room does not track triggers, so they are reinstalled on every open and no migration has to remember them.
+- The log screen keeps what a person types as `FieldInput` text and selections. `EntryInputs.read` turns each into an exact `FieldValue` or reports it unreadable; it never rounds. `ValueFormat` (in `:core:tracker:ui`) turns values back into locale-aware text.
+- Long histories are paged: lists read `observeRecentEntries(trackerId, limit)`, while totals and calendars read `observeEntryTimes`, which selects only `occurred_at` and `zone_id`. A picked day is read with `dayWindow(day)`, its UTC day widened by 14 hours each way to cover every zone, then filtered by each entry's own day.
+- List search checks notes and text values across the tracker's full history.
+- Entries store `occurredAt` (epoch milliseconds) and the IANA `zoneId` they were logged in; the day an entry belongs to is always computed in that zone.
+- Schemas are exported to `eonslate-app/core/tracker/data/schemas/` and committed. A schema change bumps `TrackerDatabase.VERSION`, adds a `Migration` to `TrackerMigrations.ALL`, and adds a test to `TrackerMigrationTest` that writes data with `ExportedSchema.create` under the old version and reads it back with the current app.
+
+## Finance
+
+Room schema 4 adds finance accounts and transactions. Accounts hold a fixed currency and an opening balance in minor units. Each transfer is one same-currency transaction with a source and destination. A backup includes the entire ledger and restores it with tracker data in one transaction.
+
+Schema 5 adds monthly budgets and recurring payments. Expenses count toward a budget in the month of their saved date. The app posts due payments on open and advances each schedule in the same transaction as its entries. A monthly payment keeps its original due day after shorter months.
+
+Schema 6 adds transaction categories, category budgets, and custom recurring intervals with pause and amount confirmation. Category budgets use an anchored cycle. Variable payments advance only after confirmation.
+
+Schema 8 stores budget names, icons, and colors and adds the finance category catalog. Category renames update transactions, recurring payments, and budgets in one Room transaction. The schema also keeps the next billing minute for hourly subscriptions. Automatic hourly postings keep one transaction per local day.
+
+`RoomFinanceRepository.observeLedger` emits the whole ledger again after any write to a finance table, conflated so a burst of writes costs one read. Screens derive what they show from it; `FinanceScreen` filters and sorts off the main thread with `rememberOffMain`. Writes that touch one row look it up by id rather than reading the table.
+
+A recurring payment posts each occurrence with the id `recurring:<length>:<id>:<day>[:<minute>]`, so posting the same occurrence twice is refused by the primary key. Repricing and naming what it posted select the id range from that prefix up to the prefix ending in `;`, which the primary key's index answers. Shares are JSON on the transaction; `sharesNaming` matches the whole `"party_id":"<id>"` pair with `instr`.
+
+Other screens ask the Transactions tab to open something (an account, a piggy bank, a new transaction, the SMS inbox) with one `FinanceRequest`, which `FinanceScreen` acts on once and clears.
+
+Finance reviews payment SMS from pasted or shared text and scans the inbox once SMS detection is turned on, which is when Android asks for the SMS permission. Every build includes inbox scanning; `-Peonslate.smsInbox=false` builds an APK without the SMS permission that reads pasted or shared text only. The parser recognizes sender aliases, payees, account and card endings, and payment references. It suggests a category and keeps a fingerprint for duplicate detection. Auto-add uses high-confidence matches. Raw SMS stays in memory during import.
+
+## CSV
+
+The tracker menu exchanges entries with matching field columns. Finance exports the rows matching the Transactions filters in the displayed sort order. The export captures those rows when the file picker opens. Exports use UTF-8 with quoted cells, exact decimals and ISO dates. Imports can assign an account to files that lack one and validate the file before appending the batch in one transaction.
+
+## Quick logging
+
+The Home screen widget stores a tracker ID per widget and opens its log. The Quick Settings tile opens a picker for active trackers. Both use the same log destination as reminder taps.
+
+## Technology stack
 
 | Area | Technology |
-|------|------------|
-| Language and toolchain | Kotlin 2.2.10, Java 21 Gradle daemon, JVM 11 bytecode target, Gradle 9.2.1, Android Gradle Plugin 9.2.1, KSP 2.3.2 |
-| Android platform | compileSdk 37, targetSdk 37, minSdk 24 (Android 7.0+), AndroidX Core KTX 1.18.0, Lifecycle 2.10.0, Activity Compose 1.13.0 |
-| UI & Styling | Jetpack Compose BOM 2026.05.00, Material 3 1.5.0-alpha19, Material 3 Adaptive 1.2.0, MaterialKolor 4.1.1, Simple Icons 1.1.1, Coil 2.7.0 |
-| Architecture & State | MVVM, Kotlin Coroutines 1.11.0, StateFlow, Dagger Hilt 2.59.2, Hilt Navigation Compose 1.3.0 |
-| Navigation | Navigation Compose 2.9.7 with animated horizontal transitions and modal dialogs |
-| Persistence & Data | Room 2.8.4 (SQLite), DataStore Preferences 1.2.1, Kotlinx Serialization 1.11.0 |
-| Testing Suite | JUnit 4.13.2, AndroidX Test JUnit 1.3.0, Espresso Core 3.7.0, Robolectric 4.16.1, MockK 1.14.9, Turbine 1.2.1 |
-
-Versions are centralized in `earnslate-android/gradle/libs.versions.toml`.
-
----
-
-## Project Structure
-
-Earnslate is organized into a primary native Android application module, an archived web codebase for future multiplatform/sync initiatives, project documentation, and marketing assets:
-
-```text
-earnslate/
-├── assets/                                      # Project branding & screenshots
-│   └── Earnslate.png
-├── docs/                                        # Landing page website (GitHub Pages)
-│   ├── assets/
-│   ├── index.html
-│   ├── scripts.js
-│   └── styles.css
-├── earnslate-web/                               # Archived web app (Next.js / TypeScript / LocalStorage)
-│   ├── src/
-│   ├── CHANGELOG.md
-│   ├── DEVELOPMENT.md
-│   ├── README.md
-│   └── package.json
-├── earnslate-android/                           # Native Android application
-│   ├── gradle/
-│   │   ├── wrapper/
-│   │   └── libs.versions.toml                   # Centralized version catalog
-│   ├── app/
-│   │   ├── proguard-rules.pro                   # R8 / ProGuard optimization rules
-│   │   ├── build.gradle.kts                     # App module configuration & dependencies
-│   │   └── src/
-│   │       ├── main/
-│   │       │   ├── AndroidManifest.xml          # App manifest (no INTERNET permission)
-│   │       │   ├── java/dev/qtremors/earnslate/
-│   │       │   │   ├── EarnslateApplication.kt  # Application entry & Hilt AndroidApp
-│   │       │   │   ├── MainActivity.kt          # Main Activity & Edge-to-Edge setup
-│   │       │   │   ├── data/
-│   │       │   │   │   ├── Model.kt             # Data classes, enums, & ServiceTemplates
-│   │       │   │   │   ├── Database.kt          # Room Database, DAOs, & Converters
-│   │       │   │   │   ├── SettingsStore.kt     # DataStore preferences repository
-│   │       │   │   │   ├── EarnslateRepository.kt # Core financial domain repository
-│   │       │   │   │   ├── BackupManager.kt     # JSON backup/restore & IconStore engine
-│   │       │   │   │   ├── SmsParser.kt         # Offline regex financial heuristic parser
-│   │       │   │   │   ├── SmsManager.kt        # Android SMS ContentResolver scanner
-│   │       │   │   │   └── DependencyModule.kt  # Hilt dependency injection providers
-│   │       │   │   └── ui/
-│   │       │   │       ├── AppViewModel.kt      # Unified ViewModel & StateFlow container
-│   │       │   │       ├── EarnslateApp.kt      # Root scaffold, navigation, & responsive rail
-│   │       │   │       ├── Screens.kt           # Dashboard, Transactions, Budgets, Subscriptions
-│   │       │   │       ├── Forms.kt             # Transaction, Budget, Subscription creation forms
-│   │       │   │       ├── Components.kt        # Cards, charts, pickers, meters, & custom dialogs
-│   │       │   │       ├── SettingsScreen.kt    # Preferences, theme, categories, & backup UI
-│   │       │   │       ├── AboutScreen.kt       # Application info, links, & license details
-│   │       │   │       ├── SmsInboxSheet.kt     # Smart SMS inbox preview & approval sheet
-│   │       │   │       └── theme/
-│   │       │   │           ├── Theme.kt         # MaterialKolor dynamic theme & OLED styles
-│   │       │   │           └── Type.kt          # Typography & font styling definitions
-│   │       │   └── res/                         # Drawables, mipmaps, values, and XML rules
-│   │       └── test/java/dev/qtremors/earnslate/
-│   │           ├── BackupManagerTest.kt         # Backup/restore validation & rollback tests
-│   │           ├── ComponentsTest.kt            # Formatting & calculation tests
-│   │           ├── FinanceLogicTest.kt          # Budget periods & subscription monthly tests
-│   │           ├── RepositoryTest.kt            # Room database repository integration tests
-│   │           ├── SmsParserTest.kt             # Regex parsing tests across 300+ formats
-│   │           └── WebBackupContractTest.kt     # Cross-compatibility contract tests
-│   ├── build.gradle.kts                         # Root Gradle build script
-│   ├── gradle.properties                        # JVM & Android build properties
-│   └── settings.gradle.kts                      # Gradle project settings
-├── CHANGELOG.md                                 # Stable release changelog
-├── DEVELOPMENT.md                               # Developer documentation (This Document)
-├── LICENSE.md                                   # Tremors Source License (TSL)
-├── PRIVACY.md                                   # Privacy policy (Offline & No Telemetry)
-├── RELEASES.md                                  # User-facing release notes
-├── TASKS.md                                     # Engineering backlog & task tracking
-└── README.md                                    # Project entry point
-```
-
----
-
-## Runtime Flow
-
-1. **Application Boot:** `EarnslateApplication` initializes Hilt dependency injection and configures application-wide singletons (`EarnslateDatabase`, `SettingsStore`, `BackupManager`, `IconStore`).
-2. **Activity Startup & Edge-to-Edge:** `MainActivity` configures `enableEdgeToEdge()` and mounts `EarnslateApp`.
-3. **Repository Initialization:** `EarnslateRepository.initialize()` runs:
-   - Verifies if default categories exist in Room; seeds `DefaultCategories` if the database is newly created.
-   - Executes `runMaintenance()`: recalculates all active budget spent totals against historical transactions and synchronizes subscription billing cycles.
-4. **StateFlow Hydration:** `AppViewModel` combines 5 asynchronous reactive flows (`transactions`, `budgets`, `subscriptions`, `categories`, `settings`) into a single immutable `AppState` dataclass.
-5. **Dynamic Theme Application:** `EarnslateTheme` reads `AppState.settings.theme` and `AppState.settings.accent`, initializing the `MaterialKolor` color engine, dynamic palette harmonization, and OLED background modifiers.
-6. **Navigation Shell Assembly:** `EarnslateApp` checks screen dimensions:
-   - **Compact Devices (`< 840dp`):** Renders the floating pill bottom navigation bar with spring scale interactions and bottom list gradient bleed scrim.
-   - **Expanded Devices (`>= 840dp`):** Renders a persistent Material 3 `NavigationRail` on the leading edge for large screens and tablets.
-7. **Lifecycle Resumption:** When the application returns from background, `LifecycleEventEffect(Lifecycle.Event.ON_RESUME)` triggers `viewModel.maintenance()` to auto-advance overdue subscription billing dates and refresh budget calculations.
-
----
+| :--- | :--- |
+| Toolchain | Gradle 9.8.2, Android Gradle Plugin 9.5.1, Kotlin 2.4.21, KSP 2.3.12, Java 21 daemon, JVM 11 bytecode |
+| Platform | compileSdk 37, targetSdk 37, minSdk 26 (Android 8.0+) |
+| UI | Jetpack Compose BOM 2026.09.00, Material 3 1.5.0-rc01 (Expressive), MaterialKolor 5.0.1, Roboto Flex |
+| State and DI | Kotlin Coroutines 1.11.0, Dagger Hilt 2.60.1, Navigation Compose 2.10.2 |
+| Persistence | Room 2.8.5, DataStore 1.3.0, Kotlinx Serialization 1.12.0 |
+| Testing | JUnit 4.13.2, Robolectric 4.17, MockK 1.14.12, Turbine 1.2.1, ArchUnit 1.5.1 |
 
-## Core Concepts & Financial Models
+Versions live in `eonslate-app/gradle/libs.versions.toml`.
 
-### Financial Entities (`Model.kt`)
+## Backups
 
-- **`Transaction`:** Immutable ledger entry representing an income or expense.
-  - `amount`: Signed floating point (negative for expenses, positive for income).
-  - `category`: Category string identifier.
-  - `date`: ISO local date string (`YYYY-MM-DD`).
-  - `type`: `TransactionType.income` or `TransactionType.expense`.
-- **`Budget`:** Category-scoped spending limit across a customizable billing cycle.
-  - `limit`: Numerical spending threshold.
-  - `spent`: Dynamically calculated aggregate sum of expenses within the active period.
-  - `period`: `BillingCycle(count, unit)`.
-  - `periodStartDate`: Base date for computing recurring cycle intervals.
-- **`Subscription`:** Recurring expense or income commitment.
-  - `amount`: Recurring cycle cost.
-  - `cycle`: Recurrence interval (`day`, `week`, `month`, `year`).
-  - `nextBilling`: Next upcoming transaction trigger date.
-  - `type`: `TransactionType.expense` (default) or `TransactionType.income` (salary/retainer/dividend).
-  - `isVariable`: Flag indicating whether the amount fluctuates each billing cycle.
-  - `customIconPath`: Local filesystem path to imported sanitized icon asset.
-- **`Category`:** Categorization tag with color and Material icon.
-  - `type`: `"income"`, `"expense"`, or `"both"`.
+- `BackupSnapshot` (`:core:tracker:domain`) holds every table row as stored, so a restore is exact. Settings are not included.
+- `BackupArchive`: `EONSLATE` magic, format version, flags, then gzipped JSON. Encrypted files add salt, PBKDF2-HMAC-SHA256 iterations and a nonce, and seal the body with AES-256-GCM using the header as associated data. The iteration count is stored per file (default 210,000; Android's PBKDF2 is slow).
+- `BackupCheck` repeats the trigger rules before anything is touched. `RoomBackupRepository.replaceAll` clears and inserts in one transaction, with triggers on.
+- `BackupManager` keeps the current data as `files/backups/before-restore.eonslate` before each restore; it replaces the previous point only after a successful restore. Undo restores it and deletes it.
+- `LegacyFinanceBackup` converts v2.0.0 JSON into ledger rows. Restore replaces the finance sections present in the file, preserves tracker data, and uses the same Undo path.
+- A schema change must also upgrade older snapshots before restoring them.
 
-### Financial Calculation Formulas
+## Reminders
 
-#### Monthly Equivalent Calculation
-To display accurate aggregate subscription expenses on the dashboard, any recurrence interval is normalized to a standard 30-day monthly equivalent:
+- `Reminder` (domain) is a wall-clock time and days; `ReminderTimes.next` finds the first due time strictly after now in the current zone (DST gaps shift forward). Stored in `reminders` (schema 2, `MIGRATION_1_2`), deleted with their tracker, included in backups.
+- `ReminderSync` keeps one alarm per active reminder (enabled, tracker not archived) and cancels the rest. It follows `observeActive()` from `EonslateApplication`, so any change reschedules. Exact (`setExactAndAllowWhileIdle`) when allowed, else a 10 minute `setWindow`.
+- `ReminderReceiver` posts unless skipped, then always syncs, which schedules the next alert. `RescheduleReceiver` syncs on boot, app update, time, zone and exact-alarm permission changes.
+- A tap opens `MainActivity` with `log_tracker`, which navigates to `LogEntry`.
 
-$$\text{Monthly Equivalent} = \begin{cases} 
-\text{amount} \times \frac{30.4375}{\text{count}}, & \text{unit} = \text{day} \\
-\text{amount} \times \frac{4.3482}{\text{count}}, & \text{unit} = \text{week} \\
-\frac{\text{amount}}{\text{count}}, & \text{unit} = \text{month} \\
-\frac{\text{amount}}{\text{count} \times 12}, & \text{unit} = \text{year}
-\end{cases}$$
-
-#### Budget Period Recalculation
-Budget spent totals are recomputed by filtering transactions matching the budget's category and falling between the calculated start date $T_{\text{start}}$ and end date $T_{\text{end}}$ of the current cycle interval:
-
-$$\text{Spent} = \sum_{t \in \text{Transactions}} |t.\text{amount}| \quad \text{where } t.\text{category} = B.\text{category} \land t.\text{type} = \text{expense} \land T_{\text{start}} \le t.\text{date} \le T_{\text{end}}$$
-
----
-
-## Navigation & State Architecture
-
-### Unified AppState Container
-
-`AppViewModel` exposes a single, strongly-typed `StateFlow<AppState>`:
+## Identity
 
-```kotlin
-data class AppState(
-    val ready: Boolean = false,
-    val transactions: List<Transaction> = emptyList(),
-    val budgets: List<Budget> = emptyList(),
-    val subscriptions: List<Subscription> = emptyList(),
-    val categories: List<Category> = DefaultCategories,
-    val settings: UserSettings = UserSettings(),
-)
-```
-
-### Navigation Graph
-
-Navigation Compose manages top-level routes with horizontal slide animations:
-
-- `dashboard`: Real-time financial metrics, balance cards, recent transactions, spending distribution, and active subscriptions.
-- `transactions`: Searchable, filterable transaction ledger with date presets, sorting, batch deletion, and CSV export.
-- `budgets`: Category spending meters, period limits, and over-budget warnings.
-- `subscriptions`: Recurring bill tracker, service catalog, treemap distribution, and custom icon manager.
-- `settings`: Preferences, dynamic appearance toggles, custom category editor, SMS parser controls, and JSON backup/restore.
-- `about`: Application metadata, version information, privacy guarantees, and open-source credits.
-
----
-
-## Persistence & Database Layer
-
-### Room Database (`EarnslateDatabase.kt`)
-
-The SQLite database is defined with 4 primary entity DAOs:
-
-```kotlin
-@Database(
-    entities = [Transaction::class, Budget::class, Subscription::class, Category::class],
-    version = 2,
-    exportSchema = false,
-)
-@TypeConverters(Converters::class)
-abstract class EarnslateDatabase : RoomDatabase()
-```
-
-- **`TransactionDao`:** Reactive `observeAll(): Flow<List<Transaction>>`, `@Upsert` for single/bulk entries, batch ID deletions.
-- **`BudgetDao`:** Reactive `observeAll()`, `@Upsert`, and deletion handlers.
-- **`SubscriptionDao`:** Reactive `observeAll()`, `@Upsert`, and deletion with custom icon cleanup.
-- **`CategoryDao`:** Reactive `observeAll()`, seed checking, and alphabetical ordering.
-
-### Database Migrations
-
-- **`MIGRATION_1_2`:** Upgrades schema from v1 to v2, adding `type TEXT NOT NULL DEFAULT 'expense'` and `isVariable INTEGER NOT NULL DEFAULT 0` columns to the `subscriptions` table.
-
-### SettingsStore (DataStore Preferences)
-
-User preferences are persisted via `androidx.datastore.preferences.preferencesDataStore("settings")` using Kotlinx Serialization. The store supports transactional updates:
-
-```kotlin
-suspend fun update(transform: (UserSettings) -> UserSettings)
-```
-
----
-
-## Smart SMS Parsing Engine
-
-Earnslate includes a proprietary **100% offline heuristic parser** (`SmsParser.kt`) designed to extract structured transactions from financial SMS messages without internet access or external cloud models.
-
-```mermaid
-flowchart TD
-    SMS["Incoming SMS Message"] --> F1{"Matches Non-Financial Filter?<br/>(OTP, Login, Security, Spam)"}
-    F1 -- Yes --> Drop["Discard (Not Financial)"]
-    F1 -- No --> F2["Extract Amount & Currency<br/>(Regex multi-currency engine)"]
-    F2 --> F3["Detect Transaction Type<br/>(Debit vs Credit keywords)"]
-    F3 --> F4["Extract Account / Card ending<br/>(4-digit card/account identifier)"]
-    F4 --> F5["Extract UPI / RRN Reference ID"]
-    F5 --> F6["Match Merchant against 300+ Catalog"]
-    F6 --> F7["Assign Suggested Category"]
-    F7 --> Result["ParsedSmsTransaction<br/>(Confidence Score &gt;= 0.7)"]
-```
-
-### Heuristic Pipeline Components
-
-1. **Non-Financial Noise Suppression:**
-   - Filters out one-time passwords (`otp`, `verification code`, `secret pin`).
-   - Filters security alerts (`password reset`, `login attempt`).
-   - Filters standalone balance inquiries (`avail bal is`, `a/c bal:`).
-2. **Amount Parsing:**
-   - Multi-currency regex support for `₹`, `Rs.`, `INR`, `$`, `USD`, `€`, `EUR`, `£`, `GBP`.
-   - Handles comma-delimited thousand separators (e.g. `₹1,450.50`, `INR 50,000`).
-3. **Debit vs Credit Classification:**
-   - Debit: `debited`, `spent`, `paid to`, `withdrawn`, `sent to`, `used at`, `purchase of`, `charged`, `transferred to`.
-   - Credit: `credited`, `received from`, `deposited`, `salary`, `refunded`, `added to`, `cashback`.
-4. **Merchant & Entity Recognition:**
-   - 300+ pre-compiled merchant signatures across Food, Travel, Shopping, Utilities, Subscriptions, AI, Fitness, Entertainment, and Banking.
-5. **Confidence Scoring:**
-   - Evaluates completeness of extracted attributes (amount, type, account, merchant, reference) to calculate a confidence score between `0.0` and `1.0`.
-
----
-
-## Backup, Restore & Data Portability
-
-### JSON Backup Envelope Specification (`v2.0.0`)
-
-```json
-{
-  "version": "2.0.0",
-  "exportDate": "2026-08-18T22:00:00Z",
-  "settings": {
-    "displayName": "User",
-    "currency": "INR",
-    "currencySymbol": "₹",
-    "locale": "en-IN",
-    "dateFormat": "DD/MM/YYYY",
-    "theme": "system",
-    "accent": "dynamic",
-    "hapticsEnabled": true,
-    "hasCompletedOnboarding": true,
-    "smsDetectionEnabled": false,
-    "smsAutoApprove": false,
-    "customCategories": [...]
-  },
-  "transactions": [...],
-  "budgets": [...],
-  "subscriptions": [...],
-  "androidAssets": [
-    {
-      "entityId": "sub_uuid_123",
-      "mimeType": "image/png",
-      "data": "iVBORw0KGgoAAAANSUhEUgAA...",
-      "fallbackIcon": "CreditCard"
-    }
-  ]
-}
-```
-
-### IconStore Asset Sanitization & Normalization
-
-- **SVG Sanitization:** Rejects SVGs containing `<script>`, `<!ENTITY>`, `<foreignObject>`, `javascript:`, or `onload=` handlers to prevent code execution.
-- **Raster Normalization:** Validates image file signatures for PNG, JPEG, and WebP, downsamples oversized images exceeding 512px, and re-encodes assets to clean PNG bitmaps.
-- **Size Bounds:** Enforces strict limits: max 5 MB per file input, max 2 MB per backed-up asset, and max 10 MB total backup asset payload.
-
-### Transactional Restore & Rollback Safety
-
-When restoring a backup:
-1. Validates the JSON schema, entity IDs, date formats, and asset integrity.
-2. Captures an in-memory snapshot of all current database records, DataStore settings, and local custom icon files.
-3. Unpacks and validates all embedded base64 assets into the local `custom_icons` directory.
-4. Executes atomic database replacement inside `database.withTransaction`.
-5. **Rollback Guarantee:** If any step, decoding routine, or database insertion fails, all newly extracted files are purged, original database records are restored, and original settings are re-applied.
-
----
-
-## UI & Design System
-
-### Design Language
-
-Earnslate implements **Material 3 Expressive UI** with dynamic color harmonization, smooth physics-based spring animations, and an OLED pure-black display option.
-
-- **Theme Modes:** `System Default`, `Pure Light`, `Dark`, `OLED Black`.
-- **Accent Palettes:** 10 curated accent themes powered by `MaterialKolor`:
-  - `Dynamic` (Material You wallpaper extraction)
-  - `Purple`, `Blue`, `Cyan`, `Teal`, `Green`, `Orange`, `Pink`, `Red`, `Monochrome`.
-- **Typography:** Expressive headings paired with crisp, tabular numerical font layouts.
-- **Micro-Interactions:** Custom bouncy spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessLow`), living pulse animations on about screens, and tactile haptic feedback.
-
----
-
-## Feature Modules Deep Dive
-
-### 1. Financial Dashboard (`Screens.kt`)
-- **Metric Cards:** Total Income, Total Expenses, and Net Balance with percentage trend indicators.
-- **Quick Action Bar:** One-tap entry to log transactions, create subscriptions, or inspect the SMS inbox.
-- **Cash Flow Overview:** Visual category expense distribution bars with percentage shares.
-- **Recent Activity Ledger:** Chronological preview of latest transactions with category icons and color badges.
-
-### 2. Transactions Screen (`Screens.kt`)
-- **Real-Time Search:** Instant filtering by description, notes, or category name.
-- **Multi-Dimension Filters:** Filter by Transaction Type (All, Expense, Income) and Category.
-- **Date Presets:** All Time, Today, This Week, This Month, and Custom Date Range pickers.
-- **Sorting Engine:** Date (Newest/Oldest) and Amount (Highest/Lowest).
-- **Batch Operations:** Multi-select mode with batch deletion.
-- **CSV Data Export:** Standard RFC 4180 CSV generation with header columns.
-
-### 3. Subscriptions Screen (`Screens.kt`)
-- **Service Template Directory:** 80+ pre-packaged service templates with brand colors, monograms, and default categories.
-- **Recurrence Engine:** Supports Daily, Weekly, Monthly, Yearly, and custom interval multipliers.
-- **Treemap Visualization:** Proportional visual treemap representing monthly expense distribution across subscriptions.
-- **Custom Icon Uploader:** Built-in picker for importing local SVG, PNG, JPEG, and WebP icons.
-
-### 4. Budgets Screen (`Screens.kt`)
-- **Category Spending Meters:** Progress bar indicators tracking spent vs limit.
-- **Over-Budget Feedback:** Visual warning badges and color shifts when spending exceeds threshold.
-- **Auto-Reset Cycles:** Automatically tracks spending within the current recurring cycle window.
-
-### 5. Settings Screen (`SettingsScreen.kt`)
-- **Preferences:** Display name, Currency code, Symbol, Locale, Date format (`DD/MM/YYYY`, `MM/DD/YYYY`, `YYYY-MM-DD`).
-- **Appearance:** Theme mode, MaterialKolor accent selector, Haptic feedback toggle.
-- **Category Manager:** Create, edit, and delete custom categories with color pickers and icon selectors.
-- **SMS Parser Settings:** Toggle automatic SMS detection, auto-approval, and open the manual SMS Inbox Sheet.
-- **Data Management:** Export JSON backup, Restore JSON backup, Reset application database.
-
----
-
-## Naming Conventions
-
-- **Kotlin Files & Classes:** UpperCamelCase (e.g. `EarnslateRepository.kt`, `SettingsStore.kt`).
-- **Composables:** UpperCamelCase named as nouns or screen descriptors (e.g. `DashboardScreen`, `TransactionCard`, `ServicePickerModal`).
-- **StateFlow & Variables:** lowerCamelCase (e.g. `transactions`, `isVariable`, `periodStartDate`).
-- **Database Tables & Columns:** lower_snake_case for SQLite identifiers (e.g. `transactions`, `custom_icons`).
-- **Colors & Accents:** Lowercase enums and hex strings (e.g. `AppAccent.dynamic`, `#F59E0B`).
-
----
-
-## Configuration & Build System
-
-### Build Variants & Signing
-
-Configuration is defined in `earnslate-android/app/build.gradle.kts`:
-
-```kotlin
-android {
-    namespace = "dev.qtremors.earnslate"
-    compileSdk = 37
-
-    defaultConfig {
-        applicationId = "dev.qtremors.earnslate"
-        minSdk = 24
-        targetSdk = 37
-        versionCode = 200
-        versionName = "2.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-}
-```
-
-### Signing Configuration
-
-The Gradle build script automatically discovers signing credentials from `signing.properties` or `local.properties`:
-
-```properties
-signing.storeFile=/path/to/keystore.jks
-signing.storePassword=your_keystore_password
-signing.keyAlias=your_key_alias
-signing.keyPassword=your_key_password
-```
-
-When signing credentials are present, release APKs are signed and output to:
-`Earnslate-2.0.0.apk`.
-
----
-
-## Security & Privacy Practices
-
-- **Zero Network Transmission:** `android.permission.INTERNET` is omitted from `AndroidManifest.xml`.
-- **Local SMS Processing:** SMS data is read in-memory via `ContentResolver`, processed locally by `SmsParser`, and discarded immediately after approval. Message bodies are never saved to disk.
-- **SVG & XML Content Filtering:** Imported SVGs are strictly scanned against JavaScript execution, nested entities, and foreign object injection.
-- **Input Validation & Sanitization:** All user inputs (descriptions, amounts, notes, category names) are bounded with length and finite-number constraints before database insertion.
-
----
-
-## Error Handling & Recovery
-
-- **Graceful Failure UI:** Transient errors and validation failures emit high-priority messages through `AppViewModel.messages` to render non-intrusive snackbars.
-- **Database Transaction Protection:** Multi-table mutations are wrapped in `database.withTransaction` to prevent half-committed states.
-- **Asset Fallbacks:** If a custom subscription icon file is missing or corrupted on disk, the UI gracefully falls back to the service monogram or default Material icon.
-
----
-
-## Testing Suite
-
-The unit testing suite is located in `earnslate-android/app/src/test/java/dev/qtremors/earnslate/`:
-
-- **`FinanceLogicTest.kt`:** Verifies budget cycle calculation intervals, monthly equivalent formulas, and transaction amount normalizations.
-- **`SmsParserTest.kt`:** Exercises regex heuristics across 300+ sample transactional SMS bodies, verifying amount extraction, debit/credit classification, merchant matching, and noise filtering.
-- **`BackupManagerTest.kt`:** Validates JSON serialization, base64 asset bundling, SVG sanitization, corrupt payload rejection, and transactional rollback.
-- **`WebBackupContractTest.kt`:** Verifies backward compatibility between Android `BackupEnvelope` and legacy web app exports.
-- **`RepositoryTest.kt`:** Tests Room database operations, category defaults, and cascading budget recalculations.
-- **`ComponentsTest.kt`:** Verifies date formatting and currency formatting routines across supported locales.
-
----
-
-## Build & Release Engineering
-
-### Essential Commands
-
-Execute these commands from `earnslate-android/`:
+Monochrome first; color only where it means something. Material 3 Expressive, never a copy of another app.
+
+| Element | Rule |
+| :--- | :--- |
+| Color | Default `ThemePreset.MONO` with pure black (`monoColorScheme`, hand-built neutrals). Alternatives: wallpaper (Android 12+) or a seeded preset via `eonslateColorScheme`. Presets are stored by name. |
+| Context | Pigments for trackers, ember (tertiary) for streaks and records, `LocalSignals` for positive and warning (harmonized unless Mono), error roles for errors. |
+| Pigments | `BadgePalette` holds seventeen mineral pigments (Slate, Ember, Moss, Tide...). Tiles and glyphs come from fixed HCT tones, so contrast is the same for every hue. A tracker stores its pigment by index, so new pigments go at the end. |
+| Type | `EonslateDisplay` is Roboto Flex at the narrow end of its width axis, set heavy, for titles, headlines and big values. Body text stays at normal width. |
+| Shape | Tracker icons sit on `SlateTileShape` (a square with 30% corners), never a circle. Tracker cards use `SlateCardShape`. Empty states use the slanted slate. |
+| Accent | Primary: `MainActionButton`, quick log, today's progress, selection. |
+| Signature | `TrackerSlate`: a pigment-tinted card with the icon tile, the name in the display face and one line about what was logged. |
+
+## Charts
+
+`BarChart`, `LineChart`, `Meter`, `ChartAxis` and `ChartTicks` in `:core:ui` draw on a Compose `Canvas`, with no chart library. Every chart follows the same rules:
+
+- One series per chart in the tracker's pigment (`BadgePalette.mark`), so no legend; the card title names it. The picked mark uses the accent; records use ember.
+- Thin marks: bars at most 28 dp wide with 2 dp gaps and 4 dp rounded data ends on a zero baseline; a 2 dp line with 8 dp markers ringed in the surface color. A hairline baseline, no grid.
+- Direct labels are selective: a bar chart names only its peak (`peakLabel`, with headroom reserved above the bar) and a line only its latest value (`endLabel`). Everything else is read by tapping or in the table.
+- A tap picks a mark and the card's caption reads it. Every chart card has a table view, and each chart has a spoken summary.
+- Big standalone numbers use proportional digits; axis ticks are tabular.
+
+Insights are computed in `:core:tracker:domain` (`Streaks`, `FieldInsights`, and `Periods` for day, week and month buckets that start on the locale's first weekday, `Records` for personal bests, `Today` for Home's progress line) with exact `BigDecimal` sums and averages. The tracker page reads every entry with values only while Insights is open.
+
+## Design system
+
+All screens use `:core:ui`. It provides `EonslateTheme` (system, light, dark and pure black; wallpaper, preset or custom colors), shape, spacing and type tokens, `EonslateScaffold` with the large flexible top bar, connected rows and choices, `ExpressiveSwitch`, `EonslateMenu`, `EonslateBottomSheet`, `InlineSearchField`, `FormField` (always the 16 dp `FieldShape`), `ConfirmDialog`, `MainActionButton` (the one main action per page, in the accent, labelled for screen readers), `LoadingState`, `EmptyState` and `rememberAppHaptics()`. `EonslateScaffold` takes `onBack` for pages below the top level and a `floatingActionButton`. A screen that needs something new adds it to `:core:ui` first.
+
+Every module with Compose UI opts in to `ExperimentalMaterial3Api` and `ExperimentalMaterial3ExpressiveApi`.
+
+## Build commands
+
+Run from `eonslate-app/`:
 
 ```bash
-# Run all unit tests
-./gradlew testDebugUnitTest
-
-# Run full project lint check
-./gradlew lintDebug
-
-# Build debug APK
 ./gradlew assembleDebug
-
-# Build optimized release APK
-./gradlew assembleRelease
 ```
 
----
+```bash
+./gradlew testDebugUnitTest
+```
 
-## Troubleshooting & Maintenance
+```bash
+./gradlew :core:tracker:domain:test
+```
 
-- **Room Schema Changes:** If modifying entities in `Model.kt`, increment database `version` in `Database.kt` and provide a concrete `Migration` object in `EarnslateDatabase`.
-- **SMS Permission & Privacy:** Earnslate requests `READ_SMS` only when the user enables the Smart SMS Parser. The scanner runs purely locally on-device upon app launch to detect recent transactions without background broadcast receivers or telemetry. If denied, the app continues to operate seamlessly with full manual financial tracking capabilities.
+UI tests run on the JVM with Robolectric and Compose's test rule (`FieldInputCardUiTest`, `HomeContentUiTest`, `TrackerEditorUiTest`, `MonthCalendarUiTest`). Each module's `src/test/resources/robolectric.properties` pins SDK 35, and every UI test class sets a phone-sized screen with `@Config(qualifiers = ...)`.
 
----
+```bash
+./gradlew assembleRelease
+./gradlew :app:bundleRelease
+```
 
-## Feedback
+Release signing reads `signing.properties` (or `local.properties`) with `signing.storeFile`, `signing.storePassword`, `signing.keyAlias` and `signing.keyPassword`. Both files are ignored by git.
 
-- **Bug Reports & Issues:** [GitHub Issues](https://github.com/qtremors/earnslate/issues)
-- **Community:** [Discord](https://discord.gg/QgUjuNj9U8)
-- **Author:** [Tremors](https://github.com/qtremors)
+`ArchitectureTest` checks module dependencies and rejects network permissions in source manifests.
+
+## Conventions
+
+- Package root: `dev.qtremors.eonslate`, with modules under `core.*` and `feature.*`.
+- Release commits are titled `vX.Y.Z: Short Title Case Summary`.
+- User-facing text lives in each module's `strings.xml`.
+- Compose stability for classes in pure Kotlin modules is declared in `eonslate-app/compose-stability.conf`.

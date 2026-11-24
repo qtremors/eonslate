@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only attachments and the camera's photo before it is attached; nothing else is shared. -->
+<paths>
+    <files-path name="attachments" path="attachments/" />
+    <cache-path name="camera" path="camera/" />
+</paths>

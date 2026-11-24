@@ -1,58 +1,54 @@
-# Earnslate - Releases
+# Eonslate - Releases
 
-> **Project:** Earnslate
-> **Version:** 2.0.0
-> **Last Updated:** 2026-08-18
-
-| Version | Release Date | Key Focus |
-| :--- | :--- | :--- |
-| [v2.0.0](#v200) | 2026-08-18 | Initial Android release - Native Jetpack Compose, Material 3, offline Room storage, Smart SMS parsing, custom icons, and dynamic theming |
+> **Project:** Eonslate
+> **Version:** 2.2.5
+> **Last Updated:** 2026-11-24
 
 ---
 
-# v2.0.0
+## v2.2.5 - 2026-11-24
 
-**Release Date:** August 18, 2026
+The first release of Eonslate: a private, offline slate for your money and anything else you track, built with Material 3 Expressive. Nothing is set up for you; you build your accounts, categories and trackers the way you want them.
 
-**Development range included:** v2.0.0
+Download `Eonslate-2.2.5.apk` below. Android 8.0 or newer. No internet permission, no accounts, no ads.
 
-**Known issues & roadmap:** Track active issues and ongoing engineering tasks in [TASKS.md](TASKS.md).
+### Money
+- **Account cards** on Home: each bank, card, wallet or cash account with its balance and last digits. Tap one to see only its transactions.
+- **Transactions** with categories, transfers, pending payments, filters, search and sorting, opening on this month.
+- **Floors**: the least to keep in an account, or across all of them; a payment that would go under says so first.
+- **Recurring payments** that post themselves when due, or wait for the amount when it varies. A price change applies from the day you choose.
+- **Budgets** per category or per account, with meters that warn before the limit.
+- **Piggy banks**: money set aside inside an account toward a goal, with what is still free to spend.
+- **Fixed deposits** that show what they are worth today, and record the interest when they close.
+- **Attachments**: photos, PDFs and links kept with any transaction, and carried in backups.
+- **Insights**: cash flow, where money went, which weekdays, and a year of days.
+- **One currency at a time** on every screen, chosen with a tap when accounts use several.
 
-Earnslate v2.0.0 introduces the complete native Android application, replacing the earlier web prototype with a modern, private, offline-first personal finance and subscription manager.
+### People
+- **Who you pay**: say who each payment was with; their page shows what you paid them this year, this month and in all, by category.
+- **Lend, borrow, split and settle up** in a chat with each person, which keeps track of who owes whom.
 
-> [!NOTE]
-> **Privacy first:** Earnslate operates 100% offline and does not request `android.permission.INTERNET`. All financial transactions, budgets, subscriptions, and parsed SMS data stay strictly on your device.
+### Payment SMS
+- Scan the inbox or share a message in, all on the phone; payments go to the account whose last digits they name.
+- Sure matches can be added on their own; the rest wait for you in Notifications.
 
-## What's New in v2.0.0
+### Trackers
+- **Build your own** from numbers, money, durations, ratings, yes or no, choices, text and dates.
+- **Schedules**: every day, some days, a few times a week, or as needed.
+- **Goals** for numbers and durations, per day or per week, at least or at most.
+- **Intervals**: due again after a time or after a number grows by an amount; between logs the amount adds up at your usual pace, on the weekdays you choose.
+- **Parts**: a choice becomes parts of the tracker, each with where it stands and its own log button.
+- **Learned rhythms**: how often you usually log, and when the next one is likely, with no setup.
+- **Insights**: streaks, consistency, a year heat map, weekday patterns, totals, averages, records and charts.
+- **Reminders** on chosen days, skipped when already logged.
 
-### Native Jetpack Compose and Material 3 UI
+### Everywhere
+- **Home** with your money, account cards and today's trackers; a bell for everything waiting, and a profile for settings.
+- **Widgets**: today's trackers, your money, and quick log; plus a Quick Settings tile.
+- **Onboarding**: your name, currency and first account, or restore a backup from another phone.
+- **Backups** in one file, optionally encrypted, with undoable restores. Earnslate v2.0.0 backups can be restored too.
+- **CSV**: import and export tracker entries and transactions; export budgets and recurring payments.
+- **Its own look**: monochrome by default, or your wallpaper's colors or an accent; light, dark and pure black.
+- **Private by design**: optional screenshot blocking, and nothing leaves your phone.
 
-- Built with modern Jetpack Compose, Material 3 Expressive UI, and dynamic color schemes.
-- Expressive bottom navigation pill with smooth micro-interactions, spring animations, and bottom list scrim.
-- Responsive tablet and landscape support with an adaptive side `NavigationRail` for wide displays (`>= 840dp`).
-- Dynamic theme selection supporting System Default, Pure Light, Dark, and OLED pure black modes.
-- MaterialKolor palette engine with 10 vibrant accent themes (Dynamic, Purple, Blue, Cyan, Teal, Green, Orange, Pink, Red, Monochrome) and tactile haptic feedback.
-
-### Smart SMS Transaction Parsing (100% Offline)
-
-- Heuristic pattern-matching engine that parses bank and financial transactional SMS messages completely on-device.
-- Filters out non-financial noise such as OTPs, security login alerts, and general spam.
-- Recognizes debits and credits across 300+ popular financial institutions, UPI apps, delivery services, and merchants.
-- Extracts amounts, account/card ending numbers, and UPI/RRN reference identifiers.
-- Interactive SMS Inbox bottom sheet allowing users to review, filter, and batch-approve detected transactions with confidence scoring.
-
-### Subscriptions, Budgets, and Cash Flow Tracking
-
-- Real-time financial dashboard displaying net balance, total monthly income, total expenses, and spending cash flow trends.
-- Comprehensive transaction management with search, category filtering, date presets (Today, This Week, This Month, Custom Range), sorting, and multi-select batch deletion.
-- Recurring subscription tracker supporting daily, weekly, monthly, yearly, and custom billing cycles.
-- Next-billing countdowns, variable expense flags, and income subscription support (salaries, dividends, retainers).
-- Built-in directory of 80+ pre-packaged service templates across Streaming, Music, Storage, Gaming, Productivity, VPN, Security, Communication, AI, Developer, Food, Fitness, Reading, Learning, Utility, Insurance, Housing, and Finance.
-- Category-scoped budget limits with real-time spending calculations, period auto-resets, visual progress bars, and over-budget warnings.
-
-### Atomic Backup, Custom Icons, and Data Portability
-
-- Transactional JSON backup and restore engine with full rollback safety to prevent data corruption.
-- Custom subscription icon imports (SVG, PNG, JPEG, WebP) with on-device sanitization against active scripts/entities, raster normalization, and base64 backup bundling.
-- Backward compatibility with legacy web backup envelopes.
-- Formatted CSV export for transaction ledgers with proper quote and comma escaping.
+Full details are in [CHANGELOG.md](CHANGELOG.md).

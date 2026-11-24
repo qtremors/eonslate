@@ -1,22 +1,428 @@
-# Earnslate Changelog
+# Eonslate Changelog
 
-> **Project:** Earnslate
-> **Version:** 2.0.0
-> **Last Updated:** 2026-08-18
+> **Project:** Eonslate
+> **Version:** 2.2.5
+> **Last Updated:** 2026-11-24
 
 ---
 
-## [2.0.0] - 2026-08-18
+## [2.2.5] - 2026-11-24
 
-- **Native Android Launch**: Rebuilt Earnslate from the ground up as a private, offline native Android application using Kotlin, Jetpack Compose, Material 3, and Room.
-- **Smart SMS Parser**: Added a 100% offline, on-device heuristic engine that detects bank and transaction SMS messages across 300+ financial brands and merchants, extracting amounts, debit/credit transaction types, account/card endings, UPI reference numbers, and auto-suggesting categories with zero cloud connectivity.
-- **SMS Inbox Sheet**: Added an interactive bottom sheet to scan device SMS inbox messages, preview parsed transactions with confidence indicators, and quickly approve them into transaction records.
-- **Financial Dashboard**: Implemented real-time tracking of net balance, total income, total expenses, recent activity timelines, active subscriptions, and visual budget health meters.
-- **Transaction Management**: Added full CRUD operations for income and expense transactions, search, category filters, date presets (Today, This Week, This Month, Custom Range), sorting controls, multi-select mode, and batch deletion.
-- **Subscriptions & Recurring Bills**: Added recurring income and expense tracking with flexible billing cycles (daily, weekly, monthly, yearly, custom counts), next billing countdowns, variable expense toggles, 80+ pre-packaged service templates, and expense distribution treemaps.
-- **Custom Icon Storage**: Added support for custom SVG, PNG, JPEG, and WebP icons with automatic SVG sanitization, raster normalization, and dedicated local storage.
-- **Category Budgets**: Added monthly and custom billing cycle budget limits with real-time spending calculations, period auto-resets, visual progress bars, and over-budget warnings.
-- **Dynamic Theming & Expressive Design**: Added Material 3 Expressive UI, OLED pure-black, Dark, and Light themes, dynamic MaterialKolor accent palettes (Dynamic, Purple, Blue, Cyan, Teal, Green, Orange, Pink, Red, Monochrome), responsive tablet navigation rails, and floating pill navigation.
-- **Atomic JSON Backup & Restore**: Implemented versioned (`v2.0.0`) JSON backup and restore with embedded base64 custom icon assets, strict input validation, and transactional database rollback.
-- **CSV Data Export**: Added standard CSV export for transactions with proper escaping and formatting.
-- **Offline & Privacy Guarantee**: Built with zero internet permissions (`android.permission.INTERNET` omitted), zero ads, zero trackers, and zero third-party telemetry.
+The first release of Eonslate. See [RELEASES.md](RELEASES.md).
+
+- **A new website**: what Eonslate does, live GitHub stars, forks and downloads, the latest version with a direct APK download, the developer, credits and common questions. Dark, with the app's monochrome colors.
+- **A favicon that shows on dark tabs**: the logo turns light when the browser is dark.
+- **No examples that steer**: fields no longer suggest names, units or addresses, and deposits no longer offer preset terms. Every field is yours to fill as you like.
+- Wording in hints and the README is general rather than built around particular uses.
+- **A clean slate, all the way**: an empty Trackers tab no longer offers ready-made trackers to start with, and the last of the old template code is gone.
+- **Recurring, everywhere**: the editor, search, export, backup and welcome say recurring payment where they still said subscription; exports are named `eonslate-recurring.csv`.
+- Clearer hints: a credit card's floor is its limit entered as a negative amount, and the usual amount a day is what is added for each day between logs.
+- About says what Eonslate is now: a private, offline slate for your money and anything else you track.
+- **Long ledgers stay smooth**: Transactions filters and sorts away from the screen's thread, and a burst of changes, such as a batch of payment SMS, reads the ledger once.
+- Changing a recurring payment's price or payee finds what it posted through the database's index rather than reading every transaction.
+- A person or business with money still shared stays exactly; one whose id only appears inside another's can be deleted.
+- Unused text left from earlier screens is removed.
+
+## [2.2.4] - 2026-11-24
+
+- **Who you pay, with totals**: a person or business's page now leads with what you paid them this year, this month and in all, and what you got from them; it stays in view above the conversation.
+- **By category**: the same page splits what you paid them by category, so everything you pay one payee adds up under them. Their recurring payments are listed there too.
+- **Recurring payments name who they are with**: set one on a recurring payment, and every payment it posts counts for them; naming them later names what it already posted.
+- **People and businesses lead with money**: the list puts who you paid most this year first, with the amount on each row. Paying a shop owner's own UPI is just a payment to them; who owes whom shows only when someone does.
+- **Price changes from a day**: change a fixed recurring amount and say from when. A day in the past re-prices what was already posted from then on; a day ahead keeps the old price until it comes, and the list and forecast show the change coming. Up or down, earlier payments keep their price.
+- **Attachments**: keep a receipt's photo (from your photos or the camera), a PDF, or a link with any transaction. Photos open full screen, PDFs in your PDF app, links in your browser; rows say how many each keeps.
+- Photos are made at most 2048 pixels on their longer side when attached, so receipts stay readable and backups stay small; PDFs up to 15 MB. Backups carry the files, and Undo after deleting a transaction brings its attachments back.
+- **Tracker cards are shorter**: "Logged yesterday" or "Logged 9 days ago" in place of the entry count and a full date.
+- **Trackers come first**: how today is going heads the Due today group, and the consistency summary moved below the trackers.
+- Database version 21.
+
+## [2.2.3] - 2026-11-23
+
+- **People and businesses are apart**: the People row shows only people; the full list has People and Businesses as their own groups.
+- **Recurring** replaces Subscriptions: salary, rent, bills and subscriptions, grouped into Going out and Coming in.
+- **One rule for every transaction row**: who it was with, then pending, lent or borrowed, the note, the category, and the account only when it is not the one you use most.
+- Transactions opens on this month instead of all time.
+- The year heat map starts lighter, so busy and quiet days tell apart.
+- Less instruction text on charts.
+- **Home is a glance**: your balance and this month, the account cards, and today's trackers. Charts, budgets and lists moved to where they belong.
+- **Money** replaces Transactions: one row leads to Accounts, Budgets, Piggy banks, Insights, and People and businesses; below it the filters, then the list on the first screen.
+- **Accounts, Budgets, Piggy banks and Insights** are pages of their own, each with its own New button. The overall floor lives on Accounts.
+- **Insights** gathers the charts: where money went, which weekdays, a year of days, then cash flow over its own range. It filters by period and account only.
+- **One place for each thing**: the profile holds Settings, Backup and restore, and About; Settings holds only settings, in You (name, numbers, dates, week start), Money (currency, categories) and Payment SMS.
+- Archived trackers are back on the Trackers tab.
+- **Fixed deposits**: add one with its amount, yearly rate, start and maturity, and how often interest is added (monthly, every 3 or 6 months, yearly, or simple interest). One tap sets a 1, 2, 3 or 5 year term.
+- Paid from an account, the money moves into the deposit on its first day; Already there starts it with the amount, for one opened before the app.
+- **It grows on its card**: the card shows what it is worth today, what it has earned and what it pays at maturity. Part periods earn simple interest, the way banks count them, so the figures match a bank's calculator.
+- **Close** when the money comes back, or Close early: the amount starts at what the terms say for that day and the bank's figure wins. The difference is recorded as interest, or as charges when less came back, and everything moves to the account you pick.
+- Fixed deposits have their own page under Money, running ones first by maturity, closed ones below with what they paid out.
+- A matured deposit counts on the bell; one maturing within a week shows in Notifications.
+- The overall floor leaves deposits out, since that money is not there to spend; payment SMS never land in a deposit.
+- Deleting a deposit added by mistake removes its transactions too, so the money is back where it came from.
+- Database version 20.
+
+## [2.2.2] - 2026-11-23
+
+- **A clean slate**: nothing is made for you. Build your own trackers, categories and combinations.
+- New trackers open blank, straight away; the template gallery is gone.
+- Onboarding ends once your money is set up, with no starter trackers.
+- No ready-made categories: the ones you make or use are offered, and a payment can go without one, counting as uncategorized. Any category can be deleted, the last one too.
+- **Keep at least**: give an account the least to keep in it; below zero suits a credit card's limit.
+- **Overall floor**: the least to keep across every account in your currency, set from the Transactions menu.
+- Before a payment takes a balance under a floor, the editor says which and by how much, and Save becomes Save anyway.
+- Accounts under their floor, and a total under the overall floor, show first in Notifications; a card says what it keeps, or how far under it is.
+- **Piggy banks**: set money aside inside an account toward a goal amount, with an optional day to reach it by.
+- Add to it from the account or take it back out; it fills toward the goal and keeps every move in and out.
+- The account keeps the money: its card and row say what is set aside and what is still free to spend.
+- Piggy banks show on Home and on Transactions; New piggy bank is in the Transactions menu.
+- Database version 19.
+
+## [2.2.1] - 2026-11-22
+
+- **People and businesses**: every income and expense can say who it was with. Type a name or tap one you paid recently; a new name becomes a person or business on save.
+- Rows lead with who it was with, then the note; search finds them by name.
+- Payment SMS and CSV imports fill in the payee, matched by name or added once.
+- **Pending**: mark a transaction not cleared yet, like a card hold or a cheque. It still counts in balances, says Pending on its row, and Transactions can show only those.
+- CSV exports carry the party and pending columns; older files still import.
+- **People**: a row of the people and businesses you deal with tops Transactions; See all lists everyone, who owes whom first.
+- **Chats**: each person or business opens as a chat of every payment between you, yours on the right, with where you stand on top.
+- **Lend, borrow, split, settle**: mark a payment as lent, borrowed, paid back or got back, or split it equally with people, with or without you. Each person's chat adds it up, and Settle up records the payment that clears it.
+- Lent and split money leaves your account but no longer counts as your spending in totals, charts and budgets.
+- The transaction editor stays short: notes, people and pending sit behind one More row that opens on its own when something there is set.
+- Database version 17.
+
+## [2.2.0] - 2026-11-22
+
+- **Account cards**: Home shows each account as a card you swipe through, with its balance, what it is and its last digits; the last card adds one.
+- Accounts are a bank, card, wallet or cash, and banks and cards can hold their last 4 digits.
+- Payment SMS go to the account whose last digits they name.
+- Tap a card to see only its transactions; Transactions has an account filter, and every row names its account with its digits.
+- Database version 15.
+- **Parts**: turn on Show as parts for a single choice, and each choice becomes a part of the tracker.
+- Each part shows on the tracker's card and atop Insights with where it stands: what is left before its interval, when its rhythm says it comes next, or when it was last logged.
+- Each part has its own log button that opens the entry with that part picked.
+- Far-off dates read in months: "In 22 months", "8 months ago".
+- The tab bar keeps its original icons.
+- **Onboarding**: after the intro, set your name, your currency and first account (its kind, balance and last digits), then pick trackers to start with. A wavy bar shows how far along you are; every step can be skipped.
+- **Restore a backup** right from the first screen, for moving from another phone.
+- **Between logs**: an interval by amount adds up at your usual pace, so the number needs logging only when something is done; it shows what is left and a due day estimated from that pace.
+- **Usual amount a day**: set it on an interval; leave it empty and the pace is learned from your readings.
+- An interval falls due by that estimate too, so the bell says when it is due.
+- **Parts in the editor**: a tracker with parts lists them under Parts, each with when it is due again. Tap one to set its interval with that part already chosen.
+- **Chosen weekdays**: pick the weekdays the usual amount a day applies. Estimates and due dates skip the other days, and a learned pace counts only those days.
+- The separate interval list steps aside for trackers with parts.
+- The splash follows the theme: the logo on the app's light page color by day and on black at night, with no flash before the first screen.
+- The mark in Home's top bar takes the theme's text color and lets the page show through.
+- Every build scans the SMS inbox once SMS detection is turned on; `-Peonslate.smsInbox=false` builds without the SMS permission.
+- The As needed hint no longer points below for intervals that parts set above.
+- README and website for the release: download links, live version and stats, developer and credits.
+
+## [2.1.9] - 2026-11-21
+
+- **The last year**: Insights shows every day of the past year as a heat map; tap a day to open it.
+- **Consistency**: a ring with the share of due days done since the tracker started, beside when it started.
+- The current streak fills toward the best one.
+- **Spending by day**: Transactions shows a year of spending as a heat map; tap a day to filter to it.
+- **By weekday**: Insights shows which weekdays carry the most entries.
+- **Spending by weekday**: Transactions shows which days the shown spending falls on.
+- **Consistency overview**: Trackers shows consistency across all scheduled trackers and the three most consistent; a tag narrows it.
+- **Today widget**: the trackers due today, unlogged first; tap one to log it.
+- **Money widget**: your balance and this month's spending in the currency the app shows.
+- Both appear in the widget picker with a preview and keep up as you log.
+- A reminder clears from the shade once its tracker is logged today.
+- New trackers, transactions, subscriptions and budgets open with the keyboard on the first field.
+- The Today widget counts like the Trackers tab: daily goals must be met, and due intervals count as due.
+- The Money widget uses the number format from Personalization.
+- Weekday choices for schedules and reminders start on the app's week start.
+- 40 more tracker icons.
+- Goal lines say the unit once: "5 of 8 glasses today".
+- Interval tiles lead with what is left, then when it is due and when it was last done.
+- Widgets take a sensible size in the picker, and the money widget is named Money.
+- **New top bar**: Home leads with the Eonslate mark; every tab ends with a bell and your profile picture.
+- **Notifications**: payments found in SMS, payments to confirm, budgets gone over, intervals due, and payments in the next three days. The bell shows how many want doing.
+- **Profile**: your name, then Settings, Personalization, Categories, Archived trackers, Backup and restore, Privacy and About.
+- Faster start: the splash waits until Home has its figures, so the app opens filled in. Screens share one read of each list instead of reading it for every card, and the heavy sums run off the main thread.
+- Text fields are clear inside, so labels no longer sit on a shaded patch.
+
+## [2.1.8] - 2026-11-21
+
+- **Goals**: number and duration fields can aim for at least or at most an amount a day or a week.
+- Tracker cards show today's progress toward the goal; a day counts as done once daily goals are met.
+- Insights shows how often each goal was met and the run in a row.
+- **As needed** schedule for things logged when they happen, never due by themselves.
+- Trackers sort into Due today, Not today and As needed once schedules differ.
+- **Intervals**: an As needed tracker can be due again after a time, after a number grows by an amount, or whichever comes first.
+- Intervals can follow one choice, so one tracker keeps several jobs on their own clocks.
+- **Learned rhythm**: As needed trackers learn their usual pace from history and show what is likely next, with no setup.
+- Cards show what is next; Insights shows each interval and when it was last done.
+- A due interval moves the tracker into Due today.
+
+## [2.1.7] - 2026-11-20
+
+- **Charts that fit their job**: a donut for this month's spending on Home, a split bar with rows on Transactions, a ring with total limit, spent and left for budgets, and maps of costs and income for subscriptions.
+- **Cash flow** reads as Spending, In vs out side by side, or Net above and below zero.
+- Chart marks are pills: bars, donut slices, split bars and meters stand apart with round ends.
+- Meters and budget rings split the value from the rest of the track, as progress does, with a stop dot at the end. Donut slices are thinner, and 30-day bars stay readable.
+- Categories keep one colour across every chart, checked to stay apart for colour-blind readers. The biggest spenders get the colours.
+- Subscription maps show the five largest and fold the rest into one tile; amounts show only when they fit whole.
+- Large amounts shrink to fit instead of losing their digits.
+- Budgets past 999% read ">999%".
+- Restore counts subscriptions and budgets too, with grouped digits.
+- Tracker cards read "latest in 4 hours", not "In".
+- Custom subscription images fill their tile again.
+- Service templates file under your own categories, and the editor names the service choice plainly.
+- The variable switch reads "Amount varies"; editor switches sit in rounded groups.
+- Income schedules show their payout date; subscription rows fit in two lines, with "Estimated" for amounts that post an estimate.
+- Empty lists offer to add the first transaction or subscription.
+- Adding a budget from Home shows it at the top of Transactions.
+- One minus sign for money everywhere.
+- Wide screens keep content at a readable width.
+- Welcome mentions money as well as trackers; Delete all data says what it clears.
+- **One currency at a time**: Home, Transactions and Subscriptions show totals and charts in one currency, picked from the tag beside them. Lists still show every row in its own currency.
+- Editors ask before closing with unsaved changes.
+- Overdue subscriptions say how many days overdue, not "Due today".
+- New entries start in the account you use most.
+- Folded chart slices read "N more", never "Other".
+- A subscription with nothing spent yet shows its total plainly, not in red.
+- **Schedules**: a tracker can be due every day, on chosen weekdays, or a number of days a week.
+- Trackers has a Due today filter, and the day's progress counts only what is due.
+- Streaks skip days off; a weekly target counts weeks met.
+- New reminders start on the tracker's days.
+- Backups carry schedules; older files are due every day.
+
+## [2.1.6] - 2026-11-20
+
+- **Cash flow** on Home: pick 7 days, 30 days, 6 months, 1 year, or all time, and see income, spending and net for it.
+- Tap a bar to see that day, month or year: spent, income, and the category with the most spending.
+- **Spending by category** on Home lists every category with its share. Tap one to open this month in it.
+- The balance shows its currency and counts up when Home opens, unless motion is reduced.
+- **Payment SMS** are found again whenever the app returns, and right after turning detection on or allowing SMS access.
+- **Review each payment** on its card: pick a category, then Add or Discard. Opening one and backing out keeps it waiting.
+- Found payments show on Transactions too, and Settings has Scan past payment SMS.
+- Add all says how many were added and which were left out.
+- Payments already entered by hand, from CSV, or from a backup are not offered again.
+- Discarded payments stay hidden in manual scans as well.
+- Older payments are no longer crowded out by ones already handled.
+- Added payments keep their sender and account or card ending in their notes.
+- More bank sender codes are recognized, and references written in capitals are kept.
+- **Delete categories**: Past transactions keep the name; it is no longer offered. One always stays.
+- **Backups** now include your settings. Restoring an older file leaves them as they are.
+- **Delete all data** also resets settings and removes subscription images. Undo brings everything back.
+- **Tablets and landscape**: From 840 dp wide, the tabs move to a rail at the side.
+- Custom subscription images keep their shape, up to 512 px, and show whole on their tile.
+- Restores keep only real images, and unused image files are removed after edits.
+- About links to the changelog and shows the package name.
+- Debug builds report slow main-thread work.
+- CSV files saved by other apps can be picked for import.
+- Undo after swiping a transaction away brings it back, and a swipe deletes only once.
+
+## [2.1.5] - 2026-11-19
+
+- **Budget spending**: A chart of what each budget has spent this period, per currency.
+- **Budget rows**: How often each renews, what is left or over, and the share used.
+- **All accounts**: A category budget can count every account in its currency.
+- **Hourly budgets**: Counted by whole days.
+- New budgets start today.
+- Export budgets as CSV, with spent, remaining and utilization.
+- Home warns from 80% of a budget, shows a Manage budgets button, and offers Add budget when there are none.
+- Recent transactions on Home show their category.
+- **Filter subscriptions**: All, Expenses, or Income.
+- **Per month**: Income, expenses and net for each currency.
+- **Chart**: Every active subscription and income matching the search, by its monthly amount. Tap one to open it.
+- **Rows**: The exact next date, the full interval ("Every 3 months"), whether the amount varies, and the start of the notes.
+- **Long press** a subscription to pause, resume, edit or delete it. Resuming skips what fell due while paused.
+- **Varying amounts**: Choose to add the estimate when due, or wait for the real amount.
+- Payments already entered by hand with the same name, day and type are not added again.
+- Missed payments are caught up whenever the app returns, after a restore, and all at once on save.
+- Export subscriptions as CSV, with the monthly equivalent.
+- Pick a subscription color apart from its icon. Income shows income templates.
+- New subscriptions can start paused, need a name, and take notes of up to 2,000 characters.
+- Hourly payments show that they are added at most once a day.
+
+## [2.1.4] - 2026-11-19
+
+- Recognize more payment SMS formats, including masked accounts and cards, merchants, and UPI references.
+- Open shared payment messages from Home while Eonslate is running.
+- Auto-add high-confidence payments and review the rest.
+- Set a display name for Home and choose number and date formats.
+- Restore Earnslate 2.0.0 JSON backups with Undo.
+- Match system bar icon contrast to the app theme.
+- See the black Eonslate logo on white on the launcher, splash screen, and About page. The launcher icon also includes a monochrome layer for Android theming.
+- **Filters**: Show only income or expenses, the last 90 days, or any range of dates.
+- **Sort**: Smallest first, or by category.
+- **Categories**: Every category can be picked as a filter, not just the ones already used.
+- **Spending by category**: Lists every category with its share, even when there is only one. Tap one to filter.
+- **Notes**: Transactions have a description and separate notes, shown under each row.
+- New income and expenses start in the most used category, and need one to save.
+- Transactions on the same day stay in the order they were added.
+- See how many transactions match, and load older ones 50 at a time.
+- Swipe a transaction away to delete it, with Undo.
+- Deleting selected transactions happens all at once or not at all.
+- Selection drops transactions a new filter hides.
+- Open Settings from Transactions and Subscriptions.
+- **Subscription history**: Open a subscription to see recorded payments, monthly history, and a 12-month forecast.
+
+## [2.1.3] - 2026-11-18
+
+- **Payment SMS**: Found automatically when the app opens (Settings, off by default), with an option to add them without review.
+- **Review**: A Home banner shows how many were found; add all, review one by one, or discard. Discarded ones never come back.
+- **Subscription icons**: Pick from 113 services or use your own PNG, JPEG, WebP or SVG; images are kept in backups.
+- **Subscription details**: Start date and notes.
+- **Quick add**: + Income and − Expense on Home open the editor ready to go.
+- **Delete all data**: From Backup and restore, after a confirmation; undo brings it all back.
+- **Find things**: Filter transactions by category, sort by newest, oldest or largest, and search subscriptions.
+- **Select transactions**: Long-press to select, tap to add more, then delete them together.
+- **Charts**: Spending by category on Transactions, following the filters; monthly cost per subscription; budget limits side by side.
+- Export matching transactions in the selected sort order.
+- Name budgets and choose their icons and colors.
+- Add and rename categories, set their icons and colors, and choose income, expense, or both.
+- Schedule hourly subscriptions with a billing time.
+
+## [2.1.2] - 2026-11-18
+
+- Import and export tracker entries as CSV.
+- Import and export finance transactions as CSV.
+- Review import counts before adding records.
+- Open a chosen tracker’s log from a Home screen widget.
+- Choose a tracker from the Quick Settings tile.
+- Block screenshots from Privacy settings.
+- Screen readers announce section headings and switch states.
+- **Tabs**: Home, Transactions, Subscriptions and Trackers in a floating bar; each tab keeps its place.
+- **Home**: Balance, this month in and out, spending trend, spending by category, budgets, payments due, recent transactions and today's trackers.
+- **Transactions**: Period chips, in/out/net totals, days grouped, income green and expenses red.
+- **One account by default**: Account pickers and transfers appear once you add a second account.
+- **Dates**: Picked from a calendar instead of typed.
+- **Subscriptions tab**: Monthly cost up front; each subscription with its next payment and amount.
+- **Budgets**: Lead the Transactions tab as meters, red when over.
+- **Icons**: New tab icons; letter tiles for categories and subscriptions; one menu for rarer actions.
+- **Categories**: Picked from chips, most used first, with icons for the common ones; "New" for any other.
+- **Touch**: Cards and tracker slates spring when pressed.
+
+## [2.1.1] - 2026-11-17
+
+- Review payment details from pasted, shared or scanned SMS.
+- Skip payment alerts already recorded.
+- Search and filter transactions with per-currency totals.
+- Set category budgets with custom cycles.
+- Schedule income and bills with custom intervals.
+- Pause schedules or confirm variable payments.
+
+## [2.1.0] - 2026-11-17
+
+- Track account balances in their own currencies.
+- Record income and expenses in exact amounts.
+- Transfer money between accounts in the same currency.
+- Backups include accounts and transactions.
+- Set a monthly budget for each account.
+- Review spending by month in Plans.
+- Post weekly and monthly payments when you open the app.
+- Backups include budgets and recurring payments.
+
+## [2.0.9] - 2026-11-16
+
+- **Reminders**: Per-tracker reminders at a time on chosen days, from the bell on a tracker's page.
+- **Reliable**: Each alert schedules the next; restarts, time and zone changes reschedule. Exact when allowed.
+- **Skip if logged**: Optionally no reminder when the tracker already has an entry that day.
+- **Open to log**: Tapping a reminder opens that tracker's log screen.
+- **Backups**: Include reminders.
+- **Chips**: Picked chips use the accent, so they stand out in Mono.
+- Search Home by tracker name, description, field name or tag.
+- Add tags in the tracker editor.
+- Filter Home by tag.
+- Home remembers the selected tag across launches.
+- Search entry notes and text fields in List.
+- Backups include tracker tags.
+
+## [2.0.8] - 2026-11-16
+
+- **Backup and restore**: Back up every tracker and entry to one file, optionally encrypted (AES-256-GCM). Restores replace everything in one step and can be undone.
+- **Mono**: Monochrome by default, white on true black.
+- **Accents**: Wallpaper, Mono and eight accents in one picker, adding Ochre and Rose.
+- **Color**: Color only where it means something: tracker pigments, ember streaks, warnings and errors.
+- **Copy**: Shorter text across the app.
+
+## [2.0.7] - 2026-11-15
+
+- **Templates**: Start a tracker from twenty ready-made templates: expenses, daily habit, mood, workout, reading, water, sleep, medication, weight, meditation, journal, blood pressure, caffeine, steps, study, savings, gratitude, symptoms, cycle and screen time. Each opens in the builder already filled in, so anything can be changed before saving.
+- **See Before You Use**: Tapping a template shows every field it holds before you use it.
+- **Find A Template**: Templates sit on shelves (health, mind and habits, activity, money and time) and a search finds them by name or description.
+- **Duplicate**: Long-press a tracker on Home to make a copy with the same fields and none of the entries.
+- **Starters On An Empty Home**: An empty Home offers a daily habit, mood and water to start with in one tap.
+- **New Tracker Gallery**: New tracker now opens a gallery with a blank tracker first and every template after it, each saying what it holds.
+- **Welcome**: The first launch shows what Eonslate is and offers a few trackers to start with. Both pages can be skipped, the welcome never shows again, and it never shows to someone who already has trackers.
+- **In Your Language and Currency**: Template names, fields and choices come from the app's text, and money uses the device's currency.
+- **Privacy Policy**: Now says exactly what is stored on the device and where, and that no permissions are asked for.
+- **Room To Read**: A tracker slate gives its description three lines, so a longer one never hides what follows.
+- **Clearer Today Line**: Screen readers hear Home's "logged today" line once instead of twice.
+- **Settings**: A settings page from the gear on Home. Choose the theme (system, light or dark), pure black for OLED screens, and Eonslate's own palettes or your wallpaper's colors (Android 12 and up). Every change applies at once.
+- **Palettes**: Pick Slate, Tide, Moss, Clay, Dusk or Graphite; each keeps the ember accent. Graphite now stays a true grey.
+- **Behavior**: Turn haptics off, or reduce motion for calmer transitions.
+- **First Day Of The Week**: Start weeks on Monday, Sunday or Saturday, or follow the device. Calendars and weekly insights follow the choice.
+- **Default Currency**: Choose the currency new money fields and templates start with, or follow the device. Fields you already made keep their own.
+- **About**: The version, the developer, the source code, releases and a way to report an issue, plus this device's details, copied with the app version in one tap for a bug report.
+- **Open Source Licenses**: Every open source part Eonslate is built with, by its authors, with the full license text to read in the app.
+- **Privacy In The App**: The privacy policy can be read inside the app, without the internet.
+
+## [2.0.6] - 2026-11-15
+
+- **Insights**: Every tracker page has an Insights view next to List and Calendar.
+- **Streaks**: See the current and longest run of days with an entry, and when the longest one ended. A streak stays alive until the day is over, and a record streak glows in ember.
+- **Days, Weeks and Months**: Look back 30 days, 12 weeks or 12 months. Weeks start on your locale's first day; numbers show each week's or month's average, while money and time show its total.
+- **Compared With Before**: See how many entries today, this week or this month has against the one before.
+- **Logged Per Period**: A bar chart shows how often the tracker was logged in each day, week or month, with the current one in ember. Tap a bar to read it.
+- **Streaks On Home**: A tracker with a streak of two days or more shows it on its slate with an ember flame.
+- **Personal Records**: Numbers show their record and the day it was set; money and time show their best day.
+- **Today On Home**: Home says how many trackers have been logged today, with an ember meter.
+- **Labels Where They Help**: Each chart names its busiest day or its latest value right on the chart, and nothing else.
+- **Tap To Read, Tap Again To Let Go**: Picking a bar or point on a chart and tapping it again now clears the pick.
+- **What Each Field Adds Up To**: Numbers show their average and range on a line chart, money and time show their total and average on daily bars, ratings show their average and how often each score was given, yes or no shows its yes rate, and choices show how often each was picked.
+- **Exact Numbers**: Totals and averages are computed exactly, in each field's own unit and currency, never with rounding errors.
+- **Readable Without Color**: Every chart can switch to a table, and screen readers hear a summary of each chart.
+
+## [2.0.5] - 2026-11-14
+
+- **Tracker Pages**: Tapping a tracker on Home opens its own page with its totals (entries, the last seven days, days logged) and every entry grouped by day, newest first. Editing the tracker moves to the pencil at the top.
+- **Calendar**: Switch any tracker to a month calendar. Days with entries wear the tracker's pigment, today is ringed in ember, and tapping a day shows only its entries. A far month offers a way back to this one.
+- **Entry Details**: Tap an entry to see all of it: the full date and time, the zone it was logged in when that differs from the phone's, every value and the note, which can be selected and copied.
+- **Edit and Undo**: Edit or delete an entry from its details or by long-pressing it. A deleted entry can be brought back with Undo, exactly as it was.
+- **Organize Home**: Long-press a tracker on Home to move it earlier or later, edit it, or archive it with Undo.
+- **The Right Day**: Entries are grouped by the day they happened in the time zone they were logged in, so a late night entry never jumps to the next day after travelling.
+- **Archived Trackers**: Archived trackers have their own page from Home, and each can be brought back from its tracker page.
+- **Shorter Times**: Durations under an hour read as minutes, such as "32 m".
+- **Long Histories**: A tracker page shows its newest entries first and loads older ones with Show older, while its totals and calendar still count every entry. Years of daily logging stay quick to open.
+
+## [2.0.4] - 2026-11-14
+
+- **Logging Entries**: Log to any tracker from the button on its slate. Every field type has its own input: numbers with their unit, money with its currency, hours and minutes, rating and yes or no buttons, choices, text and a date picker.
+- **One Tap Habits**: A tracker made of a single yes or no logs "Yes" straight from Home, with a check on its slate instead of a plus.
+- **When It Happened**: Each entry starts at the current time and can be moved to any day and time. It keeps the time zone it was logged in, so the day stays right after travelling.
+- **Exact Values**: Input with more decimals than a field allows is refused in place instead of being rounded, and required fields say so before saving.
+- **Notes**: Any entry can carry a note, and a note alone is enough to log.
+- **Same As Last Time**: A new entry can be filled with the values of the tracker's latest one in one tap, keeping its own time and note.
+- **Screen Reader Names**: The main action on every page (Save, Log it, New tracker) is now announced by its name.
+- **Readable Values**: Values are shown in the device's language and number format, with each currency's own symbol and digits.
+
+## [2.0.3] - 2026-11-13
+
+- **Tracker Builder**: Create and edit trackers with a live preview, a name and description, an icon, a pigment and up to 24 fields. Long-press a field to move or remove it.
+- **Field Settings**: Each field type has its own settings: unit, decimals and limits for numbers, currency for money, the scale for ratings, editable choices, and one or several lines for text. Any field can be required.
+- **Clear Problems**: Mistakes show under the input that caused them, such as a duplicate field name or a limit with too many decimals, and nothing is saved until they are fixed.
+- **Safe Edits**: Unsaved changes ask before leaving, a half-built tracker survives the app being closed by the system, and changing a field's type warns that its logged values will be cleared.
+- **Archive and Delete**: Archive a tracker to hide it from Home, or delete it and everything logged to it after a confirmation.
+- **Eonslate's Own Look**: A new "Slate and Ember" identity: a slate blue brand palette with an ember accent as the default instead of wallpaper colors, seventeen mineral pigments for trackers, condensed display lettering, slate tile icons and a slanted slate for empty states.
+- **Home Grid**: Home now shows trackers as pigment-tinted slates in a grid that adapts to the screen, with a New tracker button.
+
+## [2.0.2] - 2026-11-13
+
+- **Tracker Model**: Added the pure Kotlin `core:tracker:domain` module with trackers, typed fields (number, money, duration, rating, yes/no, single and multi choice, text, date) and entries. Every value is held exactly: scaled whole numbers for decimals, minor units for money, seconds for durations and epoch days for dates.
+- **Validation**: Added tracker and entry validators that report every problem at once, plus exact parsers and formatters for decimals, money in each currency's own digits, durations and dates.
+- **Database**: Added the `core:tracker:data` module with Room tables for trackers, fields, entries and typed entry values, foreign keys that cascade, indices for the home list and date ranges, and SQLite triggers that refuse invalid rows even when the app is bypassed.
+- **Safe Tracker Edits**: Changing a field's decimals or currency rescales logged values, removing a field or a choice option removes only what used it, and changing a field's type clears its old values instead of misreading them.
+- **Schema History**: The database schema is exported to `schemas/` and tested by opening data written under every exported version with the current app.
+- **Home List**: Home now reads trackers through a ViewModel, showing a loading indicator first, then the empty state or connected rows with each tracker's icon, color, entry count and latest entry.
+
+## [2.0.1] - 2026-11-13
+
+- **A New Foundation**: Started Eonslate, an offline tracker for almost anything, as a multi-module Android project with separate app, core and feature modules.
+- **Material 3 Expressive Design System**: Added the shared `core:ui` module with the Expressive theme (system, light, dark, pure black, wallpaper and preset colors), shape and spacing tokens, Roboto Flex typography, connected rows and choices, the expressive switch, menus, sheets, search, state views and haptics.
+- **Current Toolchain**: Built on Gradle 9.8.2, Android Gradle Plugin 9.5.1, Kotlin 2.4.21, KSP 2.3.12, Compose BOM 2026.09.00 and Material 3 1.5.0-rc01.
+- **First Screen**: Added a splash screen that follows the theme, edge-to-edge layout, type-safe navigation and an empty home screen.

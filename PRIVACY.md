@@ -1,36 +1,44 @@
-# Privacy Policy for Earnslate
+# Privacy Policy for Eonslate
 
-**Last Updated:** 2026-08-18
+**Last Updated:** 2026-11-24
 
-Earnslate is a personal project built with a privacy-first mindset. This policy explains how the application handles your information.
+Eonslate is a personal project built with a privacy-first mindset. This policy explains how the app handles your information.
 
-## 1. No Data Collection
+## No data collection
 
-Earnslate **does not collect, store, or transmit** any personal data, financial transactions, account balances, usage statistics, or telemetry from your device.
+Eonslate **does not collect or transmit** any personal data, tracked entries, financial records, usage statistics or telemetry. What you track is stored only on your device, as described below.
 
-## 2. Offline by Design
+## Offline by design
 
-Earnslate is designed to operate entirely offline. The application does not declare the `android.permission.INTERNET` permission, so Earnslate cannot upload financial transactions, budgets, subscriptions, telemetry, or activity data over the network.
+Eonslate works entirely offline. It does not declare the `android.permission.INTERNET` permission, so it cannot send anything you track over the network.
 
-## 3. No Advertisements or Trackers
+## Where your data lives
 
-The application contains **zero advertisements** and **zero third-party tracking SDKs**.
+Everything you create is stored in the app's private storage on your device, which other apps cannot read:
 
-## 4. Local Financial Storage & SMS Permissions
+| What | Where |
+| :--- | :--- |
+| Trackers, fields, entries, reminders, accounts, transactions and the people and businesses you name | The `eonslate.db` database |
+| Photos and PDFs attached to transactions, and recurring payment icons | The app's private `attachments` and `icons` folders |
+| App settings, such as whether the welcome was seen | The `settings` preferences file |
 
-Earnslate optionally requests the `READ_SMS` permission only if you choose to use the Smart SMS Parser to detect financial transactional SMS messages (such as bank alerts, debit/credit notices, and merchant receipts) from your device. This parsing engine runs entirely offline on your device using local regex heuristics and a local merchant catalog upon app launch. SMS message contents, sender identities, and extracted financial details are processed purely on-device and are never transmitted anywhere.
+Uninstalling the app or clearing its storage deletes all of it. Backups, which include attached files, and CSV exports are written to the location you choose.
 
-## 5. Custom Icons & Backup Security
+Payment SMS import reads text you paste or share. Inbox-enabled builds can scan the selected period after you grant SMS access. Eonslate processes messages locally and stores the transactions you approve and fingerprints used to avoid importing them twice.
 
-Custom subscription icons imported into Earnslate (SVG, PNG, JPEG, WebP) are sanitized, normalized, and stored locally in the application's private internal storage directory. Exported JSON backup files and CSV exports are written exclusively to the local storage destination you select and contain only your local application state and assets.
+Taking a photo for an attachment opens your camera app, which hands the photo back to Eonslate; Eonslate itself does not ask for camera access. Links you attach are stored as text and open in your browser only when you tap them.
 
-## 6. Source Availability
+Turn on Block screenshots in Settings to protect app windows in screenshots and screen sharing.
 
-Earnslate's source code is publicly available for inspection. You are welcome to audit it yourself on [GitHub](https://github.com/qtremors/earnslate).
+## Permissions
 
-## 7. Changes to This Policy
+Eonslate asks for permissions only for features you turn on:
 
-This policy may be updated as new features are introduced. However, the core principles — **privacy, offline-only operations, and zero data collection** — will remain unchanged.
+- **Notifications**, asked when you add a reminder.
+- **Alarms and reminders** (exact alarms), so reminders arrive on time. You can turn it off in system settings; reminders then arrive within 10 minutes.
+- **Run at startup**, to set reminders again after a restart.
+- **Read SMS** in inbox-enabled builds, when you choose to scan payment messages.
 
----
-[Back to Home](https://qtremors.github.io/earnslate/)
+## Source code
+
+Eonslate's source code is public, so you can check how it handles your data yourself.

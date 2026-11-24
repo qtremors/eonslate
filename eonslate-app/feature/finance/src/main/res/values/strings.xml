@@ -1,0 +1,509 @@
+<resources>
+    <string name="account_kind_bank">Bank</string>
+    <string name="account_kind_card">Card</string>
+    <string name="account_kind_wallet">Wallet</string>
+    <string name="account_kind_cash">Cash</string>
+    <string name="account_kind_deposit">Fixed deposit</string>
+    <string name="account_card_open">Show its transactions</string>
+    <string name="account_card_add">Add account</string>
+    <string name="finance_account_all">All accounts</string>
+    <string name="finance_digits">Last 4 digits</string>
+    <string name="finance_digits_hint">Payment SMS naming them go to this account</string>
+    <string name="finance_digits_error">Enter 4 digits</string>
+    <string name="party_to">Paid to</string>
+    <string name="party_from">Received from</string>
+    <string name="party_new">New person or business</string>
+    <string name="finance_pending">Pending</string>
+    <string name="finance_pending_hint">Not cleared yet; it still counts in balances</string>
+    <string name="finance_more">Notes, lend or split, pending</string>
+    <string name="finance_more_notes">Notes, pending</string>
+    <string name="share_title">With people</string>
+    <string name="share_mine">Mine</string>
+    <string name="share_lent">Lent</string>
+    <string name="share_split">Split</string>
+    <string name="share_paid_back">Paid back</string>
+    <string name="share_borrowed">Borrowed</string>
+    <string name="share_got_back">Got back</string>
+    <string name="share_needs_party">Say who above</string>
+    <string name="share_add_person">Add a person</string>
+    <string name="share_include_me">Include me</string>
+    <string name="share_include_me_hint">Your share counts as your spending</string>
+    <string name="share_equal">Split equally, %d ways</string>
+    <string name="people_title">People</string>
+    <string name="people_search">Search people</string>
+    <string name="people_empty_title">No one yet</string>
+    <string name="people_empty_message">Say who a payment was with, and they show up here.</string>
+    <string name="people_owes_you">Owes you %1$s</string>
+    <string name="people_you_owe">You owe %1$s</string>
+    <string name="people_settled">Settled</string>
+    <string name="people_more">More</string>
+    <string name="people_edit">Edit</string>
+    <string name="people_delete">Delete</string>
+    <string name="people_delete_title">Delete %1$s?</string>
+    <string name="people_delete_message">Their payments stay, without a name.</string>
+    <string name="people_delete_blocked">Money is still lent, borrowed or split with them, so they stay until those are removed.</string>
+    <string name="people_no_payments">No payments with them yet.</string>
+    <string name="people_you_paid">You paid</string>
+    <string name="people_you_got">You got</string>
+    <string name="people_settle">Settle up</string>
+    <string name="people_bubble_paid">You paid</string>
+    <string name="people_bubble_got">You got</string>
+    <string name="people_their_share">%1$s · theirs %2$s</string>
+    <string name="people_person">Person</string>
+    <string name="people_business">Business</string>
+    <string name="floor_keep">Keep at least</string>
+    <string name="floor_keep_hint">Warns before a payment takes the balance lower. For a credit card, enter its limit as a negative amount.</string>
+    <string name="floor_invalid">Enter an amount</string>
+    <string name="floor_overall">Overall</string>
+    <string name="floor_overall_title">Overall floor</string>
+    <string name="floor_overall_hint">The least to keep across every %1$s account. Leave empty for none.</string>
+    <string name="floor_under">%1$s under %2$s</string>
+    <string name="floor_warn_account">Takes %1$s %2$s under its %3$s floor</string>
+    <string name="floor_warn_overall">Takes your total %1$s under your %2$s floor</string>
+    <string name="floor_save_anyway">Save anyway</string>
+    <string name="floor_card_keep">Keeps %1$s</string>
+    <string name="floor_card_under">%1$s under its floor</string>
+    <string name="alerts_section_floors">Under the floor</string>
+    <string name="piggy_title">Piggy banks</string>
+    <string name="piggy_new">New piggy bank</string>
+    <string name="piggy_edit">Edit piggy bank</string>
+    <string name="piggy_name">What it is for</string>
+    <string name="piggy_account">Kept in</string>
+    <string name="piggy_goal">Goal</string>
+    <string name="piggy_dated">Reach it by a day</string>
+    <string name="piggy_by_label">By</string>
+    <string name="piggy_by">by %1$s</string>
+    <string name="piggy_of">%1$s of %2$s</string>
+    <string name="piggy_of_goal">of %1$s</string>
+    <string name="piggy_left">%1$s to go</string>
+    <string name="piggy_reached">Goal reached</string>
+    <string name="piggy_add">Add</string>
+    <string name="piggy_take_out">Take out</string>
+    <string name="piggy_history">In and out</string>
+    <string name="piggy_free">%1$s free in the account</string>
+    <string name="piggy_in_it">%1$s in it</string>
+    <string name="piggy_too_much">More than is in it</string>
+    <string name="piggy_delete">Delete %1$s?</string>
+    <string name="piggy_delete_message">The money stays in the account; only the piggy bank goes.</string>
+    <string name="piggy_aside_line">%1$s set aside</string>
+    <string name="piggy_free_line">%1$s free</string>
+    <string name="people_and_businesses">People and businesses</string>
+    <string name="people_businesses">Businesses</string>
+    <string name="recurring_out">Going out</string>
+    <string name="recurring_in">Coming in</string>
+    <string name="money_insights">Insights</string>
+    <string name="floor_none">None</string>
+    <string name="piggy_empty">Set money aside for something you want.</string>
+    <string name="deposit_title">Fixed deposits</string>
+    <string name="deposit_new">New fixed deposit</string>
+    <string name="deposit_edit">Edit deposit</string>
+    <string name="deposit_empty">No fixed deposits</string>
+    <string name="deposit_from">Paid from</string>
+    <string name="deposit_from_none">Already there</string>
+    <string name="deposit_amount">Amount</string>
+    <string name="deposit_amount_hint">Changing it leaves the transfer that paid for it as it was</string>
+    <string name="deposit_rate">Interest a year</string>
+    <string name="deposit_rate_invalid">Up to 50, with two decimals at most</string>
+    <string name="deposit_start">Starts</string>
+    <string name="deposit_maturity">Matures</string>
+    <string name="deposit_term">Term</string>
+    <string name="deposit_dates_invalid">It has to mature after it starts</string>
+    <string name="deposit_compounding">Interest added</string>
+    <string name="deposit_compound_monthly">Monthly</string>
+    <string name="deposit_compound_quarterly">Every 3 months</string>
+    <string name="deposit_compound_half_yearly">Every 6 months</string>
+    <string name="deposit_compound_yearly">Yearly</string>
+    <string name="deposit_compound_simple">Simple interest</string>
+    <string name="deposit_grows_to">Grows to %1$s by %2$s</string>
+    <string name="deposit_delete">Delete %1$s?</string>
+    <string name="deposit_delete_message">Its transactions go too, so the money it came from is back where it was.</string>
+    <string name="deposit_worth_today">Worth %1$s today</string>
+    <string name="deposit_on_day">%1$s on %2$s</string>
+    <string name="deposit_earned">%1$s earned</string>
+    <string name="deposit_card_earned">+%1$s</string>
+    <string name="deposit_matures_today">Matures today</string>
+    <string name="deposit_matured_on">Matured %1$s</string>
+    <string name="deposit_closed">Closed</string>
+    <string name="deposit_closed_on">Closed %1$s</string>
+    <string name="deposit_close">Close</string>
+    <string name="deposit_close_early">Close early</string>
+    <string name="deposit_close_title">Close %1$s</string>
+    <string name="deposit_received">Amount received</string>
+    <string name="deposit_into">Paid into</string>
+    <string name="deposit_interest_line">%1$s interest is recorded</string>
+    <string name="deposit_charges_line">%1$s in charges is recorded</string>
+    <string name="deposit_no_account">Add an account in %1$s to pay it into</string>
+    <string name="deposit_interest_note">Interest</string>
+    <string name="deposit_charges_note">Deposit charges</string>
+    <plurals name="deposit_matures_in">
+        <item quantity="one">Matures tomorrow</item>
+        <item quantity="other">Matures in %d days</item>
+    </plurals>
+    <string name="people_paid_this_year">Paid this year</string>
+    <string name="people_paid_year">%1$s this year</string>
+    <string name="people_paid_month">%1$s this month</string>
+    <string name="people_paid_all">%1$s in all</string>
+    <string name="people_got_all">got %1$s</string>
+    <string name="people_by_category">By category, in all</string>
+    <string name="people_no_category">No category</string>
+    <string name="people_recurring">Recurring</string>
+    <string name="recurring_price_from_label">New price from</string>
+    <string name="recurring_price_past">Payments since %1$s change to %2$s; earlier ones keep their price.</string>
+    <string name="recurring_price_future">%1$s until then, %2$s from %3$s.</string>
+    <string name="recurring_price_coming">%1$s from %2$s</string>
+    <string name="attach_add">Attach</string>
+    <string name="attach_from_photos">Photo</string>
+    <string name="attach_take_photo">Take a photo</string>
+    <string name="attach_pdf">PDF</string>
+    <string name="attach_link">Link</string>
+    <string name="attach_link_address">Address</string>
+    <string name="attach_link_hint">https://…</string>
+    <string name="attach_link_invalid">Not a web address</string>
+    <string name="attach_link_name">Name</string>
+    <string name="attach_link_add">Add</string>
+    <string name="attach_photo_name">Photo</string>
+    <string name="attach_pdf_name">PDF</string>
+    <string name="attach_remove">Remove %1$s</string>
+    <string name="attach_failed">That file could not be attached</string>
+    <string name="attach_cannot_open">Nothing on this phone opens it</string>
+    <string name="attach_missing">This photo is no longer on the phone</string>
+    <string name="attach_close">Close</string>
+    <plurals name="attach_count">
+        <item quantity="one">%d attachment</item>
+        <item quantity="other">%d attachments</item>
+    </plurals>
+    <string name="alerts_title">Notifications</string>
+    <string name="alerts_empty_title">All caught up</string>
+    <string name="alerts_empty_message">Payments to confirm, budgets gone over and things due show up here.</string>
+    <string name="alerts_section_due">Payments to confirm</string>
+    <string name="alerts_section_budgets">Over budget</string>
+    <string name="alerts_section_trackers">Due</string>
+    <string name="alerts_section_soon">Coming up</string>
+    <string name="alerts_payment">Payment</string>
+    <string name="alerts_due_today">Due today</string>
+    <string name="alerts_over">%1$d%% of %2$s</string>
+    <plurals name="alerts_waiting_days">
+        <item quantity="one">Waiting %d day</item>
+        <item quantity="other">Waiting %d days</item>
+    </plurals>
+    <plurals name="alerts_in_days">
+        <item quantity="one">In %d day</item>
+        <item quantity="other">In %d days</item>
+    </plurals>
+    <string name="finance_accounts">Accounts</string>
+    <string name="finance_activity">Money</string>
+    <string name="finance_new_account">New account</string>
+    <string name="finance_edit_account">Edit account</string>
+    <string name="finance_new_transaction">New transaction</string>
+    <string name="finance_edit_transaction">Edit transaction</string>
+    <string name="finance_income">Income</string>
+    <string name="finance_expense">Expense</string>
+    <string name="finance_transfer">Transfer</string>
+    <string name="finance_name">Name</string>
+    <string name="finance_currency">Currency code</string>
+    <string name="finance_opening">Opening balance</string>
+    <string name="finance_amount">Amount</string>
+    <string name="finance_date">Date</string>
+    <string name="finance_account">Account</string>
+    <string name="finance_from">From</string>
+    <string name="finance_to">To</string>
+    <string name="finance_no_destination">Add another account in %1$s to transfer.</string>
+    <string name="finance_save">Save</string>
+    <string name="finance_delete">Delete</string>
+    <string name="finance_delete_account">Delete %1$s?</string>
+    <string name="finance_delete_transaction">Delete transaction?</string>
+    <string name="finance_delete_account_message">Removes the account and its opening balance.</string>
+    <string name="finance_delete_transaction_message">Updates the affected balances.</string>
+    <string name="finance_failed">Couldn’t save the change.</string>
+    <string name="finance_empty_activity">No transactions</string>
+    <string name="finance_transfer_accounts">%1$s → %2$s</string>
+    <string name="finance_budgets">Budgets</string>
+    <string name="finance_monthly_limit">Monthly budget</string>
+    <string name="finance_no_recurring">No recurring payments</string>
+    <string name="finance_new_recurring">New recurring payment</string>
+    <string name="finance_remove_recurring">Remove recurring payment?</string>
+    <string name="finance_remove_recurring_message">Payments already posted stay in your history.</string>
+    <string name="finance_weekly">Weekly</string>
+    <string name="finance_monthly">Monthly</string>
+    <string name="finance_first_due">First payment</string>
+    <string name="finance_import_sms">Import payment SMS</string>
+    <string name="finance_payment_sms">Payment message</string>
+    <string name="finance_sms_review">Review transaction</string>
+    <string name="finance_sms_unknown">No unambiguous payment found.</string>
+    <string name="finance_sms_account">Add a %1$s account first.</string>
+    <string name="finance_sms_duplicate">This payment is already recorded.</string>
+    <string name="finance_sms_reference">Ref %1$s</string>
+    <string name="finance_sms_ending">Account •%1$s</string>
+    <string name="finance_sms_card_ending">Card •%1$s</string>
+    <string name="finance_scan_inbox">Scan SMS inbox</string>
+    <string name="finance_sms_scan">Scan</string>
+    <string name="finance_sms_denied">SMS access is off.</string>
+    <string name="finance_sms_failed">Couldn’t read the SMS inbox.</string>
+    <string name="finance_sms_empty">No new payments found.</string>
+    <plurals name="finance_sms_scan_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="finance_search">Search transactions</string>
+    <string name="finance_no_matches">No matches</string>
+    <string name="finance_category">Category</string>
+    <string name="finance_new_budget">New category budget</string>
+    <string name="finance_edit_budget">Edit budget</string>
+    <string name="finance_remove_budget">Delete budget?</string>
+    <string name="finance_remove_budget_message">Recorded expenses stay in your history.</string>
+    <string name="finance_over_budget">Over budget</string>
+    <string name="finance_edit_recurring">Edit recurring payment</string>
+    <string name="finance_record_due">Record payment</string>
+    <string name="finance_payment_name">Name</string>
+    <string name="finance_variable">Amount varies</string>
+    <string name="finance_paused">Paused</string>
+    <string name="finance_daily">Daily</string>
+    <string name="finance_yearly">Yearly</string>
+    <string name="finance_interval_count">Every</string>
+    <string name="finance_days">days</string>
+    <string name="finance_weeks">weeks</string>
+    <string name="finance_months">months</string>
+    <string name="finance_years">years</string>
+    <string name="finance_budget_start">Starts</string>
+    <string name="finance_next_due">Next payment</string>
+    <string name="finance_period_all">All</string>
+    <string name="finance_period_today">Today</string>
+    <string name="finance_period_week">This week</string>
+    <string name="finance_period_month">This month</string>
+    <string name="finance_csv_options">CSV options</string>
+    <string name="finance_csv_export">Export transactions</string>
+    <string name="finance_csv_export_matches">Export matching transactions</string>
+    <string name="finance_csv_import">Import transactions</string>
+    <string name="finance_csv_fallback">Account for files without one</string>
+    <string name="finance_csv_choose">Choose CSV</string>
+    <string name="finance_csv_add">Add transactions</string>
+    <string name="finance_csv_saved">CSV saved</string>
+    <string name="finance_csv_failed">Couldn’t read or write the CSV.</string>
+    <string name="finance_csv_row">Check CSV row %1$d.</string>
+    <plurals name="finance_csv_review">
+        <item quantity="one">Add %d new transaction?</item>
+        <item quantity="other">Add %d new transactions?</item>
+    </plurals>
+    <plurals name="finance_csv_imported">
+        <item quantity="one">Added %d transaction</item>
+        <item quantity="other">Added %d transactions</item>
+    </plurals>
+    <string name="overview_balance">Balance</string>
+    <string name="overview_this_month">This month</string>
+    <string name="overview_in">In</string>
+    <string name="overview_out">Out</string>
+    <string name="overview_net">Net</string>
+    <string name="overview_by_category">By category</string>
+    <string name="overview_uncategorized">Uncategorized</string>
+    <string name="finance_default_account">Main</string>
+    <string name="finance_yesterday">Yesterday</string>
+    <string name="finance_per_month">Recurring per month</string>
+    <string name="finance_no_budgets">No budgets</string>
+    <string name="finance_due_today">Due today</string>
+    <string name="finance_due_tomorrow">Due tomorrow</string>
+    <string name="finance_due_in">In %1$d days</string>
+    <plurals name="finance_overdue">
+        <item quantity="one">%d day overdue</item>
+        <item quantity="other">%d days overdue</item>
+    </plurals>
+    <string name="finance_subscriptions">Recurring</string>
+    <string name="finance_category_new">New</string>
+    <plurals name="sms_found">
+        <item quantity="one">%d payment found in SMS</item>
+        <item quantity="other">%d payments found in SMS</item>
+    </plurals>
+    <plurals name="sms_added">
+        <item quantity="one">%d payment added from SMS</item>
+        <item quantity="other">%d payments added from SMS</item>
+    </plurals>
+    <string name="sms_review">Review</string>
+    <string name="sms_add_all">Add all</string>
+    <string name="sms_discard_all">Discard all</string>
+    <string name="sms_discard">Discard</string>
+    <string name="sms_ok">OK</string>
+    <string name="finance_started">Started</string>
+    <string name="finance_notes">Notes</string>
+    <string name="finance_since">Since %1$s</string>
+    <string name="finance_icon">Icon</string>
+    <string name="finance_icon_change">Change</string>
+    <string name="finance_icon_letter">Letter</string>
+    <string name="finance_icon_image">Image</string>
+    <string name="finance_icon_choose">Choose image</string>
+    <string name="finance_icon_search">Search services</string>
+    <string name="finance_icon_failed">That image can\'t be used</string>
+    <string name="finance_sort_newest">Newest</string>
+    <string name="finance_sort_oldest">Oldest</string>
+    <string name="finance_sort_largest">Largest</string>
+    <string name="finance_search_subscriptions">Search recurring payments</string>
+    <string name="overview_add_income">+ Income</string>
+    <string name="overview_add_expense">− Expense</string>
+    <string name="finance_cancel">Cancel</string>
+    <plurals name="finance_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="finance_delete_selected">
+        <item quantity="one">Delete %d transaction?</item>
+        <item quantity="other">Delete %d transactions?</item>
+    </plurals>
+    <string name="finance_budget_name">Budget name</string>
+    <string name="finance_manage_categories">Manage categories</string>
+    <string name="finance_add_category">Add category</string>
+    <string name="finance_edit_category">Edit category</string>
+    <string name="finance_category_exists">Category already exists</string>
+    <string name="finance_category_both">Both</string>
+    <string name="finance_style">Style</string>
+    <string name="finance_done">Done</string>
+    <string name="finance_color">Color</string>
+    <string name="finance_hourly">Hourly</string>
+    <string name="finance_hours">hours</string>
+    <string name="finance_billing_time">Billing time</string>
+    <string-array name="finance_style_icons">
+        <item>Wallet</item>
+        <item>Credit card</item>
+        <item>Dining</item>
+        <item>Car</item>
+        <item>Movie</item>
+        <item>Shopping cart</item>
+        <item>Light bulb</item>
+        <item>Heart</item>
+        <item>Work</item>
+        <item>Home</item>
+        <item>Fitness</item>
+        <item>Cloud</item>
+        <item>Tag</item>
+        <item>Sparkles</item>
+    </string-array>
+    <string-array name="finance_style_colors">
+        <item>Slate</item>
+        <item>Ember</item>
+        <item>Moss</item>
+        <item>Tide</item>
+        <item>Clay</item>
+        <item>Saffron</item>
+        <item>Plum</item>
+        <item>Lichen</item>
+        <item>Rust</item>
+        <item>Lagoon</item>
+        <item>Heather</item>
+        <item>Sand</item>
+        <item>Pine</item>
+        <item>Coral</item>
+        <item>Iris</item>
+        <item>Ochre</item>
+        <item>Stone</item>
+    </string-array>
+    <string name="finance_subscription_edit">Edit</string>
+    <string name="finance_subscription_received">Total received</string>
+    <string name="finance_subscription_spent">Total spent</string>
+    <string name="finance_subscription_no_payments">No linked payments</string>
+    <string name="finance_subscription_estimate">Since start at current price</string>
+    <string name="finance_subscription_history">Monthly payment history</string>
+    <string name="finance_subscription_forecast">12-month forecast</string>
+    <string name="finance_subscription_forecast_basis">At the current amount and schedule</string>
+    <string name="finance_subscription_no_schedule">No future billing date</string>
+    <string name="finance_period_90">90 days</string>
+    <string name="finance_period_custom">Custom</string>
+    <string name="finance_apply">Apply</string>
+    <string name="finance_kind_all">All types</string>
+    <string name="finance_sort_smallest">Smallest</string>
+    <string name="finance_sort_category">Category</string>
+    <string name="finance_description">Description</string>
+    <string name="finance_settings">Settings</string>
+    <string name="finance_transaction_deleted">Transaction deleted</string>
+    <string name="finance_undo">Undo</string>
+    <string name="finance_show_all">Show all %1$d</string>
+    <string name="finance_show_fewer">Show fewer</string>
+    <string name="finance_show_older">Show older (%1$d)</string>
+    <plurals name="finance_matching">
+        <item quantity="one">%1$d transaction</item>
+        <item quantity="other">%1$d transactions</item>
+    </plurals>
+    <string name="finance_export_budgets">Export budgets</string>
+    <string name="finance_all_accounts">All accounts</string>
+    <string name="finance_all_accounts_detail">Count this category in every %1$s account</string>
+    <string name="finance_budget_hourly">Counted by day, so hours round up to whole days.</string>
+    <string name="finance_budget_left">%1$s left · %2$s</string>
+    <string name="finance_budget_over_by">%1$s over · %2$s</string>
+    <string name="overview_budget_used">%1$s</string>
+    <plurals name="finance_every_hours">
+        <item quantity="one">Every hour</item>
+        <item quantity="other">Every %1$d hours</item>
+    </plurals>
+    <plurals name="finance_every_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="finance_every_weeks">
+        <item quantity="one">Every week</item>
+        <item quantity="other">Every %1$d weeks</item>
+    </plurals>
+    <plurals name="finance_every_months">
+        <item quantity="one">Every month</item>
+        <item quantity="other">Every %1$d months</item>
+    </plurals>
+    <plurals name="finance_every_years">
+        <item quantity="one">Every year</item>
+        <item quantity="other">Every %1$d years</item>
+    </plurals>
+    <string name="finance_variable_badge">Varies</string>
+    <string name="finance_variable_estimated">Estimated</string>
+    <string name="finance_posts_daily">Added at most once a day</string>
+    <string name="finance_pause">Pause</string>
+    <string name="finance_resume">Resume</string>
+    <string name="finance_edit">Edit</string>
+    <string name="finance_export_subscriptions">Export recurring payments</string>
+    <string name="finance_auto_estimate">Add the estimate when due</string>
+    <string name="finance_auto_estimate_on">Added automatically; edit it once the real amount is known.</string>
+    <string name="finance_auto_estimate_off">Waits for you to enter the amount.</string>
+    <string name="finance_color_automatic">Automatic</string>
+    <string name="finance_color_custom">Custom</string>
+    <string name="overview_cash_flow">Cash flow</string>
+    <string name="overview_range_week">7D</string>
+    <string name="overview_range_month">30D</string>
+    <string name="overview_range_half">6M</string>
+    <string name="overview_range_year">1Y</string>
+    <string name="overview_range_all">All</string>
+    <string name="overview_spent">Spent %1$s</string>
+    <string name="overview_earned">In %1$s</string>
+    <string name="overview_top">Most on %1$s, %2$s</string>
+    <string name="sms_add">Add</string>
+    <plurals name="sms_no_account">
+        <item quantity="one">%1$d with no account in its currency</item>
+        <item quantity="other">%1$d with no account in their currency</item>
+    </plurals>
+    <plurals name="sms_failed">
+        <item quantity="one">%1$d couldn’t be saved</item>
+        <item quantity="other">%1$d couldn’t be saved</item>
+    </plurals>
+    <string name="finance_delete_category">Delete %1$s?</string>
+    <string name="finance_delete_category_message">Past transactions keep it. It is no longer offered.</string>
+    <string name="overview_mode_spending">Spending</string>
+    <string name="overview_mode_in_out">In vs out</string>
+    <string name="overview_mode_net">Net</string>
+    <string name="finance_budget_total_limit">Total limit</string>
+    <string name="finance_budget_total_spent">Total spent</string>
+    <string name="finance_budget_total_left">Left</string>
+    <string name="finance_budget_total_over">Over</string>
+    <string name="finance_budget_total_used">%1$s of all budgets used</string>
+    <string name="finance_costs_per_month">Costs per month</string>
+    <string name="finance_income_per_month">Income per month</string>
+    <string name="finance_shown_currency">Shown in %1$s</string>
+    <string name="finance_spending_by_day">Spending by day</string>
+    <string name="finance_spending_by_weekday">Spending by weekday</string>
+    <string name="finance_busiest">Most on %1$s: %2$s</string>
+    <string name="finance_discard_title">Discard changes?</string>
+    <string name="finance_discard_message">What you entered here won\'t be saved.</string>
+    <string name="finance_discard">Discard</string>
+    <plurals name="overview_more">
+        <item quantity="one">%d more</item>
+        <item quantity="other">%d more</item>
+    </plurals>
+    <plurals name="finance_more_plans">
+        <item quantity="one">%d more</item>
+        <item quantity="other">%d more</item>
+    </plurals>
+    <string name="finance_service_or_icon">Service or icon</string>
+    <string name="finance_choose_service">Choose</string>
+    <string name="finance_payout">Payout %1$s</string>
+</resources>

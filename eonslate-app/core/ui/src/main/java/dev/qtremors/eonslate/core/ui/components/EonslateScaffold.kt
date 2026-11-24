@@ -1,0 +1,225 @@
+package dev.qtremors.eonslate.core.ui.components
+
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.IconButtonDefaults
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import dev.qtremors.eonslate.core.ui.R
+import dev.qtremors.eonslate.core.ui.theme.spacing
+
+/**
+ * A search button in the top bar that turns the bar itself into a search field for this page.
+ * [onOpenChange] tells the page when the field opens and closes, so it can swap its content.
+ */
+data class FilterTop(
+    val query: String,
+    val onQueryChange: (String) -> Unit,
+    val placeholder: String,
+    val actions: @Composable RowScope.() -> Unit = {},
+    val onOpenChange: (Boolean) -> Unit = {}
+)
+
+/**
+ * The frame of every screen: a large title that collapses on scroll, the tonal page background,
+ * and content padding that keeps the last row clear of the floating toolbar.
+ *
+ * [filter] adds a search button that turns the top bar into a search field for this page.
+ * [content] receives padding that already includes the side gutter and toolbar clearance.
+ * [onBack] adds a back arrow for pages below the top level. [floatingActionButton] floats over
+ * the bottom of the page, inside the toolbar clearance, so it never covers the last row.
+ * [brand] swaps the large title for a small bar that leads with it, as on the start screen.
+ */
+@Composable
+fun EonslateScaffold(
+    title: String,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
+    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+    snackbarHost: @Composable () -> Unit = {},
+    filter: FilterTop? = null,
+    onBack: (() -> Unit)? = null,
+    floatingActionButton: @Composable () -> Unit = {},
+    brand: (@Composable () -> Unit)? = null,
+    content: @Composable (PaddingValues) -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val spacing = MaterialTheme.spacing
+    val layoutDirection = LocalLayoutDirection.current
+    val shell = LocalShellHost.current
+    // In the shell the floating toolbar shows Back with this title, so the top bar draws neither.
+    shell?.Offer(title)
+    val onBack = if (shell != null) null else onBack
+    var filtering by rememberSaveable { mutableStateOf(false) }
+    // The keyboard opens once, when search opens. Coming back from a result keeps the results
+    // in view instead of popping the keyboard up over them again.
+    var focusPending by rememberSaveable { mutableStateOf(false) }
+    val closeFilter: () -> Unit = {
+        filtering = false
+        focusPending = false
+        filter?.onQueryChange?.invoke("")
+        filter?.onOpenChange?.invoke(false)
+    }
+    val filterVisible = filtering && filter != null
+    BackHandler(enabled = filterVisible, onBack = closeFilter)
+    Scaffold(
+        modifier = if (filterVisible) modifier else modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = colors.surfaceContainer,
+        // Above the shell's floating toolbar, never behind it.
+        snackbarHost = { Box(Modifier.padding(bottom = if (shell != null) spacing.toolbarClearance else 0.dp)) { snackbarHost() } },
+        floatingActionButton = floatingActionButton,
+        topBar = {
+            when {
+                filter != null -> AnimatedContent(targetState = filtering, label = "topBarFilter") { open ->
+                    if (open) FilterTopBar(filter, onClose = closeFilter, requestFocus = focusPending, onFocused = { focusPending = false })
+                    else TitleTopBar(title, scrollBehavior, onBack, brand) {
+                        IconButton(shapes = IconButtonDefaults.shapes(), onClick = {
+                            filtering = true
+                            focusPending = true
+                            filter.onOpenChange(true)
+                        }) {
+                            Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.action_search))
+                        }
+                        actions()
+                    }
+                }
+                else -> TitleTopBar(title, scrollBehavior, onBack, brand, actions)
+            }
+        }
+    ) { inner ->
+        androidx.compose.foundation.layout.BoxWithConstraints {
+            // Past a readable width the content stays centred rather than stretching edge to edge.
+            val extra = ((maxWidth - MAX_CONTENT_WIDTH) / 2).coerceAtLeast(0.dp)
+            content(
+                PaddingValues(
+                    start = inner.calculateStartPadding(layoutDirection) + spacing.screenGutter + extra,
+                    end = inner.calculateEndPadding(layoutDirection) + spacing.screenGutter + extra,
+                    top = inner.calculateTopPadding(),
+                    bottom = inner.calculateBottomPadding() + spacing.toolbarClearance
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun TitleTopBar(
+    title: String,
+    scrollBehavior: TopAppBarScrollBehavior,
+    onBack: (() -> Unit)?,
+    brand: (@Composable () -> Unit)?,
+    actions: @Composable RowScope.() -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    if (brand != null) {
+        TopAppBar(
+            title = brand,
+            actions = actions,
+            scrollBehavior = scrollBehavior,
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceContainer, scrolledContainerColor = colors.surfaceContainer),
+        )
+        return
+    }
+    // The Expressive large bar: a bigger title that settles into the small bar as the page scrolls.
+    LargeFlexibleTopAppBar(
+        title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = {
+            if (onBack != null) {
+                IconButton(shapes = IconButtonDefaults.shapes(), onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                }
+            }
+        },
+        actions = actions,
+        scrollBehavior = scrollBehavior,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = colors.surfaceContainer,
+            scrolledContainerColor = colors.surfaceContainer
+        )
+    )
+}
+
+
+/** The top bar as a search field: back closes it and clears the query. */
+@Composable
+private fun FilterTopBar(filter: FilterTop, onClose: () -> Unit, requestFocus: Boolean, onFocused: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(requestFocus) {
+        if (requestFocus) {
+            focus.requestFocus()
+            onFocused()
+        }
+    }
+    TopAppBar(
+        navigationIcon = {
+            IconButton(shapes = IconButtonDefaults.shapes(), onClick = onClose) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.action_close_search))
+            }
+        },
+        title = {
+            TextField(
+                value = filter.query,
+                onValueChange = filter.onQueryChange,
+                singleLine = true,
+                placeholder = { Text(filter.placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                trailingIcon = {
+                    if (filter.query.isNotEmpty()) {
+                        IconButton(shapes = IconButtonDefaults.shapes(), onClick = { filter.onQueryChange("") }) {
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.action_clear_search))
+                        }
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = colors.surfaceContainer,
+                    unfocusedContainerColor = colors.surfaceContainer,
+                    focusedIndicatorColor = colors.surfaceContainer,
+                    unfocusedIndicatorColor = colors.surfaceContainer
+                ),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus)
+            )
+        },
+        actions = filter.actions,
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceContainer)
+    )
+}
+
+private val MAX_CONTENT_WIDTH = 760.dp
